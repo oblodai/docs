@@ -1,0 +1,128 @@
+{
+  "theme": "maple",
+  "name": "Oblodai",
+  "colors": {
+    "primary": "#4F46E5",
+    "light": "#A5B4FC",
+    "dark": "#4338CA"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://oblodai.com"
+  },
+  "favicon": "/favicon.svg",
+  "navbar": {
+    "links": [
+      {
+        "href": "https://github.com/oblodai",
+        "label": "GitHub"
+      },
+      {
+        "href": "https://my.oblodai.com",
+        "label": "Кабинет"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Начать бесплатно",
+      "href": "https://my.oblodai.com"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/oblodai",
+      "linkedin": "https://linkedin.com/company/oblodai",
+      "website": "https://oblodai.com",
+      "x": "https://x.com/oblodai"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ],
+    "display": "header"
+  },
+  "description": "Документация Oblodai API — приём криптоплатежей, выплаты, статические кошельки и вебхуки. Один API-ключ, все возможности.",
+  "appearance": {
+    "default": "system"
+  },
+  "fonts": {
+    "heading": {
+      "family": "Inter"
+    },
+    "body": {
+      "family": "Inter"
+    }
+  },
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Documentation",
+          "icon": "book-open-cover",
+          "href": "https://oblodai.mintlify.io"
+        },
+        {
+          "anchor": "GitHub",
+          "icon": "github",
+          "href": "https://github.com/oblodai"
+        }
+      ]
+    },
+    "tabs": [
+      {
+        "tab": "Инструкции",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Начало работы",
+            "icon": "rocket",
+            "pages": [
+              "index"
+            ]
+          },
+          {
+            "group": "Приём платежей",
+            "icon": "credit-card",
+            "pages": []
+          },
+          {
+            "group": "Выплаты и массовые операции",
+            "icon": "money-bill-transfer",
+            "pages": []
+          },
+          {
+            "group": "Вебхуки",
+            "icon": "bolt",
+            "pages": []
+          },
+          {
+            "group": "Прод и надёжность",
+            "icon": "shield-check",
+            "pages": []
+          }
+        ]
+      },
+      {
+        "tab": "Справочник",
+        "icon": "code"
+      },
+      {
+        "tab": "Модули CMS",
+        "icon": "cart-shopping"
+      },
+      {
+        "tab": "SDK",
+        "icon": "cubes"
+      }
+    ]
+  }
+}
