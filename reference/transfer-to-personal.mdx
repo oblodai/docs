@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/transfer/to-personal"
+sidebarTitle: "Перевод на личный кошелёк"
 ---
 
 Перевести средства с бизнес‑кошелька мерчанта на **личный** кошелёк владельца аккаунта.
@@ -8,28 +9,35 @@ title: "POST /v1/transfer/to-personal"
 личный кошелёк. Сам вывод с личного кошелька наружу — отдельная операция, доступная только в
 кабинете под 2FA (на API‑ключе её нет).
 
-**URL:** `https://api.oblodai.com/v1/transfer/to-personal` · **Аутентификация:** обязательна ·
+**URL:** `https://api.oblodai.com/v1/transfer/to-personal` · **Аутентификация:** обязательна · · **Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id`.
 
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
-**Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id`.
 
 ### Заголовки
 
-| Заголовок | Обяз. | Описание |
-|---|---|---|
-| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах одного перевода. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. → [Идемпотентность](/reference/basics-idempotency) |
+<ParamField header="Idempotency-Key">
+  Любое уникальное значение (≤255 символов), одинаковое во всех повторах одного перевода. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. → [Идемпотентность](/reference/basics-idempotency)
+</ParamField>
+
 
 ---
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `amount` | string | да | Сумма перевода в `currency`. |
-| `currency` | string | да | Код валюты. |
-| `order_id` | string | нет | Ключ идемпотентности. Повтор — no‑op. **Настоятельно передавайте всегда** (см. ниже). |
+<ParamField body="amount" type="string" required>
+  Сумма перевода в `currency`.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Код валюты.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ключ идемпотентности. Повтор — no‑op. **Настоятельно передавайте всегда** (см. ниже).
+</ParamField>
+
 
 ---
 

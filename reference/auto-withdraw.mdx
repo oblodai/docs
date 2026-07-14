@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/auto-withdraw/list · /set · /delete"
+sidebarTitle: "Автовывод"
 ---
 
 Автовывод. Как только депозит зачисляет мерчанта в настроенном активе, **чистая** сумма
@@ -43,12 +44,22 @@ title: "POST /v1/auto-withdraw/list · /set · /delete"
 
 ## POST /v1/auto-withdraw/set
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `currency` | string | да | Актив, для которого включается автовывод. |
-| `network` | string | да | Сеть. |
-| `address` | string | да | Адрес назначения. |
-| `min` | string | нет | Порог **в единицах актива** (не minor). По умолчанию `0` — без порога. |
+<ParamField body="currency" type="string" required>
+  Актив, для которого включается автовывод.
+</ParamField>
+
+<ParamField body="network" type="string" required>
+  Сеть.
+</ParamField>
+
+<ParamField body="address" type="string" required>
+  Адрес назначения.
+</ParamField>
+
+<ParamField body="min" type="string">
+  Порог **в единицах актива** (не minor). По умолчанию `0` — без порога.
+</ParamField>
+
 
 ### Пример запроса
 
@@ -91,9 +102,10 @@ await call("/v1/auto-withdraw/set", { currency: "USDT", network: "tron", address
 
 Выключает автовывод для актива.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `currency` | string | да | Актив, для которого выключается автовывод. |
+<ParamField body="currency" type="string" required>
+  Актив, для которого выключается автовывод.
+</ParamField>
+
 
 ---
 

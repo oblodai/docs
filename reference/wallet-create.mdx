@@ -1,32 +1,40 @@
 ---
 title: "POST /v1/wallet"
+sidebarTitle: "Создание кошелька"
 ---
 
 Создать (или получить существующий) постоянный статический адрес приёма. Средства на него зачисляются
 напрямую на доступный баланс мерчанта.
 
-**URL:** `https://api.oblodai.com/v1/wallet` · **Аутентификация:** обязательна ·
+**URL:** `https://api.oblodai.com/v1/wallet` · **Аутентификация:** обязательна · · **Идемпотентность:** заголовок `Idempotency-Key` или тройка `(currency, network, order_id)`.
 
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
-**Идемпотентность:** заголовок `Idempotency-Key` или тройка `(currency, network, order_id)`.
 
 ### Заголовки
 
-| Заголовок | Обяз. | Описание |
-|---|---|---|
-| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. → [Идемпотентность](/reference/basics-idempotency) |
+<ParamField header="Idempotency-Key">
+  Любое уникальное значение (≤255 символов), одинаковое во всех повторах. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. → [Идемпотентность](/reference/basics-idempotency)
+</ParamField>
+
 
 ---
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `currency` | string | да | Символ валюты приёма (`USDT`, `BTC`, `ETH`, …). |
-| `network` | string | да | Сеть приёма (`tron`, `ethereum`, `bitcoin`, …). |
-| `order_id` | string | нет | Ваш идентификатор клиента/заказа. Закрепляет отдельный постоянный адрес за клиентом. |
+<ParamField body="currency" type="string" required>
+  Символ валюты приёма (`USDT`, `BTC`, `ETH`, …).
+</ParamField>
+
+<ParamField body="network" type="string" required>
+  Сеть приёма (`tron`, `ethereum`, `bitcoin`, …).
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ваш идентификатор клиента/заказа. Закрепляет отдельный постоянный адрес за клиентом.
+</ParamField>
+
 
 Пара `(currency, network)` должна быть принимаемым и отслеживаемым методом из
 [каталога](/reference/basics-networks).

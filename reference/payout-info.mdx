@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payout/info"
+sidebarTitle: "Информация о выплате"
 ---
 
 Найти выплату по `uuid` (наш) или `order_id` (ваш).
@@ -16,10 +17,14 @@ title: "POST /v1/payout/info"
 
 Нужен хотя бы один идентификатор.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `uuid` | string | нет\* | Идентификатор выплаты в Oblodai. |
-| `order_id` | string | нет\* | Ваш номер выплаты. |
+<ParamField body="uuid" type="string">
+  Идентификатор выплаты в Oblodai.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ваш номер выплаты.
+</ParamField>
+
 
 \* Требуется хотя бы одно из двух.
 

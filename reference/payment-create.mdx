@@ -1,40 +1,86 @@
 ---
 title: "POST /v1/payment"
+sidebarTitle: "Создание счёта"
 ---
 
 Создаёт платёжный счёт (инвойс). Поддерживает три режима: фиксированная валюта + сеть,
 авто‑нормализация сети (если у валюты она одна) и валюто‑агностичный счёт (валюту и сеть выбирает
 покупатель на hosted‑странице).
 
-**URL:** `https://api.oblodai.com/v1/payment` · **Аутентификация:** обязательна
+**URL:** `https://api.oblodai.com/v1/payment` · **Аутентификация:** обязательна ([подпись](/reference/basics-auth)) · **Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id`.
 
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
-([подпись](/reference/basics-auth)) · **Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id`.
 
 ---
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `amount` | string | да | Сумма к оплате в валюте `currency`. |
-| `currency` | string | да | Код **валюты цены**. Это **любой из 23 фиатов** (`USD`, `EUR`, `GBP`, `RUB`, `UAH`, `JPY`, …) **или любая монета** (`USDT`, `BTC`, …). Полный список — `pricing_currencies` из [`GET /v1/currencies`](/reference/currencies). У `JPY` и `KRW` **ноль знаков** после запятой (`"10000"`, а не `"10000.00"`). |
-| `order_id` | string | нет\* | Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется. |
-| `network` | string | нет | Сеть расчёта (напр. `tron`, `ethereum`). См. режимы ниже. |
-| `to_currency` | string | нет | **Валюта расчёта** — крипта, которой платят (фиат здесь невозможен). По умолчанию `= currency`, но **только если `currency` — крипта**. Если цена в фиате, задайте `to_currency` явно — либо не задавайте и `network`, тогда монету выберет покупатель. |
-| `lifetime` | int64 | нет | Время жизни счёта, сек; 300–43200. По умолчанию 3600. Значения вне диапазона **обрезаются** к ближайшей границе (не ошибка). |
-| `subtract` | int64 | нет | **Устаревшее; новичку не нужно** — payer‑facing наценки настраиваются через [`discount`](/reference/payment-discount). % сетевой наценки на плательщика (0–100). |
-| `accuracy_payment_percent` | float64 | нет | Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта. |
-| `url_callback` | string | нет | Индивидуальный webhook для этого счёта. |
-| `url_return` | string | нет | Ссылка «назад в магазин» на странице оплаты. |
-| `url_success` | string | нет | Редирект после успешной оплаты. |
-| `additional_data` | string | нет | Приватные данные мерчанта, эхом в вебхуках (покупателю не видны). |
-| `payer_email` | string | нет | Email плательщика. Если задан — **после оплаты на него автоматически уходит чек**. Он же получатель по умолчанию у [`POST /v1/payment/send-email`](/reference/payment-send-email). |
-| `theme` | string | нет | Тема страницы оплаты: `dark` \| `light`. |
-| `is_payment_multiple` | bool | нет | Разрешить доплату остатка. |
-| `is_refresh` | bool | нет | Оживить просроченный счёт по `order_id` вместо создания нового. |
+<ParamField body="amount" type="string" required>
+  Сумма к оплате в валюте `currency`.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Код **валюты цены**. Это **любой из 23 фиатов** (`USD`, `EUR`, `GBP`, `RUB`, `UAH`, `JPY`, …) **или любая монета** (`USDT`, `BTC`, …). Полный список — `pricing_currencies` из [`GET /v1/currencies`](/reference/currencies). У `JPY` и `KRW` **ноль знаков** после запятой (`"10000"`, а не `"10000.00"`).
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется.
+</ParamField>
+
+<ParamField body="network" type="string">
+  Сеть расчёта (напр. `tron`, `ethereum`). См. режимы ниже.
+</ParamField>
+
+<ParamField body="to_currency" type="string">
+  **Валюта расчёта** — крипта, которой платят (фиат здесь невозможен). По умолчанию `= currency`, но **только если `currency` — крипта**. Если цена в фиате, задайте `to_currency` явно — либо не задавайте и `network`, тогда монету выберет покупатель.
+</ParamField>
+
+<ParamField body="lifetime" type="int64">
+  Время жизни счёта, сек; 300–43200. По умолчанию 3600. Значения вне диапазона **обрезаются** к ближайшей границе (не ошибка).
+</ParamField>
+
+<ParamField body="subtract" type="int64">
+  **Устаревшее; новичку не нужно** — payer‑facing наценки настраиваются через [`discount`](/reference/payment-discount). % сетевой наценки на плательщика (0–100).
+</ParamField>
+
+<ParamField body="accuracy_payment_percent" type="float64">
+  Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта.
+</ParamField>
+
+<ParamField body="url_callback" type="string">
+  Индивидуальный webhook для этого счёта.
+</ParamField>
+
+<ParamField body="url_return" type="string">
+  Ссылка «назад в магазин» на странице оплаты.
+</ParamField>
+
+<ParamField body="url_success" type="string">
+  Редирект после успешной оплаты.
+</ParamField>
+
+<ParamField body="additional_data" type="string">
+  Приватные данные мерчанта, эхом в вебхуках (покупателю не видны).
+</ParamField>
+
+<ParamField body="payer_email" type="string">
+  Email плательщика. Если задан — **после оплаты на него автоматически уходит чек**. Он же получатель по умолчанию у [`POST /v1/payment/send-email`](/reference/payment-send-email).
+</ParamField>
+
+<ParamField body="theme" type="string">
+  Тема страницы оплаты: `dark` | `light`.
+</ParamField>
+
+<ParamField body="is_payment_multiple" type="bool">
+  Разрешить доплату остатка.
+</ParamField>
+
+<ParamField body="is_refresh" type="bool">
+  Оживить просроченный счёт по `order_id` вместо создания нового.
+</ParamField>
+
 
 \* Идемпотентность обеспечивает заголовок `Idempotency-Key` **или** `order_id`. Если нет **ни того, ни
 другого**, каждый вызов создаёт новый счёт — задавайте хотя бы одно из двух.
@@ -43,9 +89,10 @@ title: "POST /v1/payment"
 
 ### Заголовки
 
-| Заголовок | Обяз. | Описание |
-|---|---|---|
-| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах одного создания. Повтор вернёт тот же счёт и заголовок `Idempotent-Replayed: true`. Работает независимо от `order_id` и вместе с ним. → [Идемпотентность](/reference/basics-idempotency) |
+<ParamField header="Idempotency-Key">
+  Любое уникальное значение (≤255 символов), одинаковое во всех повторах одного создания. Повтор вернёт тот же счёт и заголовок `Idempotent-Replayed: true`. Работает независимо от `order_id` и вместе с ним. → [Идемпотентность](/reference/basics-idempotency)
+</ParamField>
+
 
 ---
 

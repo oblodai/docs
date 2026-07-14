@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payout/approve"
+sidebarTitle: "Подтверждение выплаты"
 ---
 
 Подтвердить выплату в статусе `pending` (`check`).
@@ -20,9 +21,10 @@ title: "POST /v1/payout/approve"
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `uuid` | string | да | Идентификатор выплаты. |
+<ParamField body="uuid" type="string" required>
+  Идентификатор выплаты.
+</ParamField>
+
 
 ---
 

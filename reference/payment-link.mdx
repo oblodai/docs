@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/link · /list · /info · /toggle"
+sidebarTitle: "Платёжные ссылки"
 ---
 
 **Платёжная ссылка** — многоразовый URL оплаты, который вы просто даёте покупателю (в письме, в чате,
@@ -38,18 +39,46 @@ title: "POST /v1/payment/link · /list · /info · /toggle"
 
 ### Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `title` | string | нет | Заголовок на странице оплаты. |
-| `description` | string | нет | Описание на странице оплаты. |
-| `amount_mode` | string | да | Режим суммы: `fixed` \| `open` \| `range`. |
-| `currency` | string | да | **Валюта цены** — фиат (`USD`, `EUR`, `RUB`, …) или монета. Список — `pricing_currencies` из [`GET /v1/currencies`](/reference/currencies). |
-| `amount_fixed` | string | нет\* | Сумма — для `fixed`. Обязательна в этом режиме. |
-| `amount_min` | string | нет | Нижняя граница: «пол» для `open` (необязателен) и минимум для `range` (обязателен). |
-| `amount_max` | string | нет\* | Верхняя граница — для `range`. Обязательна в этом режиме. |
-| `pinned_currency` | string | нет | **Валюта расчёта** (монета), закреплённая за ссылкой. Пусто — монету выбирает покупатель. |
-| `pinned_network` | string | нет | Сеть расчёта, закреплённая за ссылкой. Пусто — сеть выбирает покупатель. |
-| `expires_in` | int64 | нет | Срок жизни ссылки, секунд от момента создания. **`0` (по умолчанию) — ссылка бессрочная.** |
+<ParamField body="title" type="string">
+  Заголовок на странице оплаты.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Описание на странице оплаты.
+</ParamField>
+
+<ParamField body="amount_mode" type="string" required>
+  Режим суммы: `fixed` | `open` | `range`.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  **Валюта цены** — фиат (`USD`, `EUR`, `RUB`, …) или монета. Список — `pricing_currencies` из [`GET /v1/currencies`](/reference/currencies).
+</ParamField>
+
+<ParamField body="amount_fixed" type="string">
+  Сумма — для `fixed`. Обязательна в этом режиме.
+</ParamField>
+
+<ParamField body="amount_min" type="string">
+  Нижняя граница: «пол» для `open` (необязателен) и минимум для `range` (обязателен).
+</ParamField>
+
+<ParamField body="amount_max" type="string">
+  Верхняя граница — для `range`. Обязательна в этом режиме.
+</ParamField>
+
+<ParamField body="pinned_currency" type="string">
+  **Валюта расчёта** (монета), закреплённая за ссылкой. Пусто — монету выбирает покупатель.
+</ParamField>
+
+<ParamField body="pinned_network" type="string">
+  Сеть расчёта, закреплённая за ссылкой. Пусто — сеть выбирает покупатель.
+</ParamField>
+
+<ParamField body="expires_in" type="int64">
+  Срок жизни ссылки, секунд от момента создания. **`0` (по умолчанию) — ссылка бессрочная.**
+</ParamField>
+
 
 \* Обязательность зависит от `amount_mode` — см. таблицу режимов выше.
 
@@ -139,10 +168,14 @@ QR‑код.
 
 ### Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `limit` | int | нет | Сколько ссылок вернуть. |
-| `offset` | int | нет | Смещение. |
+<ParamField body="limit" type="int">
+  Сколько ссылок вернуть.
+</ParamField>
+
+<ParamField body="offset" type="int">
+  Смещение.
+</ParamField>
+
 
 ```python
 call("/v1/payment/link/list", {"limit": 50, "offset": 0})
@@ -194,11 +227,18 @@ await call("/v1/payment/link/list", { limit: 50, offset: 0 });
 
 ### Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `link_id` | string | да | Идентификатор ссылки. |
-| `limit` | int | нет | Пагинация списка платежей. |
-| `offset` | int | нет | Смещение. |
+<ParamField body="link_id" type="string" required>
+  Идентификатор ссылки.
+</ParamField>
+
+<ParamField body="limit" type="int">
+  Пагинация списка платежей.
+</ParamField>
+
+<ParamField body="offset" type="int">
+  Смещение.
+</ParamField>
+
 
 ```python
 call("/v1/payment/link/info", {"link_id": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40"})
@@ -247,10 +287,14 @@ await call("/v1/payment/link/info", { link_id: "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f
 
 ### Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `link_id` | string | да | Идентификатор ссылки. |
-| `active` | bool | да | `false` — выключить, `true` — включить обратно. |
+<ParamField body="link_id" type="string" required>
+  Идентификатор ссылки.
+</ParamField>
+
+<ParamField body="active" type="bool" required>
+  `false` — выключить, `true` — включить обратно.
+</ParamField>
+
 
 ```python
 call("/v1/payment/link/toggle", {"link_id": "5d3f2a71-…", "active": False})

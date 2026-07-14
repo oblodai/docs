@@ -1,5 +1,6 @@
 ---
 title: "Объект кошелька (Wallet)"
+sidebarTitle: "Объект Wallet"
 ---
 
 Статический кошелёк — это **постоянный адрес приёма**, закреплённый за мерчантом (и, по желанию, за
@@ -46,14 +47,30 @@ title: "Объект кошелька (Wallet)"
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `uuid` | string | Идентификатор кошелька. Нужен для [возврата](/reference/wallet-blocked-refund). |
-| `address` | string | Постоянный адрес приёма. |
-| `network` | string | Сеть. |
-| `currency` | string | Валюта. |
-| `order_id` | string | Ваш идентификатор клиента/заказа. |
-| `url` | string | Зарезервировано (обычно пусто). |
+<ResponseField name="uuid" type="string">
+  Идентификатор кошелька. Нужен для [возврата](/reference/wallet-blocked-refund).
+</ResponseField>
+
+<ResponseField name="address" type="string">
+  Постоянный адрес приёма.
+</ResponseField>
+
+<ResponseField name="network" type="string">
+  Сеть.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Валюта.
+</ResponseField>
+
+<ResponseField name="order_id" type="string">
+  Ваш идентификатор клиента/заказа.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Зарезервировано (обычно пусто).
+</ResponseField>
+
 
 ---
 

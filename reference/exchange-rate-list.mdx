@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/exchange-rate/list"
+sidebarTitle: "Курсы валют"
 ---
 
 Возвращает текущие обменные курсы к **USDT**.
@@ -21,9 +22,10 @@ title: "POST /v1/exchange-rate/list"
 
 Тело опционально.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `currency_from` | string | нет | Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело `{}` — по всем валютам. |
+<ParamField body="currency_from" type="string">
+  Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело `{}` — по всем валютам.
+</ParamField>
+
 
 ---
 
@@ -72,11 +74,18 @@ console.log(await res.json());
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `from` | string | Валюта, для которой дана котировка. |
-| `to` | string | Всегда `USDT`. |
-| `course` | string | Курс строкой с фиксированной точностью. |
+<ResponseField name="from" type="string">
+  Валюта, для которой дана котировка.
+</ResponseField>
+
+<ResponseField name="to" type="string">
+  Всегда `USDT`.
+</ResponseField>
+
+<ResponseField name="course" type="string">
+  Курс строкой с фиксированной точностью.
+</ResponseField>
+
 
 ---
 

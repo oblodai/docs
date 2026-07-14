@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/discount/list · /set"
+sidebarTitle: "Скидки и наценки"
 ---
 
 Скидка или наценка плательщику на чекауте в зависимости от выбранной монеты. Положительный процент —
@@ -32,11 +33,18 @@ title: "POST /v1/payment/discount/list · /set"
 
 ## POST /v1/payment/discount/set
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `currency` | string | нет | Валюта. Пусто = глобальный дефолт для всех монет. |
-| `network` | string | нет | Сеть. Пусто = любая сеть данной валюты. |
-| `discount_percent` | int | да | Процент, −99…99. Плюс — скидка, минус — наценка. |
+<ParamField body="currency" type="string">
+  Валюта. Пусто = глобальный дефолт для всех монет.
+</ParamField>
+
+<ParamField body="network" type="string">
+  Сеть. Пусто = любая сеть данной валюты.
+</ParamField>
+
+<ParamField body="discount_percent" type="int" required>
+  Процент, −99…99. Плюс — скидка, минус — наценка.
+</ParamField>
+
 
 ### Пример запроса
 

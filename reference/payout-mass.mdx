@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payout/mass"
+sidebarTitle: "Массовая выплата (легаси)"
 ---
 
 Массовая выплата — до **100** выплат за один запрос. Каждый элемент независим: ошибка по одному не
@@ -23,10 +24,14 @@ title: "POST /v1/payout/mass"
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `payouts` | array | да | Массив ≤100 элементов; поля каждого — как в [`POST /v1/payout`](/reference/payout-create). |
-| `source` | string | нет | Метка происхождения, применяется ко всем элементам без своего `source`. |
+<ParamField body="payouts" type="array" required>
+  Массив ≤100 элементов; поля каждого — как в [`POST /v1/payout`](/reference/payout-create).
+</ParamField>
+
+<ParamField body="source" type="string">
+  Метка происхождения, применяется ко всем элементам без своего `source`.
+</ParamField>
+
 
 ---
 

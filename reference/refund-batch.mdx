@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/refund/batch"
+sidebarTitle: "Батч: возвраты"
 ---
 
 Массовый возврат — до **5000** возвратов одним запросом. Обрабатывается асинхронно: в ответ сразу
@@ -11,21 +12,24 @@ title: "POST /v1/refund/batch"
   [лимит частоты](/reference/basics-ratelimit) считается по запросам, а не по элементам внутри них.
 </Note>
 
-**URL:** `https://api.oblodai.com/v1/refund/batch` · **Аутентификация:** обязательна ·
+**URL:** `https://api.oblodai.com/v1/refund/batch` · **Аутентификация:** обязательна · · **Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + тройка `(платёж, адрес, сумма)` каждого элемента.
 
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
-**Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + тройка `(платёж, адрес, сумма)` каждого элемента.
 
 ---
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `refunds` | array | да | Массив от 1 до **5000** элементов. Поля каждого элемента — **ровно те же**, что у [`POST /v1/payment/refund`](/reference/payment-refund). |
-| `on_error` | string | нет | Что делать при ошибке элемента: `continue` (по умолчанию) — обрабатывать остальные; `stop` — прекратить обработку после первой ошибки. |
+<ParamField body="refunds" type="array" required>
+  Массив от 1 до **5000** элементов. Поля каждого элемента — **ровно те же**, что у [`POST /v1/payment/refund`](/reference/payment-refund).
+</ParamField>
+
+<ParamField body="on_error" type="string">
+  Что делать при ошибке элемента: `continue` (по умолчанию) — обрабатывать остальные; `stop` — прекратить обработку после первой ошибки.
+</ParamField>
+
 
 Каждый элемент проходит **тот же** путь, что и одиночный возврат: `address` необязателен (по
 умолчанию — [`payer_address`](/reference/payment-object) платежа), возврат на адрес плательщика
@@ -93,12 +97,22 @@ await call("/v1/refund/batch", {
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `batch_id` | string | Идентификатор батча — с ним в [`POST /v1/batch/info`](/reference/batch-info). |
-| `kind` | string | Вид батча — здесь всегда `refund`. |
-| `count` | int | Сколько элементов принято в обработку. |
-| `status` | string | Стартовый статус — всегда `pending`. |
+<ResponseField name="batch_id" type="string">
+  Идентификатор батча — с ним в [`POST /v1/batch/info`](/reference/batch-info).
+</ResponseField>
+
+<ResponseField name="kind" type="string">
+  Вид батча — здесь всегда `refund`.
+</ResponseField>
+
+<ResponseField name="count" type="int">
+  Сколько элементов принято в обработку.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Стартовый статус — всегда `pending`.
+</ResponseField>
+
 
 ---
 

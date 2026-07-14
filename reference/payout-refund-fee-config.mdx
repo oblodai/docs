@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payout/refund-fee-config/get · /set"
+sidebarTitle: "Комиссия возврата"
 ---
 
 Per‑project настройка: кто несёт **нашу** комиссию при возврате. Шлюз её никогда не покрывает —
@@ -15,9 +16,10 @@ Per‑project настройка: кто несёт **нашу** комисси�
 
 ## POST /v1/payout/refund-fee-config/set
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `fee_on_customer` | bool | да | `true` — клиент получает **net** (комиссию платит клиент); `false` — мерчант платит комиссию, клиент получает **gross**. |
+<ParamField body="fee_on_customer" type="bool" required>
+  `true` — клиент получает **net** (комиссию платит клиент); `false` — мерчант платит комиссию, клиент получает **gross**.
+</ParamField>
+
 
 Ответ:
 

@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/webhooks/deliveries"
+sidebarTitle: "Журнал доставок"
 ---
 
 Журнал последних доставок вебхуков (до 50) — для отладки.
@@ -54,16 +55,38 @@ await call("/v1/webhooks/deliveries", {});
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `id` | string | Идентификатор доставки. |
-| `url` | string | Куда доставлялось. |
-| `event_type` | string | Тип события. |
-| `status` | string | Статус доставки (см. ниже). |
-| `attempts` | int | Сколько попыток сделано. |
-| `last_error` | string | Текст последней неуспешной попытки. |
-| `created_at` | string | Момент создания доставки (RFC 3339). |
-| `updated_at` | string | Момент последнего обновления (RFC 3339). |
+<ResponseField name="id" type="string">
+  Идентификатор доставки.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Куда доставлялось.
+</ResponseField>
+
+<ResponseField name="event_type" type="string">
+  Тип события.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Статус доставки (см. ниже).
+</ResponseField>
+
+<ResponseField name="attempts" type="int">
+  Сколько попыток сделано.
+</ResponseField>
+
+<ResponseField name="last_error" type="string">
+  Текст последней неуспешной попытки.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Момент создания доставки (RFC 3339).
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Момент последнего обновления (RFC 3339).
+</ResponseField>
+
 
 ### Статусы доставки
 

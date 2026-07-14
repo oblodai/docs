@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/resend"
+sidebarTitle: "Переотправка вебхука"
 ---
 
 Повторно ставит в очередь текущий вебхук платежа (по `uuid` или `order_id`). Событие —
@@ -17,10 +18,14 @@ title: "POST /v1/payment/resend"
 
 Нужен хотя бы один идентификатор.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `uuid` | string | нет\* | Идентификатор платежа. |
-| `order_id` | string | нет\* | Ваша ссылка на заказ. |
+<ParamField body="uuid" type="string">
+  Идентификатор платежа.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ваша ссылка на заказ.
+</ParamField>
+
 
 \* Требуется хотя бы одно из двух.
 

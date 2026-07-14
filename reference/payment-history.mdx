@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/history"
+sidebarTitle: "Список платежей"
 ---
 
 Список платежей мерчанта — новые сверху, с limit/offset‑пагинацией.
@@ -16,11 +17,18 @@ title: "POST /v1/payment/history"
 
 Все поля опциональны.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `limit` | int | нет | Размер страницы. По умолчанию 25, диапазон 1–100. |
-| `offset` | int | нет | Смещение от начала. |
-| `status` | string | нет | Фильтр по статусу ([`payment_status`](/reference/payment-object#статусы-payment_status)). Пусто = все. |
+<ParamField body="limit" type="int">
+  Размер страницы. По умолчанию 25, диапазон 1–100.
+</ParamField>
+
+<ParamField body="offset" type="int">
+  Смещение от начала.
+</ParamField>
+
+<ParamField body="status" type="string">
+  Фильтр по статусу ([`payment_status`](/reference/payment-object#статусы-payment_status)). Пусто = все.
+</ParamField>
+
 
 ---
 
@@ -66,12 +74,22 @@ await call("/v1/payment/history", { limit: 25, offset: 0, status: "paid" });
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `items` | array | Список **полных** объектов платежа — те же поля, что возвращает [`/info`](/reference/payment-info) (в примере показаны не все). |
-| `paginate.count` | int | **Общее** число записей, не размер страницы. |
-| `paginate.per_page` | int | Размер страницы. |
-| `paginate.offset` | int | Текущее смещение. |
+<ResponseField name="items" type="array">
+  Список **полных** объектов платежа — те же поля, что возвращает [`/info`](/reference/payment-info) (в примере показаны не все).
+</ResponseField>
+
+<ResponseField name="paginate.count" type="int">
+  **Общее** число записей, не размер страницы.
+</ResponseField>
+
+<ResponseField name="paginate.per_page" type="int">
+  Размер страницы.
+</ResponseField>
+
+<ResponseField name="paginate.offset" type="int">
+  Текущее смещение.
+</ResponseField>
+
 
 ---
 

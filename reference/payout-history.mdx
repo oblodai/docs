@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payout/history"
+sidebarTitle: "История выплат"
 ---
 
 История выплат мерчанта — новые сверху, с limit/offset‑пагинацией.
@@ -16,11 +17,18 @@ title: "POST /v1/payout/history"
 
 Все поля опциональны.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `limit` | int | нет | Размер страницы. По умолчанию 25, максимум 100. |
-| `offset` | int | нет | Смещение от начала. |
-| `status` | string | нет | Фильтр по **внутреннему** статусу (`pending`, `approved`, `broadcasting`, `sent`, `confirmed`, `failed`, `cancelled`, `awaiting_cosign`) — **не** по укрупнённому `check`/`process`/`paid`. Пусто = все. См. [статусы выплаты](/reference/payout-object#статусы-выплаты). |
+<ParamField body="limit" type="int">
+  Размер страницы. По умолчанию 25, максимум 100.
+</ParamField>
+
+<ParamField body="offset" type="int">
+  Смещение от начала.
+</ParamField>
+
+<ParamField body="status" type="string">
+  Фильтр по **внутреннему** статусу (`pending`, `approved`, `broadcasting`, `sent`, `confirmed`, `failed`, `cancelled`, `awaiting_cosign`) — **не** по укрупнённому `check`/`process`/`paid`. Пусто = все. См. [статусы выплаты](/reference/payout-object#статусы-выплаты).
+</ParamField>
+
 
 <Note>
   **Внимание: фильтр `status` принимает ВНУТРЕННИЕ статусы, а не укрупнённые.** В ответе (поле

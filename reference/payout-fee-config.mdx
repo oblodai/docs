@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payout/fee-config/get · /set"
+sidebarTitle: "Комиссия выплаты"
 ---
 
 Per‑project настройка: перекладывать ли **сетевую** комиссию выплаты на получателя.
@@ -14,9 +15,10 @@ Per‑project настройка: перекладывать ли **сетеву
 
 ## POST /v1/payout/fee-config/set
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `fee_on_recipient` | bool | да | `true` — сетевую комиссию платит получатель (получает меньше); `false` — комиссию несёт мерчант. |
+<ParamField body="fee_on_recipient" type="bool" required>
+  `true` — сетевую комиссию платит получатель (получает меньше); `false` — комиссию несёт мерчант.
+</ParamField>
+
 
 Ответ:
 

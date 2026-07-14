@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/accuracy/get · /set"
+sidebarTitle: "Допуск недоплаты"
 ---
 
 Допуск недоплаты/переплаты. Счёт, отклонившийся от суммы не более чем на `accuracy_percent`, всё равно
@@ -36,10 +37,14 @@ title: "POST /v1/payment/accuracy/get · /set"
 
 ## POST /v1/payment/accuracy/set
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `enabled` | bool | да | Включить/выключить допуск. |
-| `accuracy_percent` | int | да при `enabled` | Допуск в процентах, 1–5. Кэп 5 %. |
+<ParamField body="enabled" type="bool" required>
+  Включить/выключить допуск.
+</ParamField>
+
+<ParamField body="accuracy_percent" type="int" required>
+  Допуск в процентах, 1–5. Кэп 5 %.
+</ParamField>
+
 
 ### Пример запроса
 

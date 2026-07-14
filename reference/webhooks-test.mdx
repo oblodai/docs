@@ -1,5 +1,6 @@
 ---
 title: "Тестовые вебхуки"
+sidebarTitle: "Тестовые вебхуки"
 ---
 
 Набор методов, чтобы отправить пробное уведомление на ваш URL и проверить приёмник, не дожидаясь
@@ -23,10 +24,14 @@ title: "Тестовые вебхуки"
 
 Синхронно шлёт пробное тело на `url` и возвращает HTTP‑код вашего эндпоинта.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `url` | string | да | Куда отправить пробное тело. |
-| `status` | string | нет | Статус в теле. По умолчанию `paid`. |
+<ParamField body="url" type="string" required>
+  Куда отправить пробное тело.
+</ParamField>
+
+<ParamField body="status" type="string">
+  Статус в теле. По умолчанию `paid`.
+</ParamField>
+
 
 ---
 
@@ -34,14 +39,30 @@ title: "Тестовые вебхуки"
 
 Пробный вебхук заданного типа на `url_callback`.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `url_callback` | string | да | Куда отправить пробное тело. |
-| `currency` | string | нет | Валюта в теле. |
-| `network` | string | нет | Сеть в теле. |
-| `uuid` | string | нет | UUID в теле. |
-| `order_id` | string | нет | `order_id` в теле. |
-| `status` | string | нет | Статус в теле. |
+<ParamField body="url_callback" type="string" required>
+  Куда отправить пробное тело.
+</ParamField>
+
+<ParamField body="currency" type="string">
+  Валюта в теле.
+</ParamField>
+
+<ParamField body="network" type="string">
+  Сеть в теле.
+</ParamField>
+
+<ParamField body="uuid" type="string">
+  UUID в теле.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  `order_id` в теле.
+</ParamField>
+
+<ParamField body="status" type="string">
+  Статус в теле.
+</ParamField>
+
 
 Ответ:
 

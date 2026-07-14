@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/split/rule · /rule/list · /rule/delete"
+sidebarTitle: "Правила сплита"
 ---
 
 **Сплит‑платёж** — правило, по которому доля каждого входящего платежа автоматически уходит партнёру.
@@ -52,13 +53,26 @@ title: "POST /v1/split/rule · /rule/list · /rule/delete"
 
 ### Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `percent` | float | да | Доля от каждого платежа: `10` = 10 %, `2.5` = 2.5 %. Больше 0 и не больше 100. Точность — до 0.01 %. |
-| `address` | string | нет\* | Внешний криптоадрес партнёра. |
-| `network` | string | нет\* | Сеть адреса. **Обязательна вместе с `address`.** |
-| `merchant_id` | string | нет\* | Идентификатор мерчанта‑партнёра внутри Oblodai. |
-| `note` | string | нет | Комментарий для себя (в списке правил). |
+<ParamField body="percent" type="float" required>
+  Доля от каждого платежа: `10` = 10 %, `2.5` = 2.5 %. Больше 0 и не больше 100. Точность — до 0.01 %.
+</ParamField>
+
+<ParamField body="address" type="string">
+  Внешний криптоадрес партнёра.
+</ParamField>
+
+<ParamField body="network" type="string">
+  Сеть адреса. **Обязательна вместе с `address`.**
+</ParamField>
+
+<ParamField body="merchant_id" type="string">
+  Идентификатор мерчанта‑партнёра внутри Oblodai.
+</ParamField>
+
+<ParamField body="note" type="string">
+  Комментарий для себя (в списке правил).
+</ParamField>
+
 
 \* Ровно один вариант получателя: либо `address` + `network`, либо `merchant_id`.
 
@@ -177,9 +191,10 @@ await call("/v1/split/rule/list", {});
 
 ### Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `rule_id` | string | да | Идентификатор правила. |
+<ParamField body="rule_id" type="string" required>
+  Идентификатор правила.
+</ParamField>
+
 
 ```python
 call("/v1/split/rule/delete", {"rule_id": "e2a91c47-3f80-4b6d-a512-7c0d9e8f1a23"})

@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/qr"
+sidebarTitle: "QR-код счёта"
 ---
 
 Рендерит депозит‑адрес счёта (по `uuid` или `order_id`) в QR‑код — PNG в виде `data:`‑URI.
@@ -16,10 +17,14 @@ title: "POST /v1/payment/qr"
 
 Нужен хотя бы один идентификатор.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `uuid` | string | нет\* | Идентификатор счёта. |
-| `order_id` | string | нет\* | Ваша ссылка на заказ. |
+<ParamField body="uuid" type="string">
+  Идентификатор счёта.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ваша ссылка на заказ.
+</ParamField>
+
 
 \* Требуется хотя бы одно из двух.
 

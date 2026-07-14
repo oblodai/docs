@@ -1,16 +1,16 @@
 ---
 title: "POST /v1/payout"
+sidebarTitle: "Создание выплаты"
 ---
 
 Создать выплату на внешний адрес. Списывает баланс на `amount`; получателю приходит `amount` минус
 сетевая комиссия (если она переложена на получателя — см. [`fee-config`](/reference/payout-fee-config)).
 
-**URL:** `https://api.oblodai.com/v1/payout` · **Аутентификация:** обязательна ·
+**URL:** `https://api.oblodai.com/v1/payout` · **Аутентификация:** обязательна · · **Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id` (для выплат `order_id` обязателен).
 
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
-**Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id` (для выплат `order_id` обязателен).
 
 <Note>
   **Выплаты по API‑ключу авто‑одобряются** и уходят сразу — без белых списков и периодов выдержки.
@@ -19,26 +19,55 @@ title: "POST /v1/payout"
 
 ### Заголовки
 
-| Заголовок | Обяз. | Описание |
-|---|---|---|
-| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах одной выплаты. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. Работает вместе с `order_id`. → [Идемпотентность](/reference/basics-idempotency) |
+<ParamField header="Idempotency-Key">
+  Любое уникальное значение (≤255 символов), одинаковое во всех повторах одной выплаты. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. Работает вместе с `order_id`. → [Идемпотентность](/reference/basics-idempotency)
+</ParamField>
+
 
 ---
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `amount` | string | да | Сумма выплаты в `currency`. |
-| `currency` | string | да | Код валюты (например `USDT`). |
-| `order_id` | string | да | Ваш номер выплаты; **ключ идемпотентности**. |
-| `address` | string | да | Адрес получателя. |
-| `network` | string | нет\* | Сеть (`tron`, `ethereum`, …). Обязательна для монет с несколькими сетями. |
-| `is_subtract` | bool | нет | **Принимается, но на саму выплату сейчас не влияет.** Кто платит сетевую комиссию, задаётся не в запросе, а настройкой проекта — см. [fee-config](/reference/payout-fee-config). (Поле учитывает только предрасчёт `/v1/payout/calculate`, см. примечание ниже.) |
-| `memo` | string | нет | Тег/мемо назначения (TON Jetton). Максимум 120 символов. |
-| `url_callback` | string | нет | Свой URL вебхука для этой выплаты (SSRF‑проверка). |
-| `from_currency` | string | нет | Профинансировать выплату конвертацией баланса. Поддерживается только `USDT` → `currency`. |
-| `source` | string | нет | Метка происхождения: `api` (по умолчанию) или `manual`. |
+<ParamField body="amount" type="string" required>
+  Сумма выплаты в `currency`.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Код валюты (например `USDT`).
+</ParamField>
+
+<ParamField body="order_id" type="string" required>
+  Ваш номер выплаты; **ключ идемпотентности**.
+</ParamField>
+
+<ParamField body="address" type="string" required>
+  Адрес получателя.
+</ParamField>
+
+<ParamField body="network" type="string">
+  Сеть (`tron`, `ethereum`, …). Обязательна для монет с несколькими сетями.
+</ParamField>
+
+<ParamField body="is_subtract" type="bool">
+  **Принимается, но на саму выплату сейчас не влияет.** Кто платит сетевую комиссию, задаётся не в запросе, а настройкой проекта — см. [fee-config](/reference/payout-fee-config). (Поле учитывает только предрасчёт `/v1/payout/calculate`, см. примечание ниже.)
+</ParamField>
+
+<ParamField body="memo" type="string">
+  Тег/мемо назначения (TON Jetton). Максимум 120 символов.
+</ParamField>
+
+<ParamField body="url_callback" type="string">
+  Свой URL вебхука для этой выплаты (SSRF‑проверка).
+</ParamField>
+
+<ParamField body="from_currency" type="string">
+  Профинансировать выплату конвертацией баланса. Поддерживается только `USDT` → `currency`.
+</ParamField>
+
+<ParamField body="source" type="string">
+  Метка происхождения: `api` (по умолчанию) или `manual`.
+</ParamField>
+
 
 \* Обязательна, если у валюты несколько сетей.
 

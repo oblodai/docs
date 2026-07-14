@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/autorefund/get · /set"
+sidebarTitle: "Автовозврат"
 ---
 
 Авто‑возврат средств плательщику при платежах **вне допуска**: возврат излишка при переплате и возврат
@@ -28,10 +29,14 @@ title: "POST /v1/payment/autorefund/get · /set"
 
 ## POST /v1/payment/autorefund/set
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `overpay` | bool | да | Возвращать излишек при переплате (`paid_over`). |
-| `underpay` | bool | да | Возвращать средства при истёкшей недоплате (`wrong_amount`). |
+<ParamField body="overpay" type="bool" required>
+  Возвращать излишек при переплате (`paid_over`).
+</ParamField>
+
+<ParamField body="underpay" type="bool" required>
+  Возвращать средства при истёкшей недоплате (`wrong_amount`).
+</ParamField>
+
 
 ### Пример запроса
 

@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/webhooks"
+sidebarTitle: "Регистрация URL"
 ---
 
 Регистрирует (или заменяет) URL проекта для вебхуков и возвращает `secret` для проверки их подписи.
@@ -20,9 +21,10 @@ title: "POST /v1/webhooks"
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `url` | string | да | HTTPS‑URL коллбэка. SSRF‑проверка: приватные и локальные адреса запрещены. |
+<ParamField body="url" type="string" required>
+  HTTPS‑URL коллбэка. SSRF‑проверка: приватные и локальные адреса запрещены.
+</ParamField>
+
 
 ---
 
@@ -63,11 +65,18 @@ await call("/v1/webhooks", { url: "https://shop.example/oblodai/callback" });
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `endpoint_id` | string | Идентификатор endpoint. |
-| `url` | string | Зарегистрированный URL. |
-| `secret` | string | Секрет для проверки подписи вебхуков. **Показывается один раз.** |
+<ResponseField name="endpoint_id" type="string">
+  Идентификатор endpoint.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Зарегистрированный URL.
+</ResponseField>
+
+<ResponseField name="secret" type="string">
+  Секрет для проверки подписи вебхуков. **Показывается один раз.**
+</ResponseField>
+
 
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/pay/{id}/select"
+sidebarTitle: "Hosted: выбор валюты"
 ---
 
 Покупатель выбирает валюту и сеть для **валюто‑агностичного** счёта (счёт без заранее выбранной валюты
@@ -17,10 +18,14 @@ title: "POST /v1/pay/{id}/select"
 
 ## Параметры
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `currency` | string | да | Выбранная валюта оплаты. |
-| `network` | string | да | Выбранная сеть. |
+<ParamField body="currency" type="string" required>
+  Выбранная валюта оплаты.
+</ParamField>
+
+<ParamField body="network" type="string" required>
+  Выбранная сеть.
+</ParamField>
+
 
 `{id}` в пути — `uuid` счёта.
 

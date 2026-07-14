@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/batch/info"
+sidebarTitle: "Статус батча"
 ---
 
 Статус батча и результат по каждому его элементу. Это метод **поллинга**: батчи
@@ -16,11 +17,18 @@ title: "POST /v1/batch/info"
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `batch_id` | string | да | Идентификатор батча из ответа на submit. |
-| `limit` | int | нет | Сколько элементов вернуть в `items` (пагинация). |
-| `offset` | int | нет | Смещение по элементам. |
+<ParamField body="batch_id" type="string" required>
+  Идентификатор батча из ответа на submit.
+</ParamField>
+
+<ParamField body="limit" type="int">
+  Сколько элементов вернуть в `items` (пагинация).
+</ParamField>
+
+<ParamField body="offset" type="int">
+  Смещение по элементам.
+</ParamField>
+
 
 Счётчики `total` / `succeeded` / `failed` считаются по **всему** батчу и от пагинации не зависят —
 для отслеживания прогресса достаточно их, `items` можно не выбирать целиком.
@@ -104,28 +112,69 @@ await call("/v1/batch/info", {
 
 ### Поля ответа
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `batch_id` | string | Идентификатор батча. |
-| `kind` | string | Вид батча: `payment` \| `refund` \| `payout`. |
-| `status` | string | Статус батча: `pending` \| `processing` \| `completed`. |
-| `on_error` | string | Режим обработки ошибок, с которым батч был отправлен: `continue` \| `stop`. |
-| `total` | int | Всего элементов в батче. |
-| `succeeded` | int | Успешно обработано. |
-| `failed` | int | Завершилось ошибкой. |
-| `created_at` | string | Время приёма батча (ISO 8601). |
-| `updated_at` | string | Время последнего изменения (ISO 8601). |
-| `items` | array | Страница элементов (см. ниже). |
+<ResponseField name="batch_id" type="string">
+  Идентификатор батча.
+</ResponseField>
+
+<ResponseField name="kind" type="string">
+  Вид батча: `payment` | `refund` | `payout`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Статус батча: `pending` | `processing` | `completed`.
+</ResponseField>
+
+<ResponseField name="on_error" type="string">
+  Режим обработки ошибок, с которым батч был отправлен: `continue` | `stop`.
+</ResponseField>
+
+<ResponseField name="total" type="int">
+  Всего элементов в батче.
+</ResponseField>
+
+<ResponseField name="succeeded" type="int">
+  Успешно обработано.
+</ResponseField>
+
+<ResponseField name="failed" type="int">
+  Завершилось ошибкой.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Время приёма батча (ISO 8601).
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Время последнего изменения (ISO 8601).
+</ResponseField>
+
+<ResponseField name="items" type="array">
+  Страница элементов (см. ниже).
+</ResponseField>
+
 
 ### Элемент `items[]`
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `idx` | int | Порядковый номер элемента в исходном массиве (с нуля). |
-| `status` | string | Статус элемента: `pending` \| `processing` \| `done` \| `error`. |
-| `order_id` | string | `order_id` элемента, если вы его задавали. Присутствует не всегда. |
-| `result` | object | Результат успешной операции — **тот же объект**, что вернул бы одиночный вызов ([платежа](/reference/payment-object), возврата, [выплаты](/reference/payout-object)). Только при `status: "done"`. |
-| `error` | string | **Человекочитаемое сообщение** об ошибке (напр. `"unsupported network for this currency"`), а не код вида `payment.*`. Только при `status: "error"`. |
+<ResponseField name="idx" type="int">
+  Порядковый номер элемента в исходном массиве (с нуля).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Статус элемента: `pending` | `processing` | `done` | `error`.
+</ResponseField>
+
+<ResponseField name="order_id" type="string">
+  `order_id` элемента, если вы его задавали. Присутствует не всегда.
+</ResponseField>
+
+<ResponseField name="result" type="object">
+  Результат успешной операции — **тот же объект**, что вернул бы одиночный вызов ([платежа](/reference/payment-object), возврата, [выплаты](/reference/payout-object)). Только при `status: "done"`.
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  **Человекочитаемое сообщение** об ошибке (напр. `"unsupported network for this currency"`), а не код вида `payment.*`. Только при `status: "error"`.
+</ResponseField>
+
 
 `result` и `error` — взаимоисключающие: у успешного элемента есть `result`, у неудачного — `error`.
 Отсутствующее поле просто не приходит.

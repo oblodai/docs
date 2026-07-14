@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/services"
+sidebarTitle: "Методы приёма"
 ---
 
 Список доступных методов приёма (пар валюта + сеть) с лимитами, комиссией и флагом доступности.
@@ -55,15 +56,34 @@ await call("/v1/payment/services", {});
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `network` | string | Код сети. |
-| `currency` | string | Код валюты. |
-| `is_available` | bool | Есть живой watcher метода и сеть сконфигурирована. |
-| `limit.min_amount` | string | Минимальная сумма (`"0"` = без нижнего лимита). |
-| `limit.max_amount` | string | Максимум (пусто = без верхнего лимита). |
-| `commission.fee_amount` | string | Фиксированная часть комиссии. |
-| `commission.percent` | string | Процентная часть комиссии. |
+<ResponseField name="network" type="string">
+  Код сети.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Код валюты.
+</ResponseField>
+
+<ResponseField name="is_available" type="bool">
+  Есть живой watcher метода и сеть сконфигурирована.
+</ResponseField>
+
+<ResponseField name="limit.min_amount" type="string">
+  Минимальная сумма (`"0"` = без нижнего лимита).
+</ResponseField>
+
+<ResponseField name="limit.max_amount" type="string">
+  Максимум (пусто = без верхнего лимита).
+</ResponseField>
+
+<ResponseField name="commission.fee_amount" type="string">
+  Фиксированная часть комиссии.
+</ResponseField>
+
+<ResponseField name="commission.percent" type="string">
+  Процентная часть комиссии.
+</ResponseField>
+
 
 ---
 

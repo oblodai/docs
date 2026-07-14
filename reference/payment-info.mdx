@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/info"
+sidebarTitle: "Информация о счёте"
 ---
 
 Возвращает актуальное состояние счёта по `uuid` или `order_id`.
@@ -16,10 +17,14 @@ title: "POST /v1/payment/info"
 
 Нужен хотя бы один идентификатор; приоритет у `uuid`.
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `uuid` | string | нет\* | Идентификатор счёта в Oblodai. |
-| `order_id` | string | нет\* | Ваша ссылка на заказ. |
+<ParamField body="uuid" type="string">
+  Идентификатор счёта в Oblodai.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ваша ссылка на заказ.
+</ParamField>
+
 
 \* Требуется хотя бы одно из двух.
 
@@ -63,10 +68,14 @@ await call("/v1/payment/info", { order_id: "order-1" });
 **Только этот метод** дополняет объект платежа сведениями о возвратах (в
 [`/history`](/reference/payment-history) их нет — это сэкономленный запрос на каждую строку списка):
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `refund_status` | string | `none` — ничего не возвращали; `partial` — вернули часть; `full` — вернули всё оплаченное. |
-| `refunds` | array | Каждый возврат: `uuid`, `status`, `amount`, `address`, `txid`, `is_final`, `created_at`. |
+<ResponseField name="refund_status" type="string">
+  `none` — ничего не возвращали; `partial` — вернули часть; `full` — вернули всё оплаченное.
+</ResponseField>
+
+<ResponseField name="refunds" type="array">
+  Каждый возврат: `uuid`, `status`, `amount`, `address`, `txid`, `is_final`, `created_at`.
+</ResponseField>
+
 
 ```json
 {

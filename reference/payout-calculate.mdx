@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payout/calculate"
+sidebarTitle: "Предрасчёт выплаты"
 ---
 
 Предрасчёт выплаты — комиссия и итоговые суммы **без** создания выплаты.
@@ -17,12 +18,22 @@ title: "POST /v1/payout/calculate"
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `amount` | string | да | Сумма выплаты в `currency`. |
-| `currency` | string | да | Код валюты. |
-| `network` | string | нет | Сеть (обязательна для монет с несколькими сетями). |
-| `is_subtract` | bool | нет | `true`: комиссия **сверх** суммы (списывается с баланса). `false`: комиссия **из** суммы (получатель получает меньше). |
+<ParamField body="amount" type="string" required>
+  Сумма выплаты в `currency`.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Код валюты.
+</ParamField>
+
+<ParamField body="network" type="string">
+  Сеть (обязательна для монет с несколькими сетями).
+</ParamField>
+
+<ParamField body="is_subtract" type="bool">
+  `true`: комиссия **сверх** суммы (списывается с баланса). `false`: комиссия **из** суммы (получатель получает меньше).
+</ParamField>
+
 
 ---
 
@@ -71,11 +82,18 @@ await call("/v1/payout/calculate", { amount: "25", currency: "USDT",
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `commission` | string | **Сетевая** комиссия (газ сети). Это **не** комиссия платформы Oblodai — платформенная удерживается при приёме платежа, а не здесь. |
-| `merchant_amount` | string | Сколько уйдёт с баланса. |
-| `to_amount` | string | Сколько получит адрес назначения. |
+<ResponseField name="commission" type="string">
+  **Сетевая** комиссия (газ сети). Это **не** комиссия платформы Oblodai — платформенная удерживается при приёме платежа, а не здесь.
+</ResponseField>
+
+<ResponseField name="merchant_amount" type="string">
+  Сколько уйдёт с баланса.
+</ResponseField>
+
+<ResponseField name="to_amount" type="string">
+  Сколько получит адрес назначения.
+</ResponseField>
+
 
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/referral/info"
+sidebarTitle: "Реферальная статистика"
 ---
 
 Реферальная панель: код, ссылка, число приведённых мерчантов и суммарные начисления.
@@ -54,13 +55,26 @@ await call("/v1/referral/info", {});
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `code` | string | Персональный реферальный код. |
-| `link` | string | Готовая пригласительная ссылка `…/?ref=<code>`. |
-| `tier_bps` | array&lt;int&gt; | Доля **нашей** комиссии рефереру по месяцам, в bps. По умолчанию `[3000, 2000, 1000]` = 30 % / 20 % / 10 % за 1‑й, 2‑й, 3‑й месяц, дальше 0. |
-| `referred_count` | int | Сколько мерчантов приведено. |
-| `earnings_by_asset` | object | Валюта → сумма в **минимальных единицах** (minor units), строкой. |
+<ResponseField name="code" type="string">
+  Персональный реферальный код.
+</ResponseField>
+
+<ResponseField name="link" type="string">
+  Готовая пригласительная ссылка `…/?ref=<code>`.
+</ResponseField>
+
+<ResponseField name="tier_bps" type="array<int>">
+  Доля **нашей** комиссии рефереру по месяцам, в bps. По умолчанию `[3000, 2000, 1000]` = 30 % / 20 % / 10 % за 1‑й, 2‑й, 3‑й месяц, дальше 0.
+</ResponseField>
+
+<ResponseField name="referred_count" type="int">
+  Сколько мерчантов приведено.
+</ResponseField>
+
+<ResponseField name="earnings_by_asset" type="object">
+  Валюта → сумма в **минимальных единицах** (minor units), строкой.
+</ResponseField>
+
 
 ---
 

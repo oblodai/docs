@@ -1,5 +1,6 @@
 ---
 title: "GET /v1/currencies"
+sidebarTitle: "Каталог валют"
 ---
 
 Публичный каталог принимаемых активов и сетей, на которых их можно оплачивать/выводить — данные для
@@ -81,31 +82,72 @@ console.log(await r.json());
 
 Валюты **расчёта**: чем покупатель платит и в чём мерчант получает деньги. Только крипта.
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `currencies` | array | Список активов. |
-| `currencies[].symbol` | string | Код актива (`USDT`, `BTC`, …). |
-| `currencies[].decimals` | int | Число знаков после запятой у актива. |
-| `currencies[].networks` | array | Сети, на которых доступен актив. |
-| `networks[].network` | string | Код сети (`tron`, `ethereum`, …). |
-| `networks[].kind` | string | `native` (монета сети) или `token`. |
-| `networks[].contract` | string | Адрес контракта токена (только для `token`; у `native` отсутствует). |
-| `networks[].min_confirmations` | int | Полный reorg‑безопасный порог подтверждений для этой сети. |
-| `networks[].available` | bool | Доступен ли **приём** (депозиты) — синоним `deposit_available`. |
-| `networks[].deposit_available` | bool | Доступен ли приём платежей в этой сети прямо сейчас. |
-| `networks[].payout_available` | bool | Доступны ли выплаты в этой сети прямо сейчас. |
+<ResponseField name="currencies" type="array">
+  Список активов.
+</ResponseField>
+
+<ResponseField name="currencies[].symbol" type="string">
+  Код актива (`USDT`, `BTC`, …).
+</ResponseField>
+
+<ResponseField name="currencies[].decimals" type="int">
+  Число знаков после запятой у актива.
+</ResponseField>
+
+<ResponseField name="currencies[].networks" type="array">
+  Сети, на которых доступен актив.
+</ResponseField>
+
+<ResponseField name="networks[].network" type="string">
+  Код сети (`tron`, `ethereum`, …).
+</ResponseField>
+
+<ResponseField name="networks[].kind" type="string">
+  `native` (монета сети) или `token`.
+</ResponseField>
+
+<ResponseField name="networks[].contract" type="string">
+  Адрес контракта токена (только для `token`; у `native` отсутствует).
+</ResponseField>
+
+<ResponseField name="networks[].min_confirmations" type="int">
+  Полный reorg‑безопасный порог подтверждений для этой сети.
+</ResponseField>
+
+<ResponseField name="networks[].available" type="bool">
+  Доступен ли **приём** (депозиты) — синоним `deposit_available`.
+</ResponseField>
+
+<ResponseField name="networks[].deposit_available" type="bool">
+  Доступен ли приём платежей в этой сети прямо сейчас.
+</ResponseField>
+
+<ResponseField name="networks[].payout_available" type="bool">
+  Доступны ли выплаты в этой сети прямо сейчас.
+</ResponseField>
+
 
 ### `pricing_currencies` — в чём можно назначать цену
 
 Валюты **цены**: допустимые значения поля `currency` в [`POST /v1/payment`](/reference/payment-create). Это
 все **15 монет** из `currencies` **плюс 23 фиата** — всего 38 записей.
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `pricing_currencies` | array | Список валют ценообразования (38 записей). |
-| `pricing_currencies[].symbol` | string | Код валюты цены (`USD`, `EUR`, `RUB`, `USDT`, `BTC`, …). |
-| `pricing_currencies[].decimals` | int | Число знаков после точки. У большинства фиатов — 2, у `JPY` и `KRW` — **0**. |
-| `pricing_currencies[].fiat` | bool | `true` — фиат: в нём можно **только назначать цену**, но не получать оплату. |
+<ResponseField name="pricing_currencies" type="array">
+  Список валют ценообразования (38 записей).
+</ResponseField>
+
+<ResponseField name="pricing_currencies[].symbol" type="string">
+  Код валюты цены (`USD`, `EUR`, `RUB`, `USDT`, `BTC`, …).
+</ResponseField>
+
+<ResponseField name="pricing_currencies[].decimals" type="int">
+  Число знаков после точки. У большинства фиатов — 2, у `JPY` и `KRW` — **0**.
+</ResponseField>
+
+<ResponseField name="pricing_currencies[].fiat" type="bool">
+  `true` — фиат: в нём можно **только назначать цену**, но не получать оплату.
+</ResponseField>
+
 
 Сетей у элемента `pricing_currencies` нет: валюта цены не определяет, как пойдут деньги, — это
 задаёт валюта расчёта `to_currency`.

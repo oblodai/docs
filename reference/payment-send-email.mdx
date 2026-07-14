@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/send-email"
+sidebarTitle: "Счёт на почту"
 ---
 
 Отправить покупателю **письмо со счётом** — с суммой и кнопкой «Оплатить», ведущей на
@@ -34,11 +35,18 @@ title: "POST /v1/payment/send-email"
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `uuid` | string | нет\* | Идентификатор платежа в Oblodai. |
-| `order_id` | string | нет\* | Ваша ссылка на заказ. |
-| `email` | string | нет | Кому отправить. По умолчанию — `payer_email`, заданный у платежа. |
+<ParamField body="uuid" type="string">
+  Идентификатор платежа в Oblodai.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ваша ссылка на заказ.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Кому отправить. По умолчанию — `payer_email`, заданный у платежа.
+</ParamField>
+
 
 \* Нужен `uuid` **или** `order_id`.
 
@@ -92,11 +100,18 @@ await call("/v1/payment/send-email", { uuid: "8b1d7d2e-…", email: "buyer@examp
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `sent` | bool | Письмо принято в очередь отправки. |
-| `email` | string | Фактический получатель. |
-| `uuid` | string | Платёж, по которому отправлено письмо. |
+<ResponseField name="sent" type="bool">
+  Письмо принято в очередь отправки.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Фактический получатель.
+</ResponseField>
+
+<ResponseField name="uuid" type="string">
+  Платёж, по которому отправлено письмо.
+</ResponseField>
+
 
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/wallet/blocked-address-refund"
+sidebarTitle: "Возврат с кошелька"
 ---
 
 Вернуть средства, полученные на (обычно заблокированном) статическом кошельке, на один указанный адрес.
@@ -14,10 +15,14 @@ title: "POST /v1/wallet/blocked-address-refund"
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `uuid` | string | да | Идентификатор статического кошелька (из ответа [`/v1/wallet`](/reference/wallet-create)). |
-| `address` | string | да | Адрес назначения возврата. |
+<ParamField body="uuid" type="string" required>
+  Идентификатор статического кошелька (из ответа [`/v1/wallet`](/reference/wallet-create)).
+</ParamField>
+
+<ParamField body="address" type="string" required>
+  Адрес назначения возврата.
+</ParamField>
+
 
 ---
 
@@ -66,16 +71,38 @@ await call("/v1/wallet/blocked-address-refund", { uuid: "0e5b6b9a-…", address:
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `uuid` | string | Идентификатор операции возврата. |
-| `wallet_uuid` | string | Кошелёк, с которого возвращаются средства. |
-| `amount` | string | Возвращаемая чистая сумма. |
-| `commission` | string | Удержанный сетевой газ. |
-| `currency` | string | Валюта возврата. |
-| `address` | string | Адрес назначения. |
-| `status` | string | Статус операции (как у выплаты). |
-| `is_final` | bool | Достигнут ли [терминальный статус](/reference/glossary) (конечное состояние, объект больше не изменится). |
+<ResponseField name="uuid" type="string">
+  Идентификатор операции возврата.
+</ResponseField>
+
+<ResponseField name="wallet_uuid" type="string">
+  Кошелёк, с которого возвращаются средства.
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  Возвращаемая чистая сумма.
+</ResponseField>
+
+<ResponseField name="commission" type="string">
+  Удержанный сетевой газ.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Валюта возврата.
+</ResponseField>
+
+<ResponseField name="address" type="string">
+  Адрес назначения.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Статус операции (как у выплаты).
+</ResponseField>
+
+<ResponseField name="is_final" type="bool">
+  Достигнут ли [терминальный статус](/reference/glossary) (конечное состояние, объект больше не изменится).
+</ResponseField>
+
 
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: "POST /v1/payment/accepted/list · /set"
+sidebarTitle: "Принимаемые валюты"
 ---
 
 Управление набором принимаемых валют и сетей для **валюто‑агностичных** счетов (счёт без заранее
@@ -31,11 +32,18 @@ title: "POST /v1/payment/accepted/list · /set"
 
 Полностью **заменяет** набор (не merge — приходит новый список целиком).
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `accepted` | array | да | Массив объектов `{ currency, network }`. |
-| `accepted[].currency` | string | да | Код валюты. |
-| `accepted[].network` | string | да | Код сети. |
+<ParamField body="accepted" type="array" required>
+  Массив объектов `{ currency, network }`.
+</ParamField>
+
+<ParamField body="accepted[].currency" type="string" required>
+  Код валюты.
+</ParamField>
+
+<ParamField body="accepted[].network" type="string" required>
+  Код сети.
+</ParamField>
+
 
 ### Пример запроса
 

@@ -1,27 +1,40 @@
 ---
 title: "POST /v1/payment/refund"
+sidebarTitle: "Возврат платежа"
 ---
 
 Вернуть средства платежа на адрес. Использует движок выплат (списание с баланса).
 
-**URL:** `https://api.oblodai.com/v1/payment/refund` · **Аутентификация:** обязательна ·
+**URL:** `https://api.oblodai.com/v1/payment/refund` · **Аутентификация:** обязательна · · **Идемпотентность:** заголовок `Idempotency-Key` или тройка `(платёж, адрес, сумма)`.
 
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
-**Идемпотентность:** заголовок `Idempotency-Key` или тройка `(платёж, адрес, сумма)`.
 
 ---
 
 ## Параметры запроса
 
-| Поле | Тип | Обяз. | Описание |
-|---|---|---|---|
-| `uuid` | string | нет\* | Идентификатор платежа. |
-| `order_id` | string | нет\* | Ваша ссылка на заказ платежа. |
-| `address` | string | нет\*\* | Адрес назначения возврата. **По умолчанию — `payer_address`**, адрес, с которого пришли деньги. |
-| `network` | string | нет | Сеть. |
-| `amount` | string | нет | Частичная сумма. По умолчанию — вся полученная. |
+<ParamField body="uuid" type="string">
+  Идентификатор платежа.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ваша ссылка на заказ платежа.
+</ParamField>
+
+<ParamField body="address" type="string">
+  Адрес назначения возврата. **По умолчанию — `payer_address`**, адрес, с которого пришли деньги.
+</ParamField>
+
+<ParamField body="network" type="string">
+  Сеть.
+</ParamField>
+
+<ParamField body="amount" type="string">
+  Частичная сумма. По умолчанию — вся полученная.
+</ParamField>
+
 
 \* Нужен `uuid` **или** `order_id`.
 \*\* **`address` необязателен.** Не передавайте его — и возврат уйдёт на
@@ -33,9 +46,10 @@ title: "POST /v1/payment/refund"
 
 ### Заголовки
 
-| Заголовок | Обяз. | Описание |
-|---|---|---|
-| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах одного возврата. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. → [Идемпотентность](/reference/basics-idempotency) |
+<ParamField header="Idempotency-Key">
+  Любое уникальное значение (≤255 символов), одинаковое во всех повторах одного возврата. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. → [Идемпотентность](/reference/basics-idempotency)
+</ParamField>
+
 
 ---
 
