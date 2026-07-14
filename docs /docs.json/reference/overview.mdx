@@ -2,11 +2,8 @@
 title: "Справочник API Oblodai"
 sidebarTitle: "Обзор"
 description: "Точное описание каждого метода и объекта API Oblodai."
+icon: "map"
 ---
-
-<Note>
-  🏠 [Вся документация Oblodai](/) → **Справочник** · рядом: [Инструкции](/guides/overview) · [SDK](/sdk/overview) · [Модули для CMS](/modules/overview)
-</Note>
 
 В справочнике описаны все методы API Oblodai и все объекты, которыми он оперирует. Для каждого метода
 указаны параметры, их типы и обязательность, примеры запроса (cURL / Python / Node.js), пример ответа,
@@ -28,6 +25,38 @@ API‑ключом. См. [Аутентификация и подпись зап
 
 Если вам нужна не отдельная справка по методу, а пошаговое руководство под задачу — откройте
 [Инструкции](/guides/overview).
+
+## Разделы справочника
+
+<CardGroup cols={3}>
+  <Card title="Основы" icon="layer-group" href="/reference/basics-format">
+    Формат, подпись, ошибки, идемпотентность, деньги, сети, rate limit.
+  </Card>
+  <Card title="Платежи" icon="credit-card" href="/reference/payment-object">
+    Объект платежа и все методы приёма — от создания счёта до автовозврата.
+  </Card>
+  <Card title="Ссылки и сплиты" icon="link" href="/reference/payment-link">
+    Платёжные ссылки и распределение платежей между партнёрами.
+  </Card>
+  <Card title="Массовые операции" icon="boxes-stacked" href="/reference/payment-batch">
+    Батчи: до 5000 платежей, возвратов или выплат одним запросом.
+  </Card>
+  <Card title="Кошельки и баланс" icon="wallet" href="/reference/wallet-object">
+    Статические кошельки, баланс мерчанта, рефералы.
+  </Card>
+  <Card title="Выплаты и возвраты" icon="money-bill-transfer" href="/reference/payout-object">
+    Объект выплаты, создание, подтверждение, комиссии, возвраты.
+  </Card>
+  <Card title="Вебхуки" icon="bolt" href="/reference/webhook-object">
+    Формат вебхука, регистрация, журнал доставок, тестовые события.
+  </Card>
+  <Card title="Публичные методы" icon="globe" href="/reference/currencies">
+    Каталог валют и курсы — без API‑ключа.
+  </Card>
+  <Card title="Материалы" icon="book-bookmark" href="/reference/errors-catalog">
+    Каталог ошибок, глоссарий, диаграммы потоков.
+  </Card>
+</CardGroup>
 
 ---
 

@@ -293,5 +293,11 @@
         ]
       }
     ]
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs"
+  },
+  "search": {
+    "prompt": "Поиск по документации…"
   }
 }

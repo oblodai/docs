@@ -2,11 +2,8 @@
 title: "SDK — библиотеки для вашего языка"
 sidebarTitle: "Обзор"
 description: "Библиотеки для PHP, TypeScript, Python, Go и Rust."
+icon: "cubes"
 ---
-
-<Note>
-  🏠 [Вся документация Oblodai](/) → **SDK** · рядом: [Инструкции](/guides/overview) · [Справочник](/reference/overview) · [Модули для CMS](/modules/overview)
-</Note>
 
 SDK — это готовая библиотека, которая берёт на себя всю «рутину» интеграции с Oblodai: подписывает
 запросы, разбирает ответы, проверяет подписи вебхуков, повторяет запросы при сбоях. Вам остаётся
@@ -54,11 +51,23 @@ SDK — это готовая библиотека, которая берёт н
 Все SDK устроены одинаково — одни и те же понятия и почти одинаковые названия методов. Освоив один,
 вы сразу поймёте остальные.
 
-- 🐘 [PHP](/sdk/php)
-- 🟦 [TypeScript / Node.js](/sdk/typescript)
-- 🐍 [Python](/sdk/python)
-- 🐹 [Go](/sdk/go)
-- 🦀 [Rust](/sdk/rust)
+<CardGroup cols={3}>
+  <Card title="PHP" icon="php" href="/sdk/php">
+    `composer require oblodai/sdk`
+  </Card>
+  <Card title="TypeScript / Node.js" icon="node-js" href="/sdk/typescript">
+    `npm install @oblodai-npm/sdk`
+  </Card>
+  <Card title="Python" icon="python" href="/sdk/python">
+    `pip install oblodai`
+  </Card>
+  <Card title="Go" icon="golang" href="/sdk/go">
+    `go get github.com/oblodai/oblodai-go`
+  </Card>
+  <Card title="Rust" icon="rust" href="/sdk/rust">
+    `cargo add oblodai`
+  </Card>
+</CardGroup>
 
 ---
 

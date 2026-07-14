@@ -2,11 +2,8 @@
 title: "Модули для CMS"
 sidebarTitle: "Обзор"
 description: "Готовые платёжные модули: установили, ввели ключ — работает."
+icon: "puzzle-piece"
 ---
-
-<Note>
-  🏠 [Вся документация Oblodai](/) → **Модули для CMS** · рядом: [Инструкции](/guides/overview) · [SDK](/sdk/overview) · [Справочник](/reference/overview)
-</Note>
 
 Готовые платёжные модули для популярных платформ. Установили, ввели ключ (public_id + secret) — приём
 криптоплатежей работает. **Программировать не нужно.**
@@ -20,14 +17,26 @@ description: "Готовые платёжные модули: установил
 
 ## Выберите свою платформу
 
-| Платформа | Модуль | Инструкция |
-|---|---|---|
-| **WooCommerce** (WordPress) | `oblodai-woocommerce.zip` | [Открыть](/modules/woocommerce) |
-| **OpenCart** 2.x / 3.x / 4.x | `oblodai-opencart-2/3/4.zip` | [Открыть](/modules/opencart) |
-| **PrestaShop** 8.x | `oblodai-prestashop.zip` | [Открыть](/modules/prestashop) |
-| **WHMCS** 6 / 7 / 8 | `oblodai-whmcs-6/7/8.zip` | [Открыть](/modules/whmcs) |
-| **IPS / Invision Community** | `oblodai-ips.zip` | [Открыть](/modules/ips) |
-| **XenForo** 1.x / 2.x | `oblodai-xenforo-1/2.zip` | [Открыть](/modules/xenforo) |
+<CardGroup cols={3}>
+  <Card title="WooCommerce" icon="wordpress" href="/modules/woocommerce">
+    WordPress · `oblodai-woocommerce.zip`
+  </Card>
+  <Card title="OpenCart" icon="opencart" href="/modules/opencart">
+    2.x / 3.x / 4.x · `oblodai-opencart-2/3/4.zip`
+  </Card>
+  <Card title="PrestaShop" icon="cart-shopping" href="/modules/prestashop">
+    8.x · `oblodai-prestashop.zip`
+  </Card>
+  <Card title="WHMCS" icon="server" href="/modules/whmcs">
+    6 / 7 / 8 · `oblodai-whmcs-6/7/8.zip`
+  </Card>
+  <Card title="IPS / Invision Community" icon="comments" href="/modules/ips">
+    4.x · `oblodai-ips.zip`
+  </Card>
+  <Card title="XenForo" icon="comment-dots" href="/modules/xenforo">
+    1.x / 2.x · `oblodai-xenforo-1/2.zip`
+  </Card>
+</CardGroup>
 
 Своей платформы нет в списке? Используйте [SDK](/sdk/overview) для вашего языка.
 
