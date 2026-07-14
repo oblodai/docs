@@ -1,0 +1,116 @@
+---
+title: "POST /v1/auto-withdraw/list · /set · /delete"
+---
+
+Автовывод. Как только депозит зачисляет мерчанта в настроенном активе, **чистая** сумма
+(gross − наша комиссия) автоматически выплачивается на указанный адрес.
+
+<Note>
+  **Автовывод vs выплата.** Автовывод **автоматически** отправляет **чистую** поступившую сумму на
+  заданный адрес по мере зачисления; [`/v1/payout`](/reference/payout-create) — это **ручной разовый** вывод
+  на произвольный адрес по вашей команде.
+</Note>
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+Одно правило на пару `(мерчант, актив)`, выплата **авто‑одобряется**. Механизм best‑effort и
+идемпотентный; суммы ниже `min_minor` остаются на балансе. Адрес проходит комплаенс‑скрининг.
+
+---
+
+## POST /v1/auto-withdraw/list
+
+Тело — `{}`.
+
+```json
+{
+  "state": 0,
+  "result": {
+    "rules": [
+      { "currency": "USDT", "network": "tron", "address": "T…", "min_minor": "5000000" }
+    ]
+  }
+}
+```
+
+`min_minor` — порог в **минимальных единицах**; `"0"` = без порога.
+
+---
+
+## POST /v1/auto-withdraw/set
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `currency` | string | да | Актив, для которого включается автовывод. |
+| `network` | string | да | Сеть. |
+| `address` | string | да | Адрес назначения. |
+| `min` | string | нет | Порог **в единицах актива** (не minor). По умолчанию `0` — без порога. |
+
+### Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"currency":"USDT","network":"tron","address":"T…","min":"5"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/auto-withdraw/set' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/auto-withdraw/set \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/auto-withdraw/set", {"currency": "USDT", "network": "tron", "address": "T…", "min": "5"})
+```
+
+```js Node.js
+await call("/v1/auto-withdraw/set", { currency: "USDT", network: "tron", address: "T…", min: "5" });
+```
+
+</CodeGroup>
+
+### Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 autowithdraw.unknown_currency` | Неизвестный актив. |
+| `400 autowithdraw.bad_min` | Некорректный порог. |
+| `400 autowithdraw.missing` | Не хватает обязательного поля. |
+| `400 payout.bad_address` | Пустой адрес назначения. |
+| `400 payout.address_network_mismatch` | Адрес не соответствует выбранной сети. |
+
+---
+
+## POST /v1/auto-withdraw/delete
+
+Выключает автовывод для актива.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `currency` | string | да | Актив, для которого выключается автовывод. |
+
+---
+
+## Нюансы
+
+<Warning>
+  **Единицы порога легко перепутать.** В `/set` порог задаётся полем `min` в **единицах актива**
+  (например `"5"` = 5 USDT), а в ответе `/list` он читается обратно как `min_minor` в **минимальных
+  единицах** (например `"5000000"` для USDT с 6 знаками). Это одно и то же значение в разных
+  единицах — не путайте. См. [Форматы сумм и денег](/reference/basics-money).
+</Warning>
+
+- Суммы ниже порога остаются на балансе.
+- Механизм best‑effort и идемпотентный; адрес проходит комплаенс‑скрининг.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payout`](/reference/payout-create) · [Форматы сумм и денег](/reference/basics-money)

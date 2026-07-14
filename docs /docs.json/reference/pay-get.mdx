@@ -1,0 +1,73 @@
+---
+title: "GET /v1/pay/{id}"
+---
+
+Публичные данные одного счёта: адрес, сумма, QR, статус, срок. Обслуживает hosted‑страницу оплаты, на
+которую вы отправляете покупателя по ссылке `url` из ответа [создания счёта](/reference/payment-create).
+
+<Note>
+  **Публичный метод.** Аутентификация не требуется — отдаёт только клиентские поля (без
+  `additional_data` и `payer_email`). Страница может опрашивать его для отслеживания статуса **без
+  секрета мерчанта в браузере**.
+</Note>
+
+**URL:** `https://api.oblodai.com/v1/pay/{id}` · **Метод:** `GET`.
+
+---
+
+## Параметры пути
+
+| Параметр | Описание |
+|---|---|
+| `{id}` | `uuid` счёта (из ответа создания). |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+curl -s https://api.oblodai.com/v1/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e
+```
+
+```python Python
+import requests
+r = requests.get("https://api.oblodai.com/v1/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e")
+print(r.json())
+```
+
+```js Node.js
+const res = await fetch("https://api.oblodai.com/v1/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e");
+console.log(await res.json());
+```
+
+</CodeGroup>
+
+---
+
+## Ответ
+
+Публичный объект платежа: `address`, `payer_amount`, `payer_currency`, `address_qr_code`,
+`payment_status`, `expired_at` и прочие клиентские поля (без приватных `additional_data`,
+`payer_email`).
+
+Для **валюто‑агностичного** счёта в статусе `select` в ответ добавляется массив `accepted` — методы,
+доступные покупателю на выбор. После выбора методом [`POST /v1/pay/{id}/select`](/reference/pay-select)
+появляются реальные `address` и `payer_amount`.
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 pay.bad_uuid` | Некорректный `{id}`. |
+| `404 pay.not_found` | Счёт не найден. |
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/pay/{id}/select`](/reference/pay-select) · [`POST /v1/payment`](/reference/payment-create)
+- [Объект платежа](/reference/payment-object)

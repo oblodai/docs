@@ -1,0 +1,107 @@
+---
+title: "POST /v1/api-allowlist/list · /add · /remove · /enable"
+---
+
+Пер‑мерчантский список доверенных IP/CIDR. Когда включён, подписанные запросы с IP вне списка
+отклоняются (`401 auth.ip_not_allowed`). По умолчанию выключен.
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## POST /v1/api-allowlist/list
+
+Тело — `{}`.
+
+```json
+{
+  "state": 0,
+  "result": { "entries": ["203.0.113.10", "198.51.100.0/24"], "enabled": true }
+}
+```
+
+---
+
+## POST /v1/api-allowlist/add
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `cidr` | string | да | IP‑адрес или CIDR‑подсеть. |
+
+Ошибка: `400 apiallow.bad_cidr`.
+
+---
+
+## POST /v1/api-allowlist/remove
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `cidr` | string | да | IP или CIDR для удаления. |
+
+---
+
+## POST /v1/api-allowlist/enable
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `enabled` | bool | да | Включить/выключить контроль. |
+
+Ошибка: `400 apiallow.empty` — нельзя включить контроль с пустым списком; сначала добавьте хотя бы
+один IP.
+
+---
+
+## Пример: добавить IP и включить
+
+<CodeGroup>
+
+```bash cURL
+# 1. Добавить IP
+BODY='{"cidr":"203.0.113.10"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/api-allowlist/add' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/api-allowlist/add \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" -d "$BODY"
+
+# 2. Включить контроль
+BODY='{"enabled":true}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/api-allowlist/enable' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/api-allowlist/enable \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" -d "$BODY"
+```
+
+```python Python
+call("/v1/api-allowlist/add", {"cidr": "203.0.113.10"})
+call("/v1/api-allowlist/enable", {"enabled": True})
+```
+
+```js Node.js
+await call("/v1/api-allowlist/add", { cidr: "203.0.113.10" });
+await call("/v1/api-allowlist/enable", { enabled: true });
+```
+
+</CodeGroup>
+
+---
+
+## Нюансы
+
+- **Порядок важен:** нельзя включить контроль с пустым списком (`apiallow.empty`). Сначала добавьте
+  IP вашего backend, потом включайте — иначе рискуете заблокировать сами себя.
+- Запросы с IP вне включённого списка получают `401 auth.ip_not_allowed`.
+
+---
+
+## Связанные страницы
+
+- [Ограничение частоты и IP‑allowlist](/reference/basics-ratelimit) · [Аутентификация](/reference/basics-auth)
+- [Безопасность в проде](/guides/production-security)

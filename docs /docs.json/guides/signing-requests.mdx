@@ -1,0 +1,201 @@
+---
+title: "Как подписать запрос"
+description: "HMAC-SHA256 по трём заголовкам: основа безопасности и источник большинства ошибок на старте."
+icon: "signature"
+---
+
+Подпись — основа безопасности API и источник большинства ошибок на старте. Эта инструкция разбирает,
+как собрать подпись правильно, и показывает типичные грабли. Краткая справочная версия —
+[Аутентификация](/reference/basics-auth).
+
+---
+
+## Идея за 20 секунд
+
+Каждый запрос несёт три заголовка:
+
+- `X-Public-Id` — кто вы (несекретный идентификатор ключа);
+- `X-Timestamp` — когда (unix‑секунды, окно ±5 минут);
+- `X-Signature` — доказательство, что запрос собрали именно вы, и он не изменён.
+
+Подпись — это HMAC‑SHA256 от «канонической строки», склеенной из четырёх частей, на вашем `secret`.
+
+---
+
+## Каноническая строка
+
+Соберите строку из четырёх частей, разделённых `\n` (перевод строки):
+
+```
+{X-Timestamp}\n{METHOD}\n{path}\n{body}
+```
+
+| Часть | Что подставить |
+|---|---|
+| `{X-Timestamp}` | То же значение, что в заголовке `X-Timestamp`. |
+| `{METHOD}` | `POST` (в верхнем регистре — других методов у JSON‑эндпоинтов нет). |
+| `{path}` | Путь запроса, например `/v1/payment`. С query‑строкой, если она есть (у JSON‑эндпоинтов её нет). |
+| `{body}` | **Точные байты** тела запроса — ровно те, что уйдут в сеть. |
+
+Затем:
+
+```
+X-Signature = hex( HMAC_SHA256( secret, каноническая_строка ) )
+```
+
+hex в нижнем регистре.
+
+---
+
+## Золотое правило
+
+<Note>
+  **Сериализуйте тело ОДИН раз в переменную и используйте её и для подписи, и для отправки.**
+</Note>
+
+Подпись считается по байтам тела. Если вы подписали один JSON, а отправили другой (пусть даже
+семантически такой же), подпись не сойдётся и вернётся `401`.
+
+---
+
+## Примеры на четырёх языках
+
+<CodeGroup>
+
+```bash cURL + openssl
+SECRET='oblodai_live_…ваш_секрет'
+PUBLIC_ID='oblodai_…ваш_public_id'
+TS=$(date +%s)
+METHOD='POST'
+PATHQ='/v1/payment'
+BODY='{"order_id":"order-1001","currency":"USDT","network":"tron","amount":"25.00"}'
+
+SIGSTR=$(printf '%s\n%s\n%s\n%s' "$TS" "$METHOD" "$PATHQ" "$BODY")
+SIG=$(printf '%s' "$SIGSTR" | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+
+curl -s https://api.oblodai.com$PATHQ \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" \
+  -H "X-Timestamp: $TS" \
+  -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+import hmac, hashlib, time, json, requests
+
+SECRET = b"oblodai_live_…"
+PUBLIC_ID = "oblodai_…"
+BASE = "https://api.oblodai.com"
+
+def call(path: str, payload: dict) -> dict:
+    body = json.dumps(payload, separators=(",", ":"))  # компактный JSON — подписываем ровно его
+    ts = str(int(time.time()))
+    signing = f"{ts}\nPOST\n{path}\n{body}"
+    sig = hmac.new(SECRET, signing.encode(), hashlib.sha256).hexdigest()
+    r = requests.post(BASE + path, data=body, headers={
+        "Content-Type": "application/json",
+        "X-Public-Id": PUBLIC_ID,
+        "X-Timestamp": ts,
+        "X-Signature": sig,
+    })
+    return r.json()
+```
+
+```js Node.js
+import crypto from "node:crypto";
+
+const SECRET = "oblodai_live_…";
+const PUBLIC_ID = "oblodai_…";
+const BASE = "https://api.oblodai.com";
+
+async function call(path, payload) {
+  const body = JSON.stringify(payload);          // подписываем ровно эту строку
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const signing = `${ts}\nPOST\n${path}\n${body}`;
+  const sig = crypto.createHmac("sha256", SECRET).update(signing).digest("hex");
+  const res = await fetch(BASE + path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Public-Id": PUBLIC_ID,
+      "X-Timestamp": ts,
+      "X-Signature": sig,
+    },
+    body,
+  });
+  return res.json();
+}
+```
+
+```php PHP
+<?php
+$secret = 'oblodai_live_…';
+$publicId = 'oblodai_…';
+$base = 'https://api.oblodai.com';
+
+function call(string $path, array $payload): array {
+    global $secret, $publicId, $base;
+    $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    $ts = (string) time();
+    $signing = "$ts\nPOST\n$path\n$body";
+    $sig = hash_hmac('sha256', $signing, $secret);
+    $ch = curl_init($base . $path);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            "X-Public-Id: $publicId",
+            "X-Timestamp: $ts",
+            "X-Signature: $sig",
+        ],
+    ]);
+    return json_decode(curl_exec($ch), true);
+}
+```
+
+</CodeGroup>
+
+---
+
+## Частые ошибки и как их поймать
+
+| Симптом | Причина | Решение |
+|---|---|---|
+| `401` на каждый запрос | Подписали одно тело, отправили другое (библиотека переупорядочила поля или добавила пробелы). | Сериализуйте тело один раз в переменную; подписывайте и отправляйте её же. |
+| `401 auth.bad_timestamp` | `X-Timestamp` **отсутствует или не число**. | Передайте unix‑секунды. |
+| `401 merchant.bad_signature` | Подпись не совпала **или** `X-Timestamp` вне окна ±5 минут (проверка окна встроена в сверку подписи). | Проверьте подпись; синхронизируйте часы (NTP). |
+| `401` только иногда | Разные части кода по‑разному сериализуют тело. | Единая точка сериализации на все запросы. |
+| `401 auth.ip_not_allowed` | Включён [IP‑allowlist](/reference/api-allowlist), а запрос идёт с другого IP. | Добавьте IP backend в allowlist или временно выключите его. |
+| Подпись «не та» в вебхуке | Перепутали алгоритм подписи запроса и вебхука. | Для вебхуков — **другой** алгоритм: [Объект вебхука](/reference/webhook-object). |
+
+---
+
+## Помните про идемпотентность
+
+Окно подписи ±5 минут не защищает от повторной обработки внутри этого окна. Реальную защиту от дублей
+дают **два** механизма:
+
+- **HTTP‑заголовок `Idempotency-Key`** (рекомендуемый) — любое уникальное значение до 255 символов,
+  одинаковое во всех попытках одного действия. Повтор вернёт тот же ответ и заголовок
+  `Idempotent-Replayed: true`.
+- **`order_id`/`reference`** — ваш бизнес‑ключ, который тоже дедуплицирует (для выплат обязателен).
+
+<Note>
+  **Заголовок `Idempotency-Key` в подпись НЕ входит.** Подписывается только каноническая строка
+  `{timestamp}\n{METHOD}\n{path}\n{body}` — добавление заголовка её не меняет и подпись не ломает.
+</Note>
+
+Подробнее — [Идемпотентность](/reference/basics-idempotency) и
+[Рецепт устойчивого клиента](/guides/resilient-client#главный-принцип).
+
+---
+
+## Связанные страницы
+
+- [Аутентификация](/reference/basics-auth) — справочная версия.
+- [Идемпотентность](/reference/basics-idempotency) · [IP‑allowlist](/reference/api-allowlist)
+- [Объект вебхука](/reference/webhook-object) — другой алгоритм подписи.

@@ -1,0 +1,229 @@
+---
+title: "POST /v1/payment"
+---
+
+Создаёт платёжный счёт (инвойс). Поддерживает три режима: фиксированная валюта + сеть,
+авто‑нормализация сети (если у валюты она одна) и валюто‑агностичный счёт (валюту и сеть выбирает
+покупатель на hosted‑странице).
+
+**URL:** `https://api.oblodai.com/v1/payment` · **Аутентификация:** обязательна
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+([подпись](/reference/basics-auth)) · **Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id`.
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `amount` | string | да | Сумма к оплате в валюте `currency`. |
+| `currency` | string | да | Код **валюты цены**. Это **любой из 23 фиатов** (`USD`, `EUR`, `GBP`, `RUB`, `UAH`, `JPY`, …) **или любая монета** (`USDT`, `BTC`, …). Полный список — `pricing_currencies` из [`GET /v1/currencies`](/reference/currencies). У `JPY` и `KRW` **ноль знаков** после запятой (`"10000"`, а не `"10000.00"`). |
+| `order_id` | string | нет\* | Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется. |
+| `network` | string | нет | Сеть расчёта (напр. `tron`, `ethereum`). См. режимы ниже. |
+| `to_currency` | string | нет | **Валюта расчёта** — крипта, которой платят (фиат здесь невозможен). По умолчанию `= currency`, но **только если `currency` — крипта**. Если цена в фиате, задайте `to_currency` явно — либо не задавайте и `network`, тогда монету выберет покупатель. |
+| `lifetime` | int64 | нет | Время жизни счёта, сек; 300–43200. По умолчанию 3600. Значения вне диапазона **обрезаются** к ближайшей границе (не ошибка). |
+| `subtract` | int64 | нет | **Устаревшее; новичку не нужно** — payer‑facing наценки настраиваются через [`discount`](/reference/payment-discount). % сетевой наценки на плательщика (0–100). |
+| `accuracy_payment_percent` | float64 | нет | Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта. |
+| `url_callback` | string | нет | Индивидуальный webhook для этого счёта. |
+| `url_return` | string | нет | Ссылка «назад в магазин» на странице оплаты. |
+| `url_success` | string | нет | Редирект после успешной оплаты. |
+| `additional_data` | string | нет | Приватные данные мерчанта, эхом в вебхуках (покупателю не видны). |
+| `payer_email` | string | нет | Email плательщика. Если задан — **после оплаты на него автоматически уходит чек**. Он же получатель по умолчанию у [`POST /v1/payment/send-email`](/reference/payment-send-email). |
+| `theme` | string | нет | Тема страницы оплаты: `dark` \| `light`. |
+| `is_payment_multiple` | bool | нет | Разрешить доплату остатка. |
+| `is_refresh` | bool | нет | Оживить просроченный счёт по `order_id` вместо создания нового. |
+
+\* Идемпотентность обеспечивает заголовок `Idempotency-Key` **или** `order_id`. Если нет **ни того, ни
+другого**, каждый вызов создаёт новый счёт — задавайте хотя бы одно из двух.
+
+**Минимально необходимое:** `amount`, `currency`, `order_id`. Остальные поля — по мере надобности.
+
+### Заголовки
+
+| Заголовок | Обяз. | Описание |
+|---|---|---|
+| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах одного создания. Повтор вернёт тот же счёт и заголовок `Idempotent-Replayed: true`. Работает независимо от `order_id` и вместе с ним. → [Идемпотентность](/reference/basics-idempotency) |
+
+---
+
+## Режимы выбора валюты и сети
+
+**Валюта цены** (`currency`) и **валюта расчёта** (`to_currency`) — разные вещи: цену можно назначить
+в фиате (`USD`, `EUR`, `RUB`, … — [23 валюты](/reference/basics-money)) или в крипте, а платят **всегда
+криптой**. Подробнее — [Форматы сумм и денег](/reference/basics-money).
+
+Правила ниже одинаковы для **любого фиата**, не только для `USD`.
+
+| `currency` (цена) | `to_currency` / `network` | Поведение |
+|---|---|---|
+| крипта (`USDT`, `BTC`, …) | оба пусты | Валюто‑агностичный (deferred) счёт: монету и сеть выбирает покупатель на [hosted‑странице](/reference/pay-select). |
+| **фиат (`USD`, `EUR`, …)** | **оба пусты** | **Валюто‑агностичный счёт: цена в фиате, монету и сеть выбирает покупатель.** Основной сценарий. |
+| фиат | `to_currency` + `network` заданы | Обычный счёт: цена в фиате, оплата в выбранной вами монете. |
+| крипта | `to_currency` + `network` заданы | Обычный счёт под конкретную монету и сеть. |
+| крипта | `to_currency` пуст, `network` задан | `to_currency` по умолчанию `= currency`. Работает, **только когда цена в крипте**. |
+| любая | `to_currency` задан, `network` пуст | Авто‑сеть: если у монеты **ровно одна** сеть — подставится автоматически; если сетей несколько — ошибка `payment.network_required`. |
+| **фиат** | **`to_currency` пуст, `network` задан** | **Ошибка `400 payment.to_currency_required`** — из цены в фиате монету расчёта вывести нельзя. Задайте `to_currency` явно либо уберите и `network` (тогда монету выберет покупатель). |
+
+В валюто‑агностичном режиме курс и адрес фиксируются в момент выбора монеты покупателем, комиссия —
+уже при создании.
+
+Подробный разбор — [Три режима создания счёта](/guides/payment-modes).
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"amount":"10","currency":"USD","order_id":"order-1","to_currency":"USDT","network":"tron","lifetime":3600}'
+TS=$(date +%s)
+SIGSTR=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment' "$BODY")
+SIG=$(printf '%s' "$SIGSTR" | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+
+curl -s https://api.oblodai.com/v1/payment \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" \
+  -H "X-Timestamp: $TS" \
+  -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+# функция call(...) — из раздела «Аутентификация»
+call("/v1/payment", {
+    "amount": "10",
+    "currency": "USD",
+    "order_id": "order-1",
+    "to_currency": "USDT",
+    "network": "tron",
+    "lifetime": 3600,
+})
+```
+
+```js Node.js
+// функция call(...) — из раздела «Аутентификация»
+await call("/v1/payment", {
+  amount: "10",
+  currency: "USD",
+  order_id: "order-1",
+  to_currency: "USDT",
+  network: "tron",
+  lifetime: 3600,
+});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+    "order_id": "order-1",
+    "amount": "10.00",
+    "payment_amount": null,
+    "amount_paid": "0",
+    "amount_remaining": "10.150000",
+    "payer_amount": "10.150000",
+    "payer_currency": "USDT",
+    "currency": "USD",
+    "network": "tron",
+    "address": "TJ4b1...C9xk",
+    "address_qr_code": "data:image/png;base64,iVBORw0KGgo...",
+    "payment_status": "check",
+    "is_multi": false,
+    "url": "https://pay.oblodai.com/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+    "expired_at": 1752192000,
+    "is_final": false,
+    "created_at": "2026-07-10T12:00:00Z",
+    "updated_at": "2026-07-10T12:00:00Z",
+    "additional_data": "",
+    "payer_email": "",
+    "url_return": "",
+    "url_success": "",
+    "rate_expires_at": 1752188700,
+    "confirmations": 0,
+    "required_confirmations": 20,
+    "txid": ""
+  }
+}
+```
+
+`payer_amount` — это `amount`, пересчитанная в крипту по текущему курсу (плюс, если задан `subtract`,
+сетевая наценка на плательщика). Поэтому число отличается от `amount`.
+
+Полное описание всех полей — [Объект платежа](/reference/payment-object). Для валюто‑агностичного счёта
+`is_multi: true`, а `payer_currency`, `address`, `address_qr_code`, `payer_amount`, `amount_paid`,
+`amount_remaining` пусты до выбора монеты покупателем — валюты расчёта у такого счёта ещё просто нет.
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 payment.unknown_currency` | Неизвестная `currency`. |
+| `400 payment.unknown_to_currency` | Неизвестная `to_currency`. |
+| `400 payment.to_currency_required` | Цена в фиате (`USD`, `EUR`, `RUB`, …), задана `network`, но не задана `to_currency`: монету расчёта из фиата вывести нельзя. |
+| `400 payment.bad_url_callback` | `url_callback` не является валидным http(s)-URL (или указывает на приватный/метаданные-адрес). |
+| `400 payment.network_required` | У валюты несколько сетей, `network` не задан. |
+| `400 payment.unsupported_network` | Пара валюта+сеть не поддерживается. |
+| `400 payment.bad_amount` | Некорректная сумма. |
+| `400 payment.bad_subtract` | `subtract` вне 0–100. |
+| `400 payment.bad_accuracy` | `accuracy_payment_percent` вне 0–5. |
+| `400 payment.below_minimum` | Сумма ниже минимума сети. |
+| `503 invoice.fee_quote_failed` | Не удалось оценить по курсу фиксированную часть комиссии — счёт не создан. Повторите с backoff. |
+| `401 auth.*` | Ошибки аутентификации. |
+
+---
+
+## Нюансы
+
+- **Идемпотентность — два механизма, работают вместе.** Заголовок `Idempotency-Key` (рекомендуемый):
+  повтор с тем же значением вернёт **тот же** ответ и `Idempotent-Replayed: true`. И `order_id`: повтор
+  (или переигранный в пределах 5‑мин окна подписи запрос) с `order_id`, для которого уже есть **живой**
+  счёт, вернёт этот же счёт, а не создаст дубль. Терминальный или просроченный счёт создание нового не
+  блокирует. Проверка‑и‑создание защищены advisory‑локом по паре `(merchant, order_id)` от гонки двух
+  одновременных запросов. → [Идемпотентность](/reference/basics-idempotency)
+- **Цена в фиате.** `currency` может быть любой из 23 фиатных валют (`USD`, `EUR`, `GBP`, `RUB`, `UAH`,
+  `PLN`, `CZK`, `TRY`, `CNY`, `INR`, `BRL`, `CAD`, `AUD`, `CHF`, `AED`, `ZAR`, `MXN`, `IDR`, `THB`,
+  `VND`, `NGN`, `JPY`, `KRW`) — курс берётся напрямую в этой валюте. Тенге (`KZT`), сом (`KGS`) и сум
+  (`UZS`) **пока не поддерживаются** — вернётся `payment.unknown_currency`.
+- **Много счетов сразу** — [`POST /v1/payment/batch`](/reference/payment-batch): до 5000 за один запрос, один
+  «тик» [лимита частоты](/reference/basics-ratelimit).
+- **`is_refresh`.** С `is_refresh: true` и существующим `order_id` просроченный счёт **оживляется**
+  (перезакрепляется курс, продлевается lifetime). Если такого счёта нет — обычное создание.
+- **Курс и его окно.** Курс фиксируется при создании; `rate_expires_at` — до какого момента он
+  действителен. Для долгоживущей ссылки курс лениво перезапрашивается при открытии hosted‑страницы,
+  пока счёт не оплачен и не истёк (адрес и сумма после начала оплаты не меняются).
+- **Минимум сети.** Платёж ниже минимума сети в USD отклоняется (`payment.below_minimum`). На дорогих
+  сетях (Ethereum, Bitcoin) минимум есть, на дешёвых — нет. Если курса нет, минимум не применяется.
+- **Комиссия.** Наша комиссия = эффективная ставка мерчанта (его закреплённый override либо
+  глобальная платформенная, по умолчанию **1.5 % + $0.30 с платежа** — фиксированная часть
+  «размазывается» в ставку при фиксации курса). Устаревший `subtract` **не** задаёт нашу ставку —
+  это только наценка сети на плательщика.
+- **Подтверждения.** `required_confirmations` подбирается под сумму: мелкий платёж может
+  подтвердиться за меньшее число подтверждений, крупный требует полного reorg‑безопасного порога.
+
+---
+
+## Связанные страницы
+
+- [Объект платежа](/reference/payment-object) · [`POST /v1/payment/info`](/reference/payment-info)
+- [Три режима создания счёта](/guides/payment-modes)
+- [Недоплата, переплата и автовозврат](/guides/under-overpayment)
+- [Допуск недоплаты](/reference/payment-accuracy) · [Автовозврат](/reference/payment-autorefund)
+- [`POST /v1/payment/batch`](/reference/payment-batch) — много счетов одним запросом.
+- [`POST /v1/payment/link`](/reference/payment-link) — многоразовая ссылка оплаты (в т. ч. без бэкенда).
+- [`POST /v1/payment/send-email`](/reference/payment-send-email) — отправить счёт письмом.
+- [Идемпотентность](/reference/basics-idempotency) · [Форматы сумм и денег](/reference/basics-money)

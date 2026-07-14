@@ -1,0 +1,95 @@
+---
+title: "POST /v1/payout/history"
+---
+
+История выплат мерчанта — новые сверху, с limit/offset‑пагинацией.
+
+**URL:** `https://api.oblodai.com/v1/payout/history` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+Все поля опциональны.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `limit` | int | нет | Размер страницы. По умолчанию 25, максимум 100. |
+| `offset` | int | нет | Смещение от начала. |
+| `status` | string | нет | Фильтр по **внутреннему** статусу (`pending`, `approved`, `broadcasting`, `sent`, `confirmed`, `failed`, `cancelled`, `awaiting_cosign`) — **не** по укрупнённому `check`/`process`/`paid`. Пусто = все. См. [статусы выплаты](/reference/payout-object#статусы-выплаты). |
+
+<Note>
+  **Внимание: фильтр `status` принимает ВНУТРЕННИЕ статусы, а не укрупнённые.** В ответе (поле
+  `status` элемента) вы видите **укрупнённый** статус, например `paid`, — но чтобы отобрать такие
+  записи, фильтровать надо по **внутреннему** `confirmed`. Соответствие:
+</Note>
+
+| Укрупнённый (в ответе) | Внутренний (для фильтра `status`) |
+|---|---|
+| `check` | `pending` |
+| `process` | `approved`, `broadcasting`, `sent` |
+| `paid` | `confirmed` |
+| `fail` | `failed` |
+| `cancel` | `cancelled` |
+| `awaiting_cosign` (без укрупнения) | `awaiting_cosign` |
+
+<Note>
+  `awaiting_cosign` (ожидание второй подписи при 2‑of‑2) своего укрупнённого статуса не имеет —
+  в ответе приходит **как есть**, и фильтровать по нему нужно тем же значением `awaiting_cosign`.
+</Note>
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"limit":25,"offset":0}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/history' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/history \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/history", {"limit": 25, "offset": 0})
+```
+
+```js Node.js
+await call("/v1/payout/history", { limit: 25, offset: 0 });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "items": [
+      { "uuid": "0c1f...e9", "order_id": "payout-1", "amount": "25",
+        "currency": "USDT", "status": "paid", "is_final": true }
+    ],
+    "paginate": { "count": 42, "per_page": 25, "offset": 0 }
+  }
+}
+```
+
+`paginate.count` — общее число записей по фильтру, не размер страницы.
+
+---
+
+## Связанные страницы
+
+- [Объект выплаты](/reference/payout-object) · [`POST /v1/payout/info`](/reference/payout-info)

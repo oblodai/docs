@@ -1,0 +1,148 @@
+---
+title: "POST /v1/payment/refund"
+---
+
+Вернуть средства платежа на адрес. Использует движок выплат (списание с баланса).
+
+**URL:** `https://api.oblodai.com/v1/payment/refund` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Идемпотентность:** заголовок `Idempotency-Key` или тройка `(платёж, адрес, сумма)`.
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `uuid` | string | нет\* | Идентификатор платежа. |
+| `order_id` | string | нет\* | Ваша ссылка на заказ платежа. |
+| `address` | string | нет\*\* | Адрес назначения возврата. **По умолчанию — `payer_address`**, адрес, с которого пришли деньги. |
+| `network` | string | нет | Сеть. |
+| `amount` | string | нет | Частичная сумма. По умолчанию — вся полученная. |
+
+\* Нужен `uuid` **или** `order_id`.
+\*\* **`address` необязателен.** Не передавайте его — и возврат уйдёт на
+[`payer_address`](/reference/payment-object) платежа. Обязателен он только для **Bitcoin/UTXO**: у таких
+платежей нет единого отправителя, `payer_address` пуст, и без явного адреса вы получите
+`400 refund.no_address`.
+
+**Минимально необходимое:** `uuid` или `order_id`. Всё остальное — по мере надобности.
+
+### Заголовки
+
+| Заголовок | Обяз. | Описание |
+|---|---|---|
+| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах одного возврата. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. → [Идемпотентность](/reference/basics-idempotency) |
+
+---
+
+## Пример запроса
+
+**Обычный случай — вернуть всё плательщику.** Ни адреса, ни суммы указывать не надо:
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"order_id":"order-1"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/refund' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/refund \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -H "Idempotency-Key: refund-order-1" \
+  -d "$BODY"
+```
+
+```python Python
+# Вернуть всё, что заплатили, на адрес плательщика:
+call("/v1/payment/refund", {"order_id": "order-1"})
+
+# Частичный возврат — тоже на адрес плательщика:
+call("/v1/payment/refund", {"order_id": "order-1", "amount": "10"})
+
+# На явный адрес — нужно для Bitcoin/UTXO, либо когда возврат идёт не отправителю:
+call("/v1/payment/refund", {"order_id": "order-1", "address": "TZZ...", "network": "tron"})
+```
+
+```js Node.js
+await call("/v1/payment/refund", { order_id: "order-1" });
+await call("/v1/payment/refund", { order_id: "order-1", amount: "10" });
+await call("/v1/payment/refund", { order_id: "order-1", address: "TZZ...", network: "tron" });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "f9e8...01",
+    "payment_uuid": "a1b2...c3",
+    "order_id": "order-1",
+    "amount": "10",
+    "currency": "USDT",
+    "address": "TZZ...",
+    "status": "process",
+    "is_final": false
+  }
+}
+```
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 refund.no_address` | Адрес не передан **и** не известен адрес плательщика (Bitcoin/UTXO). Передайте `address` явно. |
+| `400 refund.bad_amount` | Некорректная сумма. |
+| `400 refund.nothing_to_refund` | Нечего возвращать. В том числе — если это валюто‑агностичный счёт (`is_multi: true`), где покупатель ещё не выбрал монету: валюты расчёта нет, значит платежа не было. |
+| `400 refund.dust` | Сумма возврата ниже пыле‑порога сети. |
+| `400 refund.destination_internal` | Адрес назначения принадлежит шлюзу. |
+| `400 refund.exceeds_refundable` | Больше оплаченной суммы вернуть нельзя. |
+| `400 refund.exceeds_excess` | Возврат переплаты превышает саму переплату. |
+| `409 refund.reference_collision` | Тот же `(платёж, адрес, сумма)` уже в работе (идемпотентность). |
+| `400 payment.bad_uuid` | Некорректный `uuid`. |
+| `400 payment.no_lookup` | Не передан ни `uuid`, ни `order_id`. |
+| `404 payment.not_found` | Платёж не найден. |
+
+---
+
+## Нюансы
+
+- **Адрес по умолчанию — адрес плательщика.** Шлюз запоминает, откуда пришли деньги
+  ([`payer_address`](/reference/payment-object)), и без явного `address` возвращает туда же. На аккаунтных
+  сетях (EVM, Tron, Solana, TON) отправитель известен всегда. На **Bitcoin/UTXO** единого отправителя
+  нет — там `address` обязателен.
+- **Возврат плательщику авто‑подтверждается**; на любой другой адрес — ждёт подтверждения
+  ([maker‑checker](/reference/payout-approve)), как обычная выплата. Это ещё один довод не передавать
+  `address` без нужды: возврат уйдёт быстрее.
+- **Валюта возврата — та, что фактически пришла.** Возврат деноминирован в монете платежа и **не
+  пересчитывается** по новому курсу. Если счёт был в `USD`, а заплатили `USDT`, вернётся `USDT` —
+  ровно столько, сколько пришло. Курсовую разницу шлюз не компенсирует.
+- **Идемпотентность.** Заголовок `Idempotency-Key` либо тройка `(платёж, адрес, сумма)`. Суммарно
+  **нельзя вернуть больше оплаченного**.
+- Кто несёт **нашу** комиссию при возврате — настраивается через
+  [`refund-fee-config`](/reference/payout-refund-fee-config).
+- Автоматический (не ручной) возврат недоплаты/переплаты настраивается отдельно —
+  [`autorefund`](/reference/payment-autorefund).
+- **Много возвратов сразу** — [`POST /v1/refund/batch`](/reference/refund-batch) (до 5000 за один запрос).
+- Что уже возвращено по счёту, видно в полях `refunds[]` и `refund_status` ответа
+  [`POST /v1/payment/info`](/reference/payment-info).
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment/autorefund/get · /set`](/reference/payment-autorefund)
+- [`POST /v1/refund/batch`](/reference/refund-batch) — массовые возвраты.
+- [Кто платит комиссию возврата](/reference/payout-refund-fee-config) · [Возвраты платежей](/guides/refunds)
+- [Объект платежа](/reference/payment-object) — `payer_address`, `refunds[]`, `refund_status`.

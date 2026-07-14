@@ -1,0 +1,163 @@
+---
+title: "POST /v1/payment/batch"
+---
+
+Создать **много счетов одним запросом** — до **5000** штук. Обрабатывается асинхронно: в ответ сразу
+приходит `batch_id`, а результат по каждому элементу забирается через
+[`POST /v1/batch/info`](/reference/batch-info).
+
+<Note>
+  **Это штатный способ не упираться в rate limit.** Один подписанный запрос вместо 5000 —
+  [лимит частоты](/reference/basics-ratelimit) считается по запросам, а не по элементам внутри них. Если вам
+  нужно выставить тысячу счетов, делайте это батчем, а не тысячей вызовов [`POST /v1/payment`](/reference/payment-create).
+</Note>
+
+**URL:** `https://api.oblodai.com/v1/payment/batch` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + `order_id` каждого элемента.
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `payments` | array | да | Массив от 1 до **5000** элементов. Поля каждого элемента — **ровно те же**, что у [`POST /v1/payment`](/reference/payment-create). |
+| `on_error` | string | нет | Что делать при ошибке элемента: `continue` (по умолчанию) — обрабатывать остальные; `stop` — прекратить обработку после первой ошибки. |
+
+Каждый элемент проходит **тот же** путь создания, что и одиночный `POST /v1/payment`: те же проверки,
+та же комиссия, та же идемпотентность по `order_id`. Задавайте `order_id` элементам — по нему потом
+удобно сопоставлять результаты, и он же защищает от дублей при повторной отправке батча.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"payments":[
+  {"amount":"10","currency":"USD","order_id":"order-1","to_currency":"USDT","network":"tron"},
+  {"amount":"25","currency":"EUR","order_id":"order-2","to_currency":"USDT","network":"tron"}
+],"on_error":"continue"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/batch' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/batch \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -H "Idempotency-Key: batch-2026-07-13-a" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/batch", {
+    "payments": [
+        {"amount": "10", "currency": "USD", "order_id": "order-1",
+         "to_currency": "USDT", "network": "tron"},
+        {"amount": "25", "currency": "EUR", "order_id": "order-2",
+         "to_currency": "USDT", "network": "tron"},
+    ],
+    "on_error": "continue",
+})
+```
+
+```js Node.js
+await call("/v1/payment/batch", {
+  payments: [
+    { amount: "10", currency: "USD", order_id: "order-1", to_currency: "USDT", network: "tron" },
+    { amount: "25", currency: "EUR", order_id: "order-2", to_currency: "USDT", network: "tron" },
+  ],
+  on_error: "continue",
+});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "batch_id": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+    "kind": "payment",
+    "count": 2,
+    "status": "pending"
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `batch_id` | string | Идентификатор батча. С ним идите в [`POST /v1/batch/info`](/reference/batch-info). |
+| `kind` | string | Вид батча — здесь всегда `payment`. |
+| `count` | int | Сколько элементов принято в обработку. |
+| `status` | string | Стартовый статус — всегда `pending`. |
+
+**Счетов в ответе нет.** Ответ подтверждает только приём батча в очередь. Сами счета (их `uuid`,
+`address`, `url`) появятся в `items[].result` ответа [`/v1/batch/info`](/reference/batch-info) по мере
+обработки.
+
+---
+
+## Статусы батча
+
+`pending` → `processing` → `completed`.
+
+| Статус | Значение |
+|---|---|
+| `pending` | Батч принят, воркер ещё не начал. |
+| `processing` | Элементы обрабатываются. |
+| `completed` | Обработка закончена: каждый элемент дошёл до `done` или `error`. |
+
+<Note>
+  **`completed` — это «обработка закончена», а НЕ «всё успешно».** Батч, где часть счетов не создалась,
+  тоже приходит в `completed`. Смотрите на `succeeded` / `failed` и на `items[].error` в ответе
+  [`/v1/batch/info`](/reference/batch-info).
+</Note>
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 batch.empty` | Массив `payments` пуст. |
+| `400 batch.too_large` | Больше 5000 элементов. Разбейте на несколько батчей. |
+| `503 batch.disabled` | Массовая обработка недоступна на этом шлюзе. |
+| `401 auth.*` | Ошибки аутентификации. |
+
+Ошибки **отдельных элементов** сюда не попадают: батч принимается целиком, а ошибка конкретного
+счёта приходит в `items[].error` ответа [`/v1/batch/info`](/reference/batch-info).
+
+---
+
+## Нюансы
+
+- **Асинхронность.** Ответ приходит мгновенно, до фактического создания счетов. Не считайте счета
+  созданными по ответу на submit — поллите [`/v1/batch/info`](/reference/batch-info).
+- **Цена элемента может быть в фиате.** В одном батче спокойно уживаются счета с ценой в `RUB`, `EUR`,
+  `USD` и в монетах — правила те же, что у одиночного [`POST /v1/payment`](/reference/payment-create).
+- **`on_error: "stop"`.** После первой ошибки остальные элементы не обрабатываются: они получают
+  `status: "error"` с сообщением `"skipped: batch stopped after an earlier failure"` и **попадают в
+  счётчик `failed`**. Разберитесь с причиной и отправьте остаток новым батчем.
+- **Идемпотентность двухуровневая.** Заголовок `Idempotency-Key` защищает от повторной отправки
+  всего батча; `order_id` внутри элемента — от дубля конкретного счёта.
+- **Лимит частоты.** Батч — это **один** запрос в бюджете [rate limit](/reference/basics-ratelimit),
+  сколько бы элементов в нём ни было.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/batch/info`](/reference/batch-info) — поллинг статуса и результатов.
+- [`POST /v1/payment`](/reference/payment-create) — поля элемента.
+- [`POST /v1/refund/batch`](/reference/refund-batch) · [`POST /v1/payout/batch`](/reference/payout-batch)
+- [Ограничение частоты](/reference/basics-ratelimit) · [Идемпотентность](/reference/basics-idempotency)

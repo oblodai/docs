@@ -1,0 +1,89 @@
+---
+title: "POST /v1/pay/{id}/select"
+---
+
+Покупатель выбирает валюту и сеть для **валюто‑агностичного** счёта (счёт без заранее выбранной валюты
+— покупатель выбирает монету и сеть на странице оплаты; см. [Три режима создания
+счёта](/guides/payment-modes)): метод фиксирует курс, выделяет депозит‑адрес и переводит счёт из
+статуса `select` в `created`.
+
+<Note>
+  **Публичный метод.** Аутентификация не требуется — вызывается со страницы оплаты.
+</Note>
+
+**URL:** `https://api.oblodai.com/v1/pay/{id}/select` · **Метод:** `POST`.
+
+---
+
+## Параметры
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `currency` | string | да | Выбранная валюта оплаты. |
+| `network` | string | да | Выбранная сеть. |
+
+`{id}` в пути — `uuid` счёта.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+curl -s https://api.oblodai.com/v1/pay/8b1d7d2e-…/select \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"currency":"USDT","network":"tron"}'
+```
+
+```python Python
+import requests
+r = requests.post("https://api.oblodai.com/v1/pay/8b1d7d2e-…/select",
+                  json={"currency": "USDT", "network": "tron"})
+print(r.json())
+```
+
+```js Node.js
+const res = await fetch("https://api.oblodai.com/v1/pay/8b1d7d2e-…/select", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ currency: "USDT", network: "tron" }),
+});
+console.log(await res.json());
+```
+
+</CodeGroup>
+
+---
+
+## Ответ
+
+Обновлённый публичный объект платежа — с реальным `address`, `payer_amount`, `address_qr_code`.
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 pay.not_selectable` | Валюта уже выбрана (счёт не в статусе `select`). |
+| `400 pay.unknown_currency` | Неизвестная валюта. |
+| `400 pay.method_not_accepted` | Метод не входит в набор [`accepted`](/reference/payment-accepted). |
+| `400 payment.unsupported_network` | Пара валюта+сеть не поддерживается. |
+| `400 pay.below_minimum` | Сумма ниже минимума сети. |
+
+---
+
+## Нюансы
+
+- Выбранный метод должен быть в наборе [`accepted`](/reference/payment-accepted) (или в полном каталоге, если
+  набор пуст) **и** поддерживаться каталогом для этой валюты.
+- Курс и адрес фиксируются **в момент выбора**. Комиссия при этом уже была зафиксирована при создании
+  счёта.
+
+---
+
+## Связанные страницы
+
+- [`GET /v1/pay/{id}`](/reference/pay-get) · [`POST /v1/payment/accepted/list · /set`](/reference/payment-accepted)
+- [Три режима создания счёта](/guides/payment-modes)

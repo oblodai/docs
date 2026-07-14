@@ -1,0 +1,94 @@
+---
+title: "POST /v1/payout/calculate"
+---
+
+Предрасчёт выплаты — комиссия и итоговые суммы **без** создания выплаты.
+
+**URL:** `https://api.oblodai.com/v1/payout/calculate` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+Полезно, чтобы показать пользователю итоговую сумму до подтверждения или проверить, покрывает ли
+баланс выплату с учётом комиссии.
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `amount` | string | да | Сумма выплаты в `currency`. |
+| `currency` | string | да | Код валюты. |
+| `network` | string | нет | Сеть (обязательна для монет с несколькими сетями). |
+| `is_subtract` | bool | нет | `true`: комиссия **сверх** суммы (списывается с баланса). `false`: комиссия **из** суммы (получатель получает меньше). |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"amount":"25","currency":"USDT","network":"tron","is_subtract":false}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/calculate' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/calculate \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/calculate", {"amount": "25", "currency": "USDT",
+                              "network": "tron", "is_subtract": False})
+```
+
+```js Node.js
+await call("/v1/payout/calculate", { amount: "25", currency: "USDT",
+                                     network: "tron", is_subtract: false });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "amount": "25",
+    "currency": "USDT",
+    "network": "tron",
+    "commission": "1.1",
+    "merchant_amount": "25",
+    "to_amount": "23.9"
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `commission` | string | **Сетевая** комиссия (газ сети). Это **не** комиссия платформы Oblodai — платформенная удерживается при приёме платежа, а не здесь. |
+| `merchant_amount` | string | Сколько уйдёт с баланса. |
+| `to_amount` | string | Сколько получит адрес назначения. |
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 payout.unknown_currency` | Неизвестная валюта. |
+| `400 payout.bad_amount` | Некорректная сумма. |
+| `400 payout.amount_below_fee` | Сумма меньше сетевой комиссии. |
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payout`](/reference/payout-create) · [Кто платит сетевую комиссию](/reference/payout-fee-config)

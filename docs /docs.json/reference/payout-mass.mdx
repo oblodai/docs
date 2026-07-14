@@ -1,0 +1,121 @@
+---
+title: "POST /v1/payout/mass"
+---
+
+Массовая выплата — до **100** выплат за один запрос. Каждый элемент независим: ошибка по одному не
+останавливает остальные. Результаты приходят **синхронно**, прямо в ответе.
+
+<Note>
+  **Больше 100 выплат — используйте [`POST /v1/payout/batch`](/reference/payout-batch).** Батч принимает до
+  **5000** элементов, обрабатывается асинхронно (`batch_id` + поллинг
+  [`/v1/batch/info`](/reference/batch-info)) и остаётся **одним** запросом в бюджете
+  [лимита частоты](/reference/basics-ratelimit). `/v1/payout/mass` — легаси‑путь для маленьких пачек, когда
+  результат нужен немедленно.
+</Note>
+
+**URL:** `https://api.oblodai.com/v1/payout/mass` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `payouts` | array | да | Массив ≤100 элементов; поля каждого — как в [`POST /v1/payout`](/reference/payout-create). |
+| `source` | string | нет | Метка происхождения, применяется ко всем элементам без своего `source`. |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"payouts":[
+  {"amount":"25","currency":"USDT","network":"tron","address":"TXY...","order_id":"p-1"},
+  {"amount":"10","currency":"USDT","network":"tron","address":"TZZ...","order_id":"p-2"}
+]}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/mass' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/mass \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/mass", {"payouts": [
+    {"amount": "25", "currency": "USDT", "network": "tron", "address": "TXY...", "order_id": "p-1"},
+    {"amount": "10", "currency": "USDT", "network": "tron", "address": "TZZ...", "order_id": "p-2"},
+]})
+```
+
+```js Node.js
+await call("/v1/payout/mass", { payouts: [
+  { amount: "25", currency: "USDT", network: "tron", address: "TXY...", order_id: "p-1" },
+  { amount: "10", currency: "USDT", network: "tron", address: "TZZ...", order_id: "p-2" },
+] });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "items": [
+      { "uuid": "…", "order_id": "p-1", "status": "process", "is_final": false,
+        "approval_required": false, "success": true },
+      { "order_id": "p-2", "success": false,
+        "message": "available balance is less than the requested amount" }
+    ]
+  }
+}
+```
+
+- Успешный элемент содержит `uuid`, `status`, `is_final`, `approval_required`, `success: true`.
+- Неуспешный — `success: false` и текст в `message`.
+
+<Note>
+  У элементов `items[]` есть только `success` и текст `message` — машиночитаемого `code` у отдельного
+  элемента **НЕТ** (в отличие от общего конверта ошибки). Для программной логики ориентируйтесь на
+  `success`, а `message` используйте для логов/диагностики.
+</Note>
+
+---
+
+## Коды ошибок
+
+Ошибки **уровня запроса** (весь батч отклонён):
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 payout.empty_batch` | Пустой массив `payouts`. |
+| `400 payout.batch_too_large` | Больше 100 элементов. |
+
+Ошибки **отдельных выплат** приходят в `items[].message` при `success: false`.
+
+---
+
+## Нюансы
+
+- Каждый элемент идемпотентен по своему `order_id`.
+- Частичный успех — норма: обрабатывайте `items` поэлементно, а не «весь батч прошёл / не прошёл».
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payout/batch`](/reference/payout-batch) — до 5000 выплат, основной путь для больших пачек.
+- [`POST /v1/payout`](/reference/payout-create) · [Объект выплаты](/reference/payout-object)
+- [Массовые выплаты](/guides/mass-payouts)

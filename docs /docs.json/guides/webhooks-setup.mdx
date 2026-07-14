@@ -1,0 +1,205 @@
+---
+title: "Настройка и приём вебхуков"
+icon: "bolt"
+---
+
+Вебхуки — как Oblodai сообщает вашему серверу, что платёж оплачен, кошелёк пополнен или выплата
+подтверждена. Это правильный способ узнавать о событиях — надёжнее, чем постоянный опрос. Разберём
+регистрацию, проверку подписи и обязательную идемпотентность.
+
+Справочник формата — [Объект вебхука](/reference/webhook-object).
+
+## Что такое вебхук — на пальцах
+
+**Вебхук** — это HTTP‑запрос (`POST`), который сервер Oblodai **сам присылает вам**, когда что‑то
+произошло (например, счёт оплачен). **Endpoint** (он же `url_callback`, он же «callback URL») — это
+**ваш собственный** адрес и обработчик, которые вы должны **написать**: маршрут на вашем сервере,
+принимающий этот `POST`. То есть вебхук работает так: покупатель оплатил → Oblodai делает `POST` на
+ваш URL → ваш код принимает его и помечает заказ оплаченным.
+
+<Note>
+  **На CMS‑модуле это уже сделано.** Если вы используете [готовый модуль](/modules/overview)
+  (WooCommerce и т. п.) — регистрировать вебхук и писать обработчик **не нужно**, модуль делает всё
+  сам. Инструкция ниже — для собственной интеграции на SDK/HTTP.
+</Note>
+
+## Что нужно подготовить до регистрации
+
+1. **Публичный HTTPS‑URL**, доступный из интернета, отвечающий на `POST`. Пример в коде ниже
+   (`https://shop.example/oblodai/callback`) — **подставьте свой** реальный адрес.
+2. **Ваш обработчик должен возвращать HTTP `2xx`** (обычно `200`). Любой не‑2xx (или падение) Oblodai
+   считает неудачной доставкой и будет **повторять**.
+3. **Локальная разработка:** на `localhost` вебхуки **не дойдут** (и SSRF‑проверка запретит приватные
+   адреса). Поднимите **туннель** — [ngrok](https://ngrok.com/download) (`ngrok http 8000` → адрес
+   `https://xxxx.ngrok-free.app`), Cloudflare Tunnel или localtunnel — и регистрируйте выданный
+   публичный HTTPS‑адрес.
+
+---
+
+## Шаг 1. Зарегистрировать endpoint
+
+Один раз на проект зарегистрируйте HTTPS‑URL и сохраните выданный `secret`. В примерах `call()` —
+подписанная обёртка запроса (её определение — в [Как подписать запрос](/guides/signing-requests); проще
+взять [SDK](/sdk/overview)):
+
+```python
+resp = call("/v1/webhooks", {"url": "https://shop.example/oblodai/callback"})
+webhook_secret = resp["secret"]   # ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните в секрет-хранилище
+```
+
+<Note>
+  Этот эндпоинт — единственный, кто отвечает `201 Created` **без** конверта `state`/`result`.
+</Note>
+
+Особенности:
+
+- У проекта **один** активный endpoint. Повторный вызов заменит URL и выдаст **новый** секрет.
+- URL проходит SSRF‑проверку: приватные и локальные адреса запрещены.
+- Индивидуальный `url_callback` конкретного платежа/выплаты доставляется на свой URL, но
+  **подписывается секретом endpoint проекта** — то есть endpoint всё равно должен быть зарегистрирован.
+
+Полностью — [`POST /v1/webhooks`](/reference/webhooks-register).
+
+---
+
+## Шаг 2. Проверять подпись
+
+<Warning>
+  **Подпись вебхука — ДРУГОЙ алгоритм**, не тот, что у подписи запроса. Здесь это `timestamp` +
+  точка `.` + **сырое тело**. Никаких метода/пути/переводов строк.
+</Warning>
+
+```
+X-Webhook-Signature = hex( HMAC_SHA256( secret, "{X-Webhook-Timestamp}." + сырое_тело ) )
+```
+
+Возьмите **сырое тело** запроса (до JSON‑парсинга) и сравните подписи в постоянном времени.
+
+<CodeGroup>
+
+```python Python (Flask)
+import hmac, hashlib
+from flask import Flask, request
+
+app = Flask(__name__)
+WEBHOOK_SECRET = b"b7c1e9…"
+
+@app.post("/oblodai/callback")
+def callback():
+    raw = request.get_data()                                  # СЫРОЕ тело
+    ts  = request.headers.get("X-Webhook-Timestamp", "")
+    sig = request.headers.get("X-Webhook-Signature", "")
+
+    expected = hmac.new(WEBHOOK_SECRET, ts.encode() + b"." + raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        return "bad signature", 403
+
+    event = request.get_json()
+    handle_event(event)      # см. шаг 3
+    return "ok", 200
+```
+
+```js Node.js (Express)
+import express from "express";
+import crypto from "node:crypto";
+
+const app = express();
+const WEBHOOK_SECRET = "b7c1e9…";
+
+// ВАЖНО: берём сырое тело, не express.json()
+app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
+  const raw = req.body.toString("utf8");
+  const ts  = req.get("X-Webhook-Timestamp") || "";
+  const sig = req.get("X-Webhook-Signature") || "";
+
+  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(`${ts}.${raw}`).digest("hex");
+  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) {
+    return res.status(403).send("bad signature");
+  }
+
+  handleEvent(JSON.parse(raw));   // см. шаг 3
+  res.send("ok");
+});
+```
+
+```php PHP
+<?php
+$secret = 'b7c1e9…';
+$raw = file_get_contents('php://input');                       // сырое тело
+$ts  = $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '';
+$sig = $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? '';
+
+$expected = hash_hmac('sha256', $ts . '.' . $raw, $secret);
+if (!hash_equals($expected, $sig)) {
+    http_response_code(403);
+    exit('bad signature');
+}
+$event = json_decode($raw, true);
+handle_event($event);                                          // см. шаг 3
+echo 'ok';
+```
+
+</CodeGroup>
+
+---
+
+## Шаг 3. Обрабатывать идемпотентно
+
+Доставка — **как минимум один раз**. Один и тот же вебхук может прийти несколько раз (в том числе
+после [`payment/resend`](/reference/payment-resend)). Обязательно:
+
+- **Дедуплицируйте по `uuid` + `status`.** Если такое событие уже обработано — верните `2xx` и выйдите
+  (no‑op).
+- **Не полагайтесь на порядок доставок.** Опирайтесь на `status`/`is_final`, а не на очерёдность.
+- **Отвечайте `2xx` только после успешной обработки.** Любой не‑2xx — сигнал повторить доставку.
+
+```python
+def handle_event(event):
+    key = (event["uuid"], event["status"])
+    if already_processed(key):        # ваша дедупликация (БД/кэш)
+        return
+    if event["type"] == "payment" and event["status"] == "paid":
+        mark_order_paid(event["order_id"])
+    elif event["type"] == "wallet" and event["status"] == "paid":
+        credit_client(event["order_id"], event["payment_amount"])
+    elif event["type"] == "payout":
+        update_payout(event["uuid"], event["status"])
+    mark_processed(key)
+```
+
+---
+
+## Какие события приходят
+
+| `X-Webhook-Event` | Поле `type` | Когда |
+|---|---|---|
+| `invoice.paid` | `payment` | Платёж оплачен в допуске. |
+| `invoice.paid_over` | `payment` | Переплата. |
+| `invoice.wrong_amount` | `payment` | Недоплата, срок вышел. |
+| `invoice.expired` | `payment` | Счёт истёк. |
+| `wallet.paid` | `wallet` | Пополнение статик‑кошелька. |
+| `payout.<статус>` (`payout.confirmed` — успех, `payout.failed`, …) | `payout` | События выплаты; суффикс — внутренний статус. |
+
+---
+
+## Ретраи
+
+Если ваш endpoint не ответил `2xx`, диспетчер повторяет доставку с экспоненциальным backoff: от 10 с с
+удвоением, потолок 1 час, до 12 попыток (в сумме ~3,5 часа). Исчерпав попытки — статус `dead`, виден в
+[журнале доставок](/reference/webhooks-deliveries).
+
+---
+
+## Проверьте себя до боя
+
+Прогоните пробное событие, не дожидаясь реальной оплаты — см.
+[Отладка вебхуков](/guides/webhooks-debug).
+
+---
+
+## Связанные страницы
+
+- [Объект вебхука и проверка подписи](/reference/webhook-object)
+- [Безопасность вебхуков за пределами подписи](/guides/webhooks-security) — replay‑защита, перепроверка статуса.
+- [`POST /v1/webhooks`](/reference/webhooks-register) · [Отладка вебхуков](/guides/webhooks-debug)
+- [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries)

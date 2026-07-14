@@ -1,0 +1,270 @@
+---
+title: "Сквозной пример приложения"
+description: "Рабочий сервер целиком: от приёма платежа до обработки вебхука."
+icon: "diagram-project"
+---
+
+Полностью рабочий пример: маленький сервер, который создаёт платёж, отдаёт покупателю ссылку на
+оплату и принимает вебхук о поступлении, помечая заказ оплаченным. Это тот же поток, что в
+[Быстром старте](/quickstart), но собранный в один запускаемый файл.
+
+Дальше — две версии: **Python (Flask)** и **Node.js (Express)**. Логика одинаковая.
+
+---
+
+## Что делает пример
+
+```
+POST /checkout   → создаёт счёт в Oblodai, возвращает ссылку на оплату
+POST /oblodai/callback → принимает вебхук, проверяет подпись, помечает заказ оплаченным
+GET  /order/<id> → показывает статус заказа (для наглядности)
+```
+
+Хранилище заказов — простой словарь в памяти (в реальном приложении замените на БД).
+
+---
+
+## Python (Flask)
+
+```python
+# app.py — минимальный сквозной пример приёма платежей Oblodai
+import hmac, hashlib, time, json, os
+import requests
+from flask import Flask, request, jsonify
+
+# --- Конфигурация (в проде — из секрет-хранилища, не из кода) ---
+SECRET = os.environ["OBLODAI_SECRET"].encode()      # секрет API-ключа
+PUBLIC_ID = os.environ["OBLODAI_PUBLIC_ID"]
+WEBHOOK_SECRET = os.environ["OBLODAI_WEBHOOK_SECRET"].encode()  # секрет из /v1/webhooks
+BASE = "https://api.oblodai.com"
+
+app = Flask(__name__)
+ORDERS = {}   # order_id -> {"status": ..., "amount": ...}  (замените на БД)
+SEEN = set()  # (uuid, status) — дедупликация вебхуков (замените на БД)
+
+# --- Подписанный вызов API ---
+def call(path: str, payload: dict, idempotency_key: str | None = None) -> dict:
+    body = json.dumps(payload, separators=(",", ":"))
+    ts = str(int(time.time()))
+    signing = f"{ts}\nPOST\n{path}\n{body}"
+    sig = hmac.new(SECRET, signing.encode(), hashlib.sha256).hexdigest()
+    headers = {
+        "Content-Type": "application/json",
+        "X-Public-Id": PUBLIC_ID,
+        "X-Timestamp": ts,
+        "X-Signature": sig,
+    }
+    if idempotency_key:
+        # Защита от дублей при ретраях. В подпись НЕ входит.
+        headers["Idempotency-Key"] = idempotency_key
+    r = requests.post(BASE + path, data=body, headers=headers, timeout=30)
+    return r.json()
+
+# --- 1. Оформление заказа: создаём счёт ---
+@app.post("/checkout")
+def checkout():
+    data = request.get_json()
+    order_id = data["order_id"]           # ваш идентификатор заказа
+    amount = data["amount"]               # сумма в USD
+
+    resp = call("/v1/payment", {
+        "amount": amount,
+        "currency": "USD",                # валюта ЦЕНЫ: USD, EUR, RUB… (23 фиата) или монета
+        "order_id": order_id,             # ваш бизнес-ключ: тоже дедуплицирует
+        "to_currency": "USDT",
+        "network": "tron",
+        "lifetime": 3600,
+    }, idempotency_key=f"checkout-{order_id}")   # один ключ на действие, стабилен при ретраях
+    if "error" in resp:
+        return jsonify({"error": resp["error"]}), 400
+
+    inv = resp["result"]
+    ORDERS[order_id] = {"status": "pending", "amount": amount, "uuid": inv["uuid"]}
+    # Покупателю отдаём ссылку на hosted-страницу оплаты
+    return jsonify({"pay_url": inv["url"], "address": inv["address"]})
+
+# --- 2. Вебхук о поступлении ---
+@app.post("/oblodai/callback")
+def callback():
+    raw = request.get_data()              # СЫРОЕ тело — не пересериализовывать
+    event = request.get_json(silent=True) or {}
+
+    # Пробные тела не подписаны — просто подтверждаем приём
+    if event.get("is_test"):
+        return "ok", 200
+
+    ts = request.headers.get("X-Webhook-Timestamp", "")
+    sig = request.headers.get("X-Webhook-Signature", "")
+    expected = hmac.new(WEBHOOK_SECRET, ts.encode() + b"." + raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        return "bad signature", 403
+
+    # Идемпотентность: один вебхук может прийти несколько раз
+    key = (event.get("uuid"), event.get("status"))
+    if key in SEEN:
+        return "ok", 200                  # уже обработано — no-op
+    SEEN.add(key)
+
+    # Реагируем на статус
+    if event.get("type") == "payment" and event.get("status") == "paid":
+        order_id = event.get("order_id")
+        if order_id in ORDERS:
+            ORDERS[order_id]["status"] = "paid"
+            # ... здесь выдаём товар/услугу (тоже идемпотентно)
+
+    return "ok", 200                      # 2xx только после успешной обработки
+
+# --- 3. Статус заказа (для наглядности) ---
+@app.get("/order/<order_id>")
+def order(order_id):
+    return jsonify(ORDERS.get(order_id, {"status": "unknown"}))
+
+if __name__ == "__main__":
+    app.run(port=8000)
+```
+
+### Запуск
+
+```bash
+pip install flask requests
+export OBLODAI_PUBLIC_ID='oblodai_…'
+export OBLODAI_SECRET='oblodai_live_…'
+export OBLODAI_WEBHOOK_SECRET='b7c1e9…'   # из POST /v1/webhooks
+python app.py
+```
+
+Проверка:
+
+```bash
+# создать заказ
+curl -s localhost:8000/checkout -X POST -H 'Content-Type: application/json' \
+  -d '{"order_id":"test-001","amount":"1"}'
+# → {"pay_url": "...", "address": "..."}
+
+# посмотреть статус
+curl -s localhost:8000/order/test-001
+```
+
+---
+
+## Node.js (Express)
+
+```js
+// app.js — минимальный сквозной пример приёма платежей Oblodai
+import express from "express";
+import crypto from "node:crypto";
+
+const SECRET = process.env.OBLODAI_SECRET;
+const PUBLIC_ID = process.env.OBLODAI_PUBLIC_ID;
+const WEBHOOK_SECRET = process.env.OBLODAI_WEBHOOK_SECRET;
+const BASE = "https://api.oblodai.com";
+
+const app = express();
+const ORDERS = new Map();   // order_id -> {...}  (замените на БД)
+const SEEN = new Set();     // "uuid:status" — дедуп (замените на БД)
+
+// Подписанный вызов API
+async function call(path, payload) {
+  const body = JSON.stringify(payload);
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const signing = `${ts}\nPOST\n${path}\n${body}`;
+  const sig = crypto.createHmac("sha256", SECRET).update(signing).digest("hex");
+  const res = await fetch(BASE + path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Public-Id": PUBLIC_ID,
+      "X-Timestamp": ts,
+      "X-Signature": sig,
+    },
+    body,
+  });
+  return res.json();
+}
+
+// 1. Оформление заказа
+app.post("/checkout", express.json(), async (req, res) => {
+  const { order_id, amount } = req.body;
+  const resp = await call("/v1/payment", {
+    amount, currency: "USD", order_id,
+    to_currency: "USDT", network: "tron", lifetime: 3600,
+  });
+  if (resp.error) return res.status(400).json({ error: resp.error });
+
+  const inv = resp.result;
+  ORDERS.set(order_id, { status: "pending", amount, uuid: inv.uuid });
+  res.json({ pay_url: inv.url, address: inv.address });
+});
+
+// 2. Вебхук — ВАЖНО: сырое тело, не express.json()
+app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
+  const raw = req.body.toString("utf8");
+  let event = {};
+  try { event = JSON.parse(raw); } catch { /* ignore */ }
+
+  if (event.is_test) return res.send("ok");      // пробное тело не подписано
+
+  const ts = req.get("X-Webhook-Timestamp") || "";
+  const sig = req.get("X-Webhook-Signature") || "";
+  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(`${ts}.${raw}`).digest("hex");
+  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) {
+    return res.status(403).send("bad signature");
+  }
+
+  const key = `${event.uuid}:${event.status}`;
+  if (SEEN.has(key)) return res.send("ok");       // дедуп
+  SEEN.add(key);
+
+  if (event.type === "payment" && event.status === "paid") {
+    const o = ORDERS.get(event.order_id);
+    if (o) o.status = "paid";                      // выдать товар (идемпотентно)
+  }
+  res.send("ok");
+});
+
+// 3. Статус заказа
+app.get("/order/:id", (req, res) => {
+  res.json(ORDERS.get(req.params.id) || { status: "unknown" });
+});
+
+app.listen(8000, () => console.log("on :8000"));
+```
+
+### Запуск
+
+```bash
+npm install express
+export OBLODAI_PUBLIC_ID='oblodai_…'
+export OBLODAI_SECRET='oblodai_live_…'
+export OBLODAI_WEBHOOK_SECRET='b7c1e9…'
+node app.js
+```
+
+---
+
+## На что обратить внимание в примере
+
+- **Сырое тело для вебхука.** И во Flask (`request.get_data()`), и в Express (`express.raw`) подпись
+  проверяется по **сырым** байтам. `express.json()` на вебхук‑роуте всё сломает.
+- **Два разных секрета.** `SECRET` — для подписи исходящих запросов; `WEBHOOK_SECRET` — для проверки
+  входящих вебхуков. Это разные значения из разных источников.
+- **Дедупликация.** `SEEN` защищает от повторной выдачи товара — вебхук может прийти несколько раз.
+- **`2xx` в конце.** Отвечаем `ok` только после обработки; при ошибке вернули бы не‑2xx, чтобы Oblodai
+  повторил доставку.
+- **В памяти — только для примера.** `ORDERS`/`SEEN` замените на БД, иначе после перезапуска данные
+  и дедуп‑ключи потеряются.
+
+---
+
+## Что дальше
+
+- [Тестирование интеграции](/guides/testing) — как прогнать этот пример без реальных переводов.
+- [Настройка вебхуков](/guides/webhooks-setup) — детали проверки подписи и идемпотентности.
+- [Чек‑лист перед запуском](/guides/production-checklist) — перед боевым трафиком.
+
+---
+
+## Связанные страницы
+
+- [Быстрый старт](/quickstart) · [Приём первого платежа](/guides/accept-first-payment)
+- [Объект вебхука](/reference/webhook-object) · [`POST /v1/payment`](/reference/payment-create)

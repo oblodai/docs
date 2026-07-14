@@ -1,0 +1,159 @@
+---
+title: "POST /v1/payout"
+---
+
+Создать выплату на внешний адрес. Списывает баланс на `amount`; получателю приходит `amount` минус
+сетевая комиссия (если она переложена на получателя — см. [`fee-config`](/reference/payout-fee-config)).
+
+**URL:** `https://api.oblodai.com/v1/payout` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id` (для выплат `order_id` обязателен).
+
+<Note>
+  **Выплаты по API‑ключу авто‑одобряются** и уходят сразу — без белых списков и периодов выдержки.
+  Ответственность за адрес назначения на вашей стороне.
+</Note>
+
+### Заголовки
+
+| Заголовок | Обяз. | Описание |
+|---|---|---|
+| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах одной выплаты. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. Работает вместе с `order_id`. → [Идемпотентность](/reference/basics-idempotency) |
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `amount` | string | да | Сумма выплаты в `currency`. |
+| `currency` | string | да | Код валюты (например `USDT`). |
+| `order_id` | string | да | Ваш номер выплаты; **ключ идемпотентности**. |
+| `address` | string | да | Адрес получателя. |
+| `network` | string | нет\* | Сеть (`tron`, `ethereum`, …). Обязательна для монет с несколькими сетями. |
+| `is_subtract` | bool | нет | **Принимается, но на саму выплату сейчас не влияет.** Кто платит сетевую комиссию, задаётся не в запросе, а настройкой проекта — см. [fee-config](/reference/payout-fee-config). (Поле учитывает только предрасчёт `/v1/payout/calculate`, см. примечание ниже.) |
+| `memo` | string | нет | Тег/мемо назначения (TON Jetton). Максимум 120 символов. |
+| `url_callback` | string | нет | Свой URL вебхука для этой выплаты (SSRF‑проверка). |
+| `from_currency` | string | нет | Профинансировать выплату конвертацией баланса. Поддерживается только `USDT` → `currency`. |
+| `source` | string | нет | Метка происхождения: `api` (по умолчанию) или `manual`. |
+
+\* Обязательна, если у валюты несколько сетей.
+
+**По умолчанию сетевую комиссию выплаты несёт получатель.** Кто её платит, определяется настройкой
+проекта [fee-config](/reference/payout-fee-config) (общий дефолт — комиссию несёт получатель), а **не** полем
+запроса.
+
+<Warning>
+  **Важно про `is_subtract`.** Поле в теле `/v1/payout` принимается, но на фактическую выплату
+  **не влияет** — плательщик комиссии всегда берётся из fee‑config проекта. При этом предрасчёт
+  [`/v1/payout/calculate`](/reference/payout-calculate) поле `is_subtract` **учитывает**. Чтобы превью
+  совпадало с реальной выплатой, вызывайте `calculate` с `is_subtract`, согласованным с текущей
+  настройкой fee‑config, либо управляйте комиссией только через fee‑config.
+</Warning>
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"amount":"25","currency":"USDT","network":"tron","address":"TXY...","order_id":"payout-1","memo":"invoice-42"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout", {
+    "amount": "25", "currency": "USDT", "network": "tron",
+    "address": "TXY...", "order_id": "payout-1", "memo": "invoice-42",
+})
+```
+
+```js Node.js
+await call("/v1/payout", {
+  amount: "25", currency: "USDT", network: "tron",
+  address: "TXY...", order_id: "payout-1", memo: "invoice-42",
+});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "0c1f...e9",
+    "order_id": "payout-1",
+    "amount": "25",
+    "currency": "USDT",
+    "network": "tron",
+    "address": "TXY...",
+    "txid": "",
+    "status": "process",
+    "is_final": false,
+    "approval_required": false,
+    "source": "api",
+    "created_at": "2026-07-10T12:00:00Z",
+    "updated_at": "2026-07-10T12:00:00Z"
+  }
+}
+```
+
+При `from_currency` в `result` добавляется объект `convert`:
+`{ "from_currency": "USDT", "to_currency": "TRX", "from_amount": "40.12", "rate": "0.062" }`.
+
+Полное описание полей и статусов — [Объект выплаты](/reference/payout-object).
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 payout.unknown_currency` | Неизвестная валюта. |
+| `400 payout.bad_amount` | Некорректная сумма. |
+| `400 payout.order_id_required` | Не передан `order_id`. |
+| `400 payout.destination_internal` | Адрес принадлежит шлюзу (self‑dealing). |
+| `400 payout.from_currency_unsupported` | Неподдерживаемая конвертация. |
+| `400 payout.memo_too_long` | `memo` длиннее 120 символов. |
+| `400 payout.bad_url_callback` | Некорректный `url_callback` (SSRF). |
+| `400 payout.no_destination` | Не передан адрес назначения. |
+| `400 payout.asset_mismatch` | Валюта/сеть не соответствуют друг другу. |
+| `400/403` | Валидация адреса под сеть / комплаенс. |
+| `409 payout.frozen` | Выплаты заморожены (сработал kill‑switch). |
+| `409 payout.insufficient_funds` | Недостаточно доступного баланса. |
+| `409 payout.funds_maturing` | Средства ещё дозревают (maturity‑холд). |
+
+---
+
+## Нюансы
+
+- **Идемпотентность по `(мерчант, order_id)`.** Повтор вернёт уже созданную выплату.
+- **Выплата на адрес самого шлюза запрещена** (`payout.destination_internal`).
+- **`from_currency`** конвертирует баланс до резервирования и идемпотентна по `order_id`. Поддерживается
+  только `USDT` → `currency`.
+- Выплаты по API‑ключу авто‑одобряются (`approval_required: false`) — шаг
+  [`/approve`](/reference/payout-approve) не нужен.
+- Перед созданием можно оценить комиссию и итоговые суммы через
+  [`POST /v1/payout/calculate`](/reference/payout-calculate).
+
+---
+
+## Связанные страницы
+
+- [Объект выплаты](/reference/payout-object) · [`POST /v1/payout/calculate`](/reference/payout-calculate)
+- [`POST /v1/payout/mass`](/reference/payout-mass) · [Кто платит сетевую комиссию](/reference/payout-fee-config)
+- [Первая выплата](/guides/first-payout)

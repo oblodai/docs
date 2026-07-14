@@ -1,0 +1,98 @@
+---
+title: "POST /v1/webhooks"
+---
+
+Регистрирует (или заменяет) URL проекта для вебхуков и возвращает `secret` для проверки их подписи.
+У проекта **один** активный endpoint — повторный вызов заменяет URL и **выдаёт новый секрет**.
+
+**URL:** `https://api.oblodai.com/v1/webhooks` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+<Warning>
+  **Исключение из формата ответа.** Этот метод возвращает `201 Created` и «голый» объект — **без**
+  конверта `state`/`result`. Единственный такой эндпоинт в API.
+</Warning>
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `url` | string | да | HTTPS‑URL коллбэка. SSRF‑проверка: приватные и локальные адреса запрещены. |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"url":"https://shop.example/oblodai/callback"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/webhooks' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/webhooks \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/webhooks", {"url": "https://shop.example/oblodai/callback"})
+```
+
+```js Node.js
+await call("/v1/webhooks", { url: "https://shop.example/oblodai/callback" });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа (`201 Created`, без конверта)
+
+```json
+{
+  "endpoint_id": "3f1c…-e2b1",
+  "url": "https://shop.example/oblodai/callback",
+  "secret": "b7c1e9…"
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `endpoint_id` | string | Идентификатор endpoint. |
+| `url` | string | Зарегистрированный URL. |
+| `secret` | string | Секрет для проверки подписи вебхуков. **Показывается один раз.** |
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 webhook.no_url` | Не передан `url`. |
+| `400 webhook.bad_url` | Некорректный URL или запрещённый (приватный/локальный) адрес. |
+
+---
+
+## Нюансы
+
+- **`secret` показывается один раз** — сохраните его. Он нужен для проверки подписи по
+  [алгоритму вебхука](/reference/webhook-object).
+- **Один endpoint на проект.** Повторный вызов заменяет URL и выдаёт **новый** секрет (старый
+  перестаёт подходить).
+- **Per‑объектный `url_callback`** конкретного платежа/выплаты доставляется на свой URL, но
+  **подписывается секретом endpoint проекта**. Значит, override работает, только когда endpoint
+  зарегистрирован.
+
+---
+
+## Связанные страницы
+
+- [Объект вебхука и проверка подписи](/reference/webhook-object)
+- [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries) · [Настройка вебхуков](/guides/webhooks-setup)

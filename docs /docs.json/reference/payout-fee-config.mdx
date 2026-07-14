@@ -1,0 +1,82 @@
+---
+title: "POST /v1/payout/fee-config/get · /set"
+---
+
+Per‑project настройка: перекладывать ли **сетевую** комиссию выплаты на получателя.
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## POST /v1/payout/fee-config/set
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `fee_on_recipient` | bool | да | `true` — сетевую комиссию платит получатель (получает меньше); `false` — комиссию несёт мерчант. |
+
+Ответ:
+
+```json
+{ "state": 0, "result": { "fee_on_recipient": true } }
+```
+
+---
+
+## POST /v1/payout/fee-config/get
+
+Тело — `{}`.
+
+```json
+{ "state": 0, "result": { "fee_on_recipient": true, "configured": true } }
+```
+
+`configured: false` означает, что override не задан и действует дефолт шлюза.
+
+---
+
+## Примеры
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"fee_on_recipient":true}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/fee-config/set' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/fee-config/set \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/fee-config/set", {"fee_on_recipient": True})
+call("/v1/payout/fee-config/get", {})
+```
+
+```js Node.js
+await call("/v1/payout/fee-config/set", { fee_on_recipient: true });
+await call("/v1/payout/fee-config/get", {});
+```
+
+</CodeGroup>
+
+---
+
+## Нюансы
+
+- Это про **сетевую** комиссию выплаты. За то, кто несёт **нашу** комиссию при возврате, отвечает
+  отдельная настройка — [`refund-fee-config`](/reference/payout-refund-fee-config).
+- Влияет на распределение сумм в [`POST /v1/payout/calculate`](/reference/payout-calculate) и на фактическую
+  выплату.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payout/calculate`](/reference/payout-calculate) · [`POST /v1/payout`](/reference/payout-create)
+- [Кто платит комиссию возврата](/reference/payout-refund-fee-config)

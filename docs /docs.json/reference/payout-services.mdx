@@ -1,0 +1,66 @@
+---
+title: "POST /v1/payout/services"
+---
+
+Список доступных методов выплат (пар валюта + сеть) с флагом доступности, лимитами и комиссиями.
+
+**URL:** `https://api.oblodai.com/v1/payout/services` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Тело:** `{}`.
+
+Метод доступен, если под пару `(сеть, валюта)` подключён реальный он‑чейн‑отправитель.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/services' '{}' \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/services \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d '{}'
+```
+
+```python Python
+call("/v1/payout/services", {})
+```
+
+```js Node.js
+await call("/v1/payout/services", {});
+```
+
+</CodeGroup>
+
+---
+
+## Ответ
+
+Форма — как у [`POST /v1/payment/services`](/reference/payment-services): массив объектов с `network`,
+`currency`, `is_available`, `limit`, `commission`.
+
+<Note>
+  **`commission`** здесь — **сетевая** комиссия (газ сети), а **НЕ** комиссия платформы Oblodai.
+  Платформенная комиссия (по умолчанию 1.5 % + $0.30/платёж) удерживается при приёме платежа, а не при выплате.
+</Note>
+
+---
+
+## Нюансы
+
+- Проверяйте `is_available` перед созданием выплаты — метод доступен только при подключённом
+  он‑чейн‑отправителе для пары `(сеть, валюта)`.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment/services`](/reference/payment-services) — аналог для приёма.
+- [Поддерживаемые сети и валюты](/reference/basics-networks) · [`POST /v1/payout`](/reference/payout-create)

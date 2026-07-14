@@ -1,0 +1,146 @@
+---
+title: "GET /v1/currencies"
+---
+
+Публичный каталог принимаемых активов и сетей, на которых их можно оплачивать/выводить — данные для
+страницы «Наши монеты» или для построения списка выбора валюты в чекауте.
+
+Отдаёт **два списка**: `currencies` — в чём можно **получать** (валюты расчёта, только крипта), и
+`pricing_currencies` — в чём можно **назначать цену** (**38 записей: 15 монет + 23 фиата**). Разница
+между ролями — [Форматы сумм и денег](/reference/basics-money).
+
+**URL:** `https://api.oblodai.com/v1/currencies` · **Метод:** `GET` · **Аутентификация:** не
+требуется (публичные данные).
+
+---
+
+## Параметры запроса
+
+Нет. Обычный `GET` без тела и без подписи.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+curl -s https://api.oblodai.com/v1/currencies
+```
+
+```python Python
+import requests
+r = requests.get("https://api.oblodai.com/v1/currencies")
+print(r.json())
+```
+
+```js Node.js
+const r = await fetch("https://api.oblodai.com/v1/currencies");
+console.log(await r.json());
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+Ответ отдаётся **напрямую** (без конверта `{state, result}`, как у публичных `GET`-эндпоинтов):
+
+```json
+{
+  "currencies": [
+    {
+      "symbol": "USDT",
+      "decimals": 6,
+      "networks": [
+        {
+          "network": "tron",
+          "kind": "token",
+          "contract": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+          "min_confirmations": 20,
+          "available": true,
+          "deposit_available": true,
+          "payout_available": true
+        }
+      ]
+    }
+  ],
+  "pricing_currencies": [
+    { "symbol": "USD",  "decimals": 2, "fiat": true },
+    { "symbol": "EUR",  "decimals": 2, "fiat": true },
+    { "symbol": "RUB",  "decimals": 2, "fiat": true },
+    { "symbol": "JPY",  "decimals": 0, "fiat": true },
+    { "symbol": "USDT", "decimals": 6, "fiat": false },
+    { "symbol": "BTC",  "decimals": 8, "fiat": false }
+  ]
+}
+```
+
+### `currencies` — в чём можно получать
+
+Валюты **расчёта**: чем покупатель платит и в чём мерчант получает деньги. Только крипта.
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `currencies` | array | Список активов. |
+| `currencies[].symbol` | string | Код актива (`USDT`, `BTC`, …). |
+| `currencies[].decimals` | int | Число знаков после запятой у актива. |
+| `currencies[].networks` | array | Сети, на которых доступен актив. |
+| `networks[].network` | string | Код сети (`tron`, `ethereum`, …). |
+| `networks[].kind` | string | `native` (монета сети) или `token`. |
+| `networks[].contract` | string | Адрес контракта токена (только для `token`; у `native` отсутствует). |
+| `networks[].min_confirmations` | int | Полный reorg‑безопасный порог подтверждений для этой сети. |
+| `networks[].available` | bool | Доступен ли **приём** (депозиты) — синоним `deposit_available`. |
+| `networks[].deposit_available` | bool | Доступен ли приём платежей в этой сети прямо сейчас. |
+| `networks[].payout_available` | bool | Доступны ли выплаты в этой сети прямо сейчас. |
+
+### `pricing_currencies` — в чём можно назначать цену
+
+Валюты **цены**: допустимые значения поля `currency` в [`POST /v1/payment`](/reference/payment-create). Это
+все **15 монет** из `currencies` **плюс 23 фиата** — всего 38 записей.
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `pricing_currencies` | array | Список валют ценообразования (38 записей). |
+| `pricing_currencies[].symbol` | string | Код валюты цены (`USD`, `EUR`, `RUB`, `USDT`, `BTC`, …). |
+| `pricing_currencies[].decimals` | int | Число знаков после точки. У большинства фиатов — 2, у `JPY` и `KRW` — **0**. |
+| `pricing_currencies[].fiat` | bool | `true` — фиат: в нём можно **только назначать цену**, но не получать оплату. |
+
+Сетей у элемента `pricing_currencies` нет: валюта цены не определяет, как пойдут деньги, — это
+задаёт валюта расчёта `to_currency`.
+
+#### Поддерживаемые фиатные валюты (23)
+
+| Знаков | Валюты |
+|---|---|
+| **2** | `USD`, `EUR`, `GBP`, `RUB`, `UAH`, `PLN`, `CZK`, `TRY`, `CNY`, `INR`, `BRL`, `CAD`, `AUD`, `CHF`, `AED`, `ZAR`, `MXN`, `IDR`, `THB`, `VND`, `NGN` |
+| **0** | `JPY`, `KRW` — у иены и воны нет разменной единицы: `"10000"`, а не `"10000.00"` |
+
+**Тенге (`KZT`), сом (`KGS`), сум (`UZS`) не поддерживаются** — счёт в такой валюте вернёт
+`payment.unknown_currency`.
+
+---
+
+## Нюансы
+
+- **Цена и расчёт — разные списки.** Элемент с `fiat: true` (`USD`, `EUR`, `RUB`, …) годится только
+  для поля `currency`; передать его в `to_currency` нельзя — расчёт всегда идёт в крипте. Если цена в
+  фиате и задана `network`, но не задана `to_currency`, создание счёта вернёт
+  `payment.to_currency_required`.
+- **Не хардкодьте список фиатов.** Берите `pricing_currencies` из этого метода: набор валют может
+  расширяться.
+- **Приём и выплаты разделены.** `deposit_available` и `payout_available` независимы: сеть может быть
+  доступна только на приём или только на вывод. Стройте UI по нужному направлению.
+- **Актуальный источник.** Список отражает текущую конфигурацию шлюза — используйте его, а не
+  захардкоженный перечень, чтобы новые сети появлялись автоматически. Сводный перечень пар «на бумаге»
+  — в [Поддерживаемые сети и валюты](/reference/basics-networks).
+- Для методов приёма/выплат **конкретного мерчанта** (с лимитами и комиссией) — см.
+  [`POST /v1/payment/services`](/reference/payment-services) и [`POST /v1/payout/services`](/reference/payout-services).
+
+---
+
+## Связанные страницы
+
+- [Поддерживаемые сети и валюты](/reference/basics-networks) · [Форматы сумм и денег](/reference/basics-money)
+- [`POST /v1/payment/services`](/reference/payment-services) · [`POST /v1/payout/services`](/reference/payout-services)

@@ -1,0 +1,82 @@
+---
+title: "POST /v1/payment/services"
+---
+
+Список доступных методов приёма (пар валюта + сеть) с лимитами, комиссией и флагом доступности.
+
+**URL:** `https://api.oblodai.com/v1/payment/services` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Тело:** `{}`.
+
+Используйте этот метод, чтобы **программно** узнать актуальный набор методов приёма, а не полагаться
+на статичную [таблицу сетей](/reference/basics-networks).
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/services' '{}' \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/services \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d '{}'
+```
+
+```python Python
+call("/v1/payment/services", {})
+```
+
+```js Node.js
+await call("/v1/payment/services", {});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": [
+    { "network": "tron", "currency": "USDT", "is_available": true,
+      "limit": { "min_amount": "0", "max_amount": "" },
+      "commission": { "fee_amount": "0", "percent": "0" } }
+  ]
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `network` | string | Код сети. |
+| `currency` | string | Код валюты. |
+| `is_available` | bool | Есть живой watcher метода и сеть сконфигурирована. |
+| `limit.min_amount` | string | Минимальная сумма (`"0"` = без нижнего лимита). |
+| `limit.max_amount` | string | Максимум (пусто = без верхнего лимита). |
+| `commission.fee_amount` | string | Фиксированная часть комиссии. |
+| `commission.percent` | string | Процентная часть комиссии. |
+
+---
+
+## Нюансы
+
+- `is_available` = есть живой watcher метода **и** сеть сконфигурирована. Ориентируйтесь на этот флаг
+  перед созданием счёта.
+- `limit`/`commission` пока не настраиваются per‑method и возвращают дефолтную форму
+  (`min_amount: "0"`, пустой `max_amount` = без верхнего лимита).
+
+---
+
+## Связанные страницы
+
+- [Поддерживаемые сети и валюты](/reference/basics-networks)
+- [`POST /v1/payout/services`](/reference/payout-services) — аналог для выплат.

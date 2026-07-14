@@ -1,0 +1,273 @@
+---
+title: "TypeScript / Node.js SDK"
+icon: "node-js"
+---
+
+Официальная библиотека для Node.js и TypeScript. Пакет `@oblodai-npm/sdk`. Типы «из коробки», работает и
+в JS, и в TS.
+
+**Требования:** Node.js 18+.
+
+---
+
+## Установка
+
+```bash
+npm install @oblodai-npm/sdk
+# или: pnpm add @oblodai-npm/sdk / yarn add @oblodai-npm/sdk
+```
+
+<Note>
+  Пакет выходит в npm под scope **`@oblodai-npm`** — ставьте именно `@oblodai-npm/sdk`.
+
+  ⚠️ **В npm сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
+  Команда выше поставит **v1.0.x**.
+
+  Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
+  повторы») и **нет** групп `batches` / `links` / `splits` и методов `createBatch` / `refundBatch` /
+  `sendEmail`.
+</Note>
+
+---
+
+## Аутентификация (ключи из окружения)
+
+Ключи берутся в кабинете [my.oblodai.com](https://my.oblodai.com) — см.
+[Регистрация и ключи](/guides/get-keys).
+
+```bash
+export OBLODAI_PUBLIC_ID=oblodai_ваш_public_id
+export OBLODAI_SECRET=oblodai_ваш_secret
+# необязательно: export OBLODAI_BASE_URL=https://api.oblodai.com
+```
+
+```ts
+import { OblodaiClient } from '@oblodai-npm/sdk';
+
+const client = OblodaiClient.fromEnv(); // OBLODAI_PUBLIC_ID / OBLODAI_SECRET / OBLODAI_BASE_URL
+```
+
+Или явно:
+
+```ts
+const client = new OblodaiClient({
+  publicId: process.env.OBLODAI_PUBLIC_ID!,
+  secret: process.env.OBLODAI_SECRET!,
+  baseUrl: 'https://api.oblodai.com', // необязательно
+});
+```
+
+---
+
+## Быстрый старт: принять платёж
+
+```ts
+const payment = await client.payments.create({
+  amount: '10',
+  currency: 'USD',
+  order_id: 'order-1',
+  to_currency: 'USDT',
+  network: 'tron',
+  url_callback: 'https://ваш-сайт.ру/oblodai/webhook',
+  url_success: 'https://ваш-сайт.ру/thanks',
+});
+
+res.redirect(payment.url); // отправляем покупателя оплачивать
+```
+
+<Note>
+  Совет: не хотите указывать валюту/сеть за покупателя? Не передавайте `to_currency` и `network` —
+  получится «валюто-агностичная» ссылка, где покупатель сам выберет монету на странице оплаты.
+</Note>
+
+---
+
+## Ресурсы и методы
+
+| Группа | Методы |
+|---|---|
+| `client.payments` | `create`, `info`, `history`, `services`, `qr`, `resend`, `refund`, `listAccepted`, `setAccepted`, `getAccuracy`, `setAccuracy`, `getAutorefund`, `setAutorefund`, `setDiscount`, `listDiscounts` · **с v1.1.0:** `createBatch`, `refundBatch`, `sendEmail` |
+| `client.payouts` | `create`, `createMass`, `info`, `history`, `services`, `calculate`, `approve`, `getFeeConfig`, `setFeeConfig`, `getRefundFeeConfig`, `setRefundFeeConfig`, `refund` · **с v1.1.0:** `createBatch` |
+| `client.batches` **(v1.1.0)** | `info` |
+| `client.links` **(v1.1.0)** | `create`, `list`, `info`, `toggle`, `publicGet`, `checkout` |
+| `client.splits` **(v1.1.0)** | `splitToAddress`, `splitToMerchant`, `listRules`, `deleteRule`, `getConfig`, `setConfig` |
+| `client.wallets` | `create`, `block`, `blockedAddressRefund`, `qr` |
+| `client.account` | `balance`, `referral`, `transferToPersonal`, `vrcs` |
+| `client.webhooks` | `register`, `deliveries`, `testPayment`, `testWallet`, `testPayout` |
+| `client.settings` | `listAutoWithdraw`, `setAutoWithdraw`, `deleteAutoWithdraw`, `listAllowlist`, `addAllowlist`, `removeAllowlist`, `enableAllowlist` |
+| `client.rates` | `list` (курсы), `currencies` (публичный каталог) |
+
+Все методы возвращают `Promise` с уже развёрнутым `result`. Точные поля — в [Справочнике](/reference/overview).
+
+<Warning>
+  Группы `batches` / `links` / `splits` и методы `createBatch` / `refundBatch` / `sendEmail`
+  появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
+</Warning>
+
+```ts
+// Массовые операции: до 5000 элементов одним подписанным запросом (одна отметка rate-limit).
+const sub = await client.payments.createBatch(
+  [
+    { amount: '10', currency: 'USD', order_id: 'a-1', to_currency: 'USDT', network: 'tron' },
+    { amount: '20', currency: 'EUR', order_id: 'a-2', to_currency: 'USDT', network: 'tron' },
+  ],
+  { onError: 'continue' }, // 'continue' (по умолчанию) или 'stop'
+);
+
+const info = await client.batches.info(sub.batch_id, { limit: 100 }); // прогресс и результат по элементам
+
+// Платёжная ссылка: платят многие, каждый платёж — свой инвойс. Работает без вашего бэкенда.
+const link = await client.links.create({ amountMode: 'open', currency: 'USD' });
+
+// Сплит: доля каждого входящего платежа автоматически уходит партнёру.
+await client.splits.splitToAddress('T...', 'tron', 10, 'партнёр А');
+
+// Счёт на e-mail (письмо с кнопкой «Оплатить»).
+await client.payments.sendEmail({ uuid, email: 'buyer@example.com' });
+```
+
+Подробности — [Массовые операции](/guides/batch-operations),
+[Платёжные ссылки](/guides/payment-links), [Сплит-платежи](/guides/split-payments),
+[Счета на e-mail](/guides/email-invoices).
+
+---
+
+## Валюта цены и валюта расчёта
+
+В примере выше `currency: 'USD'` — **валюта цены**, а `to_currency: 'USDT'` — **валюта расчёта**.
+Это разные вещи:
+
+- **`currency` (цена)** — одна из **23 фиатных валют**: USD, EUR, GBP, RUB, UAH, PLN, CZK, TRY, CNY,
+  INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND, NGN, JPY, KRW — **или любая монета**
+  (USDT, BTC, TRX, …).
+- **`to_currency` (расчёт)** — **только крипта.** Фиата здесь не бывает: баланс, выплаты и возвраты
+  всегда в монете, шлюз не хранит фиат.
+- У **JPY и KRW ноль знаков** после запятой (`amount: '10000'`, не `'10000.00'`); у остальных — 2.
+- **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
+- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+  Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
+
+Полный список валют цены — `client.rates.currencies()`, поле `pricing_currencies`.
+
+---
+
+## Проверьте, что заработало
+
+1. Запустите код создания платежа из «Быстрого старта». В ответе должен прийти `url` — это ссылка на
+   hosted-страницу оплаты. Откройте её в браузере: если страница открылась, приём платежей настроен.
+2. Чтобы реально **поймать вебхук** об оплате на локальной машине, нужен публичный HTTPS-адрес —
+   поднимите туннель (ngrok / cloudflared) и укажите его URL в `url_callback`. Подробнее — в
+   [Тестировании](/guides/testing) и [Настройке вебхуков](/guides/webhooks-setup).
+
+---
+
+## Вебхуки
+
+<CodeGroup>
+
+```ts Шаг 1. Регистрация (один раз) и сохранение секрета
+const endpoint = await client.webhooks.register('https://ваш-сайт.ру/oblodai/webhook');
+// сохраните endpoint.secret — им проверяются все вебхуки (это НЕ ваш API-секрет)
+```
+
+```ts Шаг 2. Приём (пример на Express — обязательно СЫРОЕ тело)
+import express from 'express';
+import { constructWebhookEvent, OblodaiSignatureError, type WebhookEvent } from '@oblodai-npm/sdk';
+
+app.post('/oblodai/webhook', express.raw({ type: '*/*' }), async (req, res) => {
+  const raw = req.body as Buffer;
+  const maybe = JSON.parse(raw.toString('utf8'));
+  if (maybe.is_test) return res.send('ok'); // тестовые вебхуки не подписаны
+
+  let event: WebhookEvent;
+  try {
+    event = constructWebhookEvent<WebhookEvent>(WEBHOOK_SECRET, raw, {
+      timestamp: req.get('X-Webhook-Timestamp')!,
+      signature: req.get('X-Webhook-Signature')!,
+    });
+  } catch (e) {
+    if (e instanceof OblodaiSignatureError) return res.status(403).send('bad signature');
+    throw e;
+  }
+
+  const info = await client.payments.info({ uuid: event.uuid });
+  if (info.payment_status === 'paid' || info.payment_status === 'paid_over') {
+    // пометить заказ info.order_id оплаченным (идемпотентно)
+  }
+  res.send('ok');
+});
+```
+
+</CodeGroup>
+
+Оплаченными считайте только `paid` и `paid_over`.
+
+---
+
+## Ошибки и повторы
+
+```ts
+import { OblodaiApiError, OblodaiConnectionError } from '@oblodai-npm/sdk';
+
+try {
+  await client.payouts.create({ /* ... */ });
+} catch (e) {
+  if (e instanceof OblodaiApiError) {
+    e.code;        // "payout.insufficient_funds" — ветвитесь по коду
+    e.status;      // HTTP-статус
+    e.isRetriable; // временная ли
+  }
+}
+```
+
+Клиент **сам** повторяет 5xx/429/сетевые сбои с backoff и учётом `Retry-After` — **повторы включены по
+умолчанию**. Отключить: `new OblodaiClient({ ..., retry: false })`.
+
+**Повтор безопасен, но механизм зависит от версии:**
+
+| | **v1.0.x** (сейчас в npm) | **v1.1.0** (не опубликована) |
+|---|---|---|
+| Защита от дублей | `order_id`: не задали — **SDK подставит свой** | заголовок `Idempotency-Key`, одинаковый во всех внутренних повторах |
+| Ваш `order_id` | если не задан — в платеже будет сгенерированный SDK | уходит **как есть**, SDK не подставляет и не переписывает |
+| Свой ключ | `idempotency_key` **не существует** | можно передать `idempotency_key` — уйдёт в заголовок |
+
+В обеих версиях таймаут/обрыв сети не создаст дубль счёта или перевода. Для **выплат** `order_id`
+обязателен всегда — его задаёте вы (иначе `payout.order_id_required`).
+
+---
+
+## Логи и отладка
+
+Включите логи одной переменной окружения — увидите каждый запрос/ответ/ретрай:
+
+```bash
+export OBLODAI_LOG=debug   # уровни: debug · info · warn · error
+```
+
+Строки идут в stderr с префиксом `oblodai:` (метод, путь, статус, номер попытки, задержка ретрая).
+**Секреты, подпись и тела запросов в лог не попадают.** Вместо переменной можно задать свой логгер: `new OblodaiClient({ ..., logger })`.
+
+<Note>
+  **Проверяете подпись вебхука статичным (старым) вектором?** По умолчанию действует окно свежести
+  5 минут — старый `timestamp` отклонит replay-защита (валидная подпись → всё равно ошибка). Для
+  офлайн-проверки задайте окно 0: `constructWebhookEvent(secret, raw, hdrs, { maxAgeSeconds: 0 })`.
+</Note>
+
+---
+
+## Если не получилось
+
+| Симптом | Причина и что делать |
+|---|---|
+| `OblodaiApiError` `401` на каждый вызов | Не заданы `OBLODAI_PUBLIC_ID`/`OBLODAI_SECRET` или перепутаны. SDK подписывает сам. |
+| `fromEnv()` бросает ошибку | Обязательная переменная окружения не задана (её имя — в тексте ошибки). |
+| Вебхук не проходит проверку | Нужно **сырое** тело — используйте `express.raw({ type: '*/*' })`, а не `express.json()`; и **webhook‑секрет** из `webhooks.register()`, не API‑секрет. |
+| Вебхук вообще не приходит | Не зарегистрировали endpoint (`webhooks.register(url)`) или сайт недоступен из интернета. |
+| `429` | SDK повторяет сам с учётом `Retry-After`. Не поллите `payments.info()` в цикле. Много операций — шлите их [пачкой](/guides/batch-operations). |
+
+Полная диагностика — [Что делать, если не работает](/guides/troubleshooting).
+
+## Связанные страницы
+
+- [Обзор SDK](/sdk/overview) · [Сквозной пример приложения](/guides/end-to-end-example)
+- [Настройка вебхуков](/guides/webhooks-setup) · [Коды ошибок](/reference/errors-catalog)

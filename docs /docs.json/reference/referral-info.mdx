@@ -1,0 +1,78 @@
+---
+title: "POST /v1/referral/info"
+---
+
+Реферальная панель: код, ссылка, число приведённых мерчантов и суммарные начисления.
+
+**URL:** `https://api.oblodai.com/v1/referral/info` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Тело:** `{}`.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/referral/info' '{}' \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/referral/info \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d '{}'
+```
+
+```python Python
+call("/v1/referral/info", {})
+```
+
+```js Node.js
+await call("/v1/referral/info", {});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "code": "K7QF2M9A",
+    "link": "https://oblodai.com/?ref=K7QF2M9A",
+    "tier_bps": [3000, 2000, 1000],
+    "referred_count": 4,
+    "earnings_by_asset": { "USDT": "18450000", "ETH": "3200000000000000" }
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `code` | string | Персональный реферальный код. |
+| `link` | string | Готовая пригласительная ссылка `…/?ref=<code>`. |
+| `tier_bps` | array&lt;int&gt; | Доля **нашей** комиссии рефереру по месяцам, в bps. По умолчанию `[3000, 2000, 1000]` = 30 % / 20 % / 10 % за 1‑й, 2‑й, 3‑й месяц, дальше 0. |
+| `referred_count` | int | Сколько мерчантов приведено. |
+| `earnings_by_asset` | object | Валюта → сумма в **минимальных единицах** (minor units), строкой. |
+
+---
+
+## Нюансы
+
+- Приведённый мерчант получает **сниженную** комиссию (по умолчанию 1.4 %); реферер зарабатывает долю
+  комиссии платформы 3 месяца.
+- `earnings_by_asset` — в **minor‑единицах**. Для USDT (6 знаков) `"18450000"` = 18.45 USDT. См.
+  [Форматы сумм и денег](/reference/basics-money).
+
+---
+
+## Связанные страницы
+
+- [Форматы сумм и денег](/reference/basics-money)

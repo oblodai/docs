@@ -1,0 +1,118 @@
+---
+title: "Отладка вебхуков"
+icon: "bug"
+---
+
+Прежде чем принимать боевой трафик, убедитесь, что ваш приёмник вебхуков действительно работает.
+Oblodai даёт инструменты, чтобы отправить пробное событие и посмотреть журнал доставок — без ожидания
+реальной оплаты.
+
+---
+
+## Отправить пробное событие
+
+Пробный вебхук синхронно шлёт тело на ваш URL и возвращает HTTP‑код, которым ответил ваш эндпоинт.
+
+```python
+resp = call("/v1/test-webhook/payment", {
+    "url_callback": "https://shop.example/oblodai/callback",
+    "status": "paid",
+    "currency": "USDT",
+    "network": "tron",
+})
+print(resp["result"])   # {"result": true, "status_code": 200}
+```
+
+`status_code` — то, что вернул ваш обработчик. Если это не `200`/`2xx`, значит приёмник не принял
+событие: смотрите свои логи.
+
+Есть три типа: `/v1/test-webhook/payment`, `/wallet`, `/payout`. Легаси‑форма — `testing-webhook`.
+Полностью — [Тестовые вебхуки](/reference/webhooks-test).
+
+<Warning>
+  **Пробные тела НЕ подписаны** и содержат `"is_test": true`. Если ваш код строго проверяет подпись,
+  он отклонит пробное тело — это ожидаемо. Тестируйте либо с временным пропуском проверки для
+  `is_test`, либо проверяйте подпись отдельно на боевых событиях.
+</Warning>
+
+---
+
+## Пример: обработчик, дружелюбный к тестам
+
+```python
+@app.post("/oblodai/callback")
+def callback():
+    raw = request.get_data()
+    event = request.get_json(silent=True) or {}
+
+    if event.get("is_test"):
+        # пробное тело — не подписано; просто подтверждаем приём
+        return "ok", 200
+
+    # боевое тело — проверяем подпись
+    ts  = request.headers.get("X-Webhook-Timestamp", "")
+    sig = request.headers.get("X-Webhook-Signature", "")
+    expected = hmac.new(WEBHOOK_SECRET, ts.encode() + b"." + raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        return "bad signature", 403
+
+    handle_event(event)
+    return "ok", 200
+```
+
+---
+
+## Посмотреть журнал доставок
+
+Последние доставки (до 50) с их статусом и последней ошибкой:
+
+```python
+d = call("/v1/webhooks/deliveries", {})["result"]["deliveries"]
+for x in d:
+    print(x["event_type"], x["status"], x["attempts"], x["last_error"])
+```
+
+Статусы доставки:
+
+| Статус | Значение |
+|---|---|
+| `pending` | В очереди или ждёт ретрая. |
+| `delivered` | Ваш endpoint вернул `2xx`. |
+| `dead` | Исчерпаны все попытки. |
+
+Полностью — [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries).
+
+---
+
+## Переотправить вебхук платежа
+
+Если доставка ушла в `dead` (например, ваш сервер лежал), поставьте текущий вебхук платежа в очередь
+заново:
+
+```python
+call("/v1/payment/resend", {"order_id": "order-1001"})
+```
+
+Событие соответствует **текущему** статусу платежа. Помните: переотправка создаёт **ещё одну**
+доставку — обработчик должен быть идемпотентен (дедуп по `uuid` + `status`). См.
+[`POST /v1/payment/resend`](/reference/payment-resend).
+
+---
+
+## Чек‑лист отладки
+
+- [ ] Endpoint зарегистрирован ([`/v1/webhooks`](/reference/webhooks-register)), секрет сохранён.
+- [ ] Пробное событие доходит и возвращает `status_code: 200`.
+- [ ] Обработчик берёт **сырое тело** (не пересериализованное) для проверки подписи.
+- [ ] Боевая подпись проверяется корректно (алгоритм вебхука, не запроса).
+- [ ] Повторная доставка того же события не приводит к двойной выдаче (дедуп по `uuid` + `status`).
+- [ ] `2xx` возвращается только после успешной обработки.
+- [ ] В журнале доставок статус `delivered`, а не `pending`/`dead`.
+
+---
+
+## Связанные страницы
+
+- [Тестовые вебхуки](/reference/webhooks-test) · [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries)
+- [`POST /v1/payment/resend`](/reference/payment-resend) · [Настройка вебхуков](/guides/webhooks-setup)
+- [Объект вебхука](/reference/webhook-object)

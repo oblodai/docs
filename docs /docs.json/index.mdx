@@ -1,0 +1,94 @@
+---
+title: "Oblodai — криптоплатёжный шлюз"
+description: "Приём криптоплатежей, выплаты, статические кошельки и вебхуки. Один API-ключ — весь функционал."
+sidebarTitle: "Введение"
+icon: "house"
+---
+
+Документация для разработчиков, встраивающих криптоплатёжный шлюз **Oblodai**: приём платежей, выплаты, статические кошельки и вебхуки. Один API-ключ открывает весь функционал.
+
+<Info>
+  **API-версия:** `v1` · **Базовый URL:** `https://api.oblodai.com` · **Hosted-оплата:** `https://pay.oblodai.com`
+</Info>
+
+## С чего начать
+
+<Steps>
+  <Step title="Заведите аккаунт и получите ключи">
+    Зарегистрируйтесь в кабинете [my.oblodai.com](https://my.oblodai.com) и получите `public_id` \+ `secret`. Подробнее — в разделе [Регистрация и ключи](/guides/get-keys).
+  </Step>
+  <Step title="Выберите путь интеграции">
+    Магазин на готовой CMS — поставьте [модуль](/modules). Пишете свой бэкенд — возьмите [SDK](/sdk). Хотите разобраться в API — начните с [Быстрого старта](/quickstart).
+  </Step>
+  <Step title="Примите первый платёж">
+    Пройдите [Быстрый старт](/quickstart) — от ключей до первого вебхука за пять шагов.
+  </Step>
+</Steps>
+
+## Разделы документации
+
+<CardGroup cols={2}>
+  <Card title="Инструкции" icon="book-open" href="/quickstart">
+    Пошаговые руководства: приём платежей, выплаты, вебхуки, переход с Heleket. Идите сюда, когда нужно решить задачу.
+  </Card>
+
+  <Card title="Справочник" icon="code" href="/reference">
+    Точное описание каждого объекта и метода API. Что принимает, что возвращает, какие ошибки. Примеры на cURL, Python и Node.js.
+  </Card>
+
+  <Card title="SDK" icon="cubes" href="/sdk">
+    Готовые библиотеки для PHP, TypeScript/Node.js, Python, Go и Rust. Подпись, проверка вебхуков и повторы — из коробки.
+  </Card>
+
+  <Card title="Модули для CMS" icon="cart-shopping" href="/modules">
+    Готовые платёжные модули для WooCommerce, OpenCart, PrestaShop, WHMCS, IPS, XenForo. Программировать не нужно.
+  </Card>
+</CardGroup>
+
+## Выберите свой путь
+
+<Columns cols={3}>
+  <Card title="У меня магазин на CMS" icon="store" href="/modules">
+    Установите модуль, введите ключ — приём криптоплатежей работает. Код не нужен.
+  </Card>
+
+  <Card title="Я пишу свой бэкенд" icon="terminal" href="/sdk">
+    Подключите SDK для вашего языка и вызовите пару методов.
+  </Card>
+
+  <Card title="Хочу разобраться в API" icon="wrench" href="/quickstart">
+    Быстрый старт, подпись запросов и сквозной пример приложения.
+  </Card>
+</Columns>
+
+## Ключевые принципы за 30 секунд
+
+<AccordionGroup>
+  <Accordion title="Один API-ключ на всё" icon="key">
+    Единый ключ мерчанта аутентифицирует и приём платежей, и выплаты. Радиус поражения ограничен одним вашим мерчантом. Вы сами отвечаете за хранение ключа.
+  </Accordion>
+
+  <Accordion title="Всё server-to-server" icon="server">
+    Секрет ключа никогда не попадает в браузер или мобильное приложение — подпись считается только на вашем сервере.
+  </Accordion>
+
+  <Accordion title="Каждый запрос подписывается" icon="signature">
+    HMAC-SHA256 по трём заголовкам (`X-Public-Id`, `X-Timestamp`, `X-Signature`). См. [Аутентификацию](/reference/basics-auth).
+  </Accordion>
+
+  <Accordion title="Идемпотентность — заголовком Idempotency-Key" icon="rotate">
+    Одинаковый ключ во всех попытках → повтор вернёт тот же результат, а не создаст второй платёж. Без заголовка и без `order_id` повтор создаст дубль. См. [Идемпотентность](/reference/basics-idempotency).
+  </Accordion>
+
+  <Accordion title="Валюта цены ≠ валюта расчёта" icon="coins">
+    `currency` — в чём назначена цена (23 фиатные валюты или любая монета). `to_currency` — в чём идёт расчёт: всегда только крипта. Баланс, выплаты и возвраты тоже всегда в крипте.
+  </Accordion>
+
+  <Accordion title="Суммы — строками, ответ — конвертом" icon="brackets-curly">
+    Суммы передаются строками в единицах валюты (`"25.00"`, `"0.015"`), без float. Ответ — всегда конверт `{ "state": 0, "result": {…} }` при успехе или `{ "error": {…} }` при ошибке.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Не нашли нужное? Загляните в [Справочник кодов ошибок](/reference/errors-catalog) или [Глоссарий](/reference/glossary).
+</Note>

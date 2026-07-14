@@ -1,0 +1,140 @@
+---
+title: "Инструкции Oblodai"
+sidebarTitle: "Обзор"
+description: "Пошаговые руководства: от получения ключей до боевого приёма платежей."
+icon: "map"
+---
+
+Пошаговые руководства по работе с Oblodai — от первого ключа до боевого приёма платежей и выплат.
+В отличие от [Справочника](/reference/overview), где сухо описан каждый метод, здесь задачи решаются
+целиком: с контекстом, порядком действий и объяснением, почему так.
+
+## Что такое Oblodai
+
+Oblodai — платёжный шлюз для приёма и отправки криптовалюты. Интеграция строится на двух вещах:
+
+- **HTTP API** — ваш backend вызывает его server‑to‑server, подписывая каждый запрос HMAC‑подписью.
+  Через него вы создаёте платежи, получаете статусы, делаете выплаты и возвраты, управляете вебхуками.
+- **Hosted‑страница оплаты** — при создании платежа шлюз возвращает ссылку/адрес, на который
+  покупатель отправляет средства. Отслеживание поступления, подтверждения и переплаты/недоплаты берёт
+  на себя шлюз, а вам присылает вебхук.
+
+Три принципа, на которых стоит вся интеграция:
+
+1. **Один API‑ключ на весь функционал** — и приём, и выплаты. Радиус поражения ключа ограничен одним
+   вашим мерчантом. За хранение ключа отвечаете вы.
+2. **Всё server‑to‑server** — секрет ключа считает подпись только на сервере и никогда не попадает в
+   браузер или мобильное приложение. (Исключение — [платёжные ссылки](/guides/payment-links): они работают
+   без вашего кода вообще, поэтому им сервер не нужен.)
+3. **Идемпотентность — два механизма.** HTTP‑заголовок **`Idempotency-Key`** (одно значение на действие,
+   неизменное во всех попытках; повтор вернёт тот же ответ) **и** ваш **`order_id`**, который тоже
+   дедуплицирует (для выплат обязателен). Повторять запрос безопасно. →
+   [Устойчивый клиент](/guides/resilient-client#главный-принцип)
+
+## Начало работы
+
+<CardGroup cols={2}>
+  <Card title="Регистрация и ключи" icon="key" href="/guides/get-keys">
+    **Начните отсюда:** кабинет, ключи, что понадобится (сервер, вебхуки).
+  </Card>
+  <Card title="Быстрый старт" icon="rocket" href="/quickstart">
+    От получения ключей до первого вебхука за пять шагов.
+  </Card>
+  <Card title="Как подписать запрос" icon="signature" href="/guides/signing-requests">
+    Разбор HMAC‑подписи по шагам и частые ошибки.
+  </Card>
+  <Card title="Сквозной пример приложения" icon="diagram-project" href="/guides/end-to-end-example">
+    Рабочий сервер приёма платежей целиком.
+  </Card>
+  <Card title="Тестирование интеграции" icon="flask" href="/guides/testing">
+    Как всё проверить без песочницы.
+  </Card>
+  <Card title="FAQ и диагностика" icon="circle-question" href="/guides/faq-troubleshooting">
+    Частые вопросы — короткие ответы. Пошаговая диагностика — в [Что делать, если не работает](/guides/troubleshooting).
+  </Card>
+</CardGroup>
+
+## Приём платежей в крипте
+
+<CardGroup cols={2}>
+  <Card title="Приём первого платежа" icon="circle-dollar-to-slot" href="/guides/accept-first-payment">
+    Создать счёт, показать адрес, дождаться оплаты.
+  </Card>
+  <Card title="Три режима создания счёта" icon="sliders" href="/guides/payment-modes">
+    Цена в **фиате** (23 валюты), выбор монеты покупателем, фиксированная валюта и сеть.
+  </Card>
+  <Card title="Платёжные ссылки" icon="link" href="/guides/payment-links">
+    Оплата **без своего бэкенда**: донаты, диапазоны сумм, кнопка «Оплатить» на Tilda/Wix.
+  </Card>
+  <Card title="Недоплата, переплата и автовозврат" icon="scale-unbalanced" href="/guides/under-overpayment">
+    Настройки `accuracy` и `autorefund`.
+  </Card>
+  <Card title="Статические кошельки" icon="wallet" href="/guides/static-wallets">
+    Персональный постоянный адрес пополнения для клиента.
+  </Card>
+  <Card title="Счёт и чек на почту" icon="envelope" href="/guides/email-invoices">
+    Автоматический чек плательщику и отправка счёта письмом.
+  </Card>
+  <Card title="Модель баланса и движение средств" icon="coins" href="/guides/balance-and-funds">
+    Откуда деньги приходят и куда уходят.
+  </Card>
+</CardGroup>
+
+## Масштаб и автоматизация
+
+<CardGroup cols={2}>
+  <Card title="Массовые операции (батчи)" icon="boxes-stacked" href="/guides/batch-operations">
+    До **5000** платежей, возвратов или выплат **одним** запросом — штатный способ не упираться в rate limit.
+  </Card>
+  <Card title="Сплит‑платежи" icon="chart-pie" href="/guides/split-payments">
+    Доля каждого платежа автоматически уходит партнёрам. Для партнёрок и маркетплейсов.
+  </Card>
+</CardGroup>
+
+## Выплаты
+
+<CardGroup cols={2}>
+  <Card title="Первая выплата" icon="money-bill-wave" href="/guides/first-payout">
+    От баланса до подтверждающего вебхука.
+  </Card>
+  <Card title="Возвраты платежей" icon="rotate-left" href="/guides/refunds">
+    Полный и частичный; адрес указывать **не обязательно**.
+  </Card>
+  <Card title="Массовые выплаты (легаси)" icon="people-group" href="/guides/mass-payouts">
+    `/v1/payout/mass` (до 100) — когда он ещё уместен; основной путь — [батчи](/guides/batch-operations).
+  </Card>
+</CardGroup>
+
+## Вебхуки
+
+<CardGroup cols={2}>
+  <Card title="Настройка и приём вебхуков" icon="bolt" href="/guides/webhooks-setup">
+    Регистрация, проверка подписи, идемпотентность обработчика.
+  </Card>
+  <Card title="Отладка вебхуков" icon="bug" href="/guides/webhooks-debug">
+    Тестовые события, журнал доставок, переотправка.
+  </Card>
+</CardGroup>
+
+## Надёжность и прод
+
+<CardGroup cols={2}>
+  <Card title="Рецепт устойчивого клиента" icon="heart-pulse" href="/guides/resilient-client">
+    Таймауты, идемпотентность, ретраи, backoff. **Какие `409` надо повторять, а какие нет.**
+  </Card>
+  <Card title="Безопасность вебхуков" icon="shield-halved" href="/guides/webhooks-security">
+    Replay‑защита и перепроверка статуса — за пределами подписи.
+  </Card>
+  <Card title="Безопасность в проде" icon="lock" href="/guides/production-security">
+    Хранение ключа, IP‑allowlist, ротация ключа.
+  </Card>
+  <Card title="Чек‑лист перед запуском" icon="list-check" href="/guides/production-checklist">
+    Что проверить до боевого трафика.
+  </Card>
+</CardGroup>
+
+## Миграция
+
+<Card title="Переход с Heleket на Oblodai" icon="arrow-right-arrow-left" href="/guides/migration-heleket" horizontal>
+  Отличия API и что поправить в коде.
+</Card>

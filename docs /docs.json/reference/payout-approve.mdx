@@ -1,0 +1,77 @@
+---
+title: "POST /v1/payout/approve"
+---
+
+Подтвердить выплату в статусе `pending` (`check`).
+
+<Note>
+  **Для выплат по API‑ключу не требуется.** Такие выплаты авто‑одобряются. Этот метод нужен только
+  внутренним/кабинетным выплатам, оставшимся в `pending` (например, возврат на адрес, отличный от
+  адреса плательщика).
+</Note>
+
+**URL:** `https://api.oblodai.com/v1/payout/approve` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `uuid` | string | да | Идентификатор выплаты. |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"uuid":"0c1f...e9"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/approve' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/approve \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/approve", {"uuid": "0c1f...e9"})
+```
+
+```js Node.js
+await call("/v1/payout/approve", { uuid: "0c1f...e9" });
+```
+
+</CodeGroup>
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 payout.bad_uuid` | Некорректный `uuid`. |
+| `404 payout.not_found` | Выплата не найдена. |
+| `409 payout.not_pending` | Выплата не в статусе `pending`. |
+| `409 payout.frozen` | Выплаты заморожены (сработал kill‑switch). |
+| `403 payout.approver_is_creator` | Подтверждающий совпадает с создателем (maker‑checker). |
+
+---
+
+## Нюансы
+
+- Действует принцип **maker‑checker**: подтвердить выплату должен не тот, кто её создал
+  (`payout.approver_is_creator`). Для API‑ключевых выплат подтверждение не нужно вовсе.
+
+---
+
+## Связанные страницы
+
+- [Объект выплаты](/reference/payout-object) · [`POST /v1/payout`](/reference/payout-create)

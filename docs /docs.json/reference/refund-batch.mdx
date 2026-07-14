@@ -1,0 +1,143 @@
+---
+title: "POST /v1/refund/batch"
+---
+
+Массовый возврат — до **5000** возвратов одним запросом. Обрабатывается асинхронно: в ответ сразу
+приходит `batch_id`, результат по каждому элементу забирается через
+[`POST /v1/batch/info`](/reference/batch-info).
+
+<Note>
+  **Это штатный способ не упираться в rate limit.** Один подписанный запрос вместо 5000 —
+  [лимит частоты](/reference/basics-ratelimit) считается по запросам, а не по элементам внутри них.
+</Note>
+
+**URL:** `https://api.oblodai.com/v1/refund/batch` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + тройка `(платёж, адрес, сумма)` каждого элемента.
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `refunds` | array | да | Массив от 1 до **5000** элементов. Поля каждого элемента — **ровно те же**, что у [`POST /v1/payment/refund`](/reference/payment-refund). |
+| `on_error` | string | нет | Что делать при ошибке элемента: `continue` (по умолчанию) — обрабатывать остальные; `stop` — прекратить обработку после первой ошибки. |
+
+Каждый элемент проходит **тот же** путь, что и одиночный возврат: `address` необязателен (по
+умолчанию — [`payer_address`](/reference/payment-object) платежа), возврат на адрес плательщика
+авто‑подтверждается, на любой другой — ждёт [подтверждения](/reference/payout-approve).
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"refunds":[
+  {"order_id":"order-1"},
+  {"order_id":"order-2","amount":"5"},
+  {"uuid":"a1b2...c3","address":"TZZ...","network":"tron"}
+],"on_error":"continue"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/refund/batch' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/refund/batch \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -H "Idempotency-Key: refunds-2026-07-13" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/refund/batch", {
+    "refunds": [
+        {"order_id": "order-1"},                                  # весь платёж, на адрес плательщика
+        {"order_id": "order-2", "amount": "5"},                   # частичный возврат
+        {"uuid": "a1b2...c3", "address": "TZZ...", "network": "tron"},  # на явный адрес
+    ],
+    "on_error": "continue",
+})
+```
+
+```js Node.js
+await call("/v1/refund/batch", {
+  refunds: [
+    { order_id: "order-1" },
+    { order_id: "order-2", amount: "5" },
+    { uuid: "a1b2...c3", address: "TZZ...", network: "tron" },
+  ],
+  on_error: "continue",
+});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "batch_id": "3c7e9a10-5b21-4f8d-9a44-6d2e1f0b7c39",
+    "kind": "refund",
+    "count": 3,
+    "status": "pending"
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `batch_id` | string | Идентификатор батча — с ним в [`POST /v1/batch/info`](/reference/batch-info). |
+| `kind` | string | Вид батча — здесь всегда `refund`. |
+| `count` | int | Сколько элементов принято в обработку. |
+| `status` | string | Стартовый статус — всегда `pending`. |
+
+---
+
+## Статусы батча
+
+`pending` → `processing` → `completed`. Подробнее — [`/v1/batch/info`](/reference/batch-info).
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 batch.empty` | Массив `refunds` пуст. |
+| `400 batch.too_large` | Больше 5000 элементов. |
+| `503 batch.disabled` | Массовая обработка недоступна на этом шлюзе. |
+| `401 auth.*` | Ошибки аутентификации. |
+
+Ошибки отдельных возвратов (`refund.nothing_to_refund`, `refund.no_address`,
+`refund.exceeds_refundable` и т. п.) приходят в `items[].error` ответа
+[`/v1/batch/info`](/reference/batch-info).
+
+---
+
+## Нюансы
+
+- **Баланс проверяется поэлементно.** Возврат — это списание с баланса. Если средств не хватит,
+  часть элементов упадёт с ошибкой, а остальные пройдут (при `on_error: "continue"`).
+- **Возврат на чужой адрес** останется ждать подтверждения ([maker‑checker](/reference/payout-approve)) —
+  батч этого не отменяет.
+- **Bitcoin/UTXO.** У таких платежей нет единого отправителя, `payer_address` пуст — в элементе
+  обязательно указывайте `address`, иначе получите `refund.no_address`.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/batch/info`](/reference/batch-info) — поллинг статуса и результатов.
+- [`POST /v1/payment/refund`](/reference/payment-refund) — поля элемента.
+- [`POST /v1/payment/batch`](/reference/payment-batch) · [`POST /v1/payout/batch`](/reference/payout-batch)
+- [Возвраты платежей](/guides/refunds)

@@ -1,0 +1,126 @@
+---
+title: "POST /v1/payment/info"
+---
+
+Возвращает актуальное состояние счёта по `uuid` или `order_id`.
+
+**URL:** `https://api.oblodai.com/v1/payment/info` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+Нужен хотя бы один идентификатор; приоритет у `uuid`.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `uuid` | string | нет\* | Идентификатор счёта в Oblodai. |
+| `order_id` | string | нет\* | Ваша ссылка на заказ. |
+
+\* Требуется хотя бы одно из двух.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"order_id":"order-1"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/info' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/info \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/info", {"order_id": "order-1"})
+```
+
+```js Node.js
+await call("/v1/payment/info", { order_id: "order-1" });
+```
+
+</CodeGroup>
+
+---
+
+## Ответ
+
+Тот же объект платежа, что у [`POST /v1/payment`](/reference/payment-create), с актуальными
+`payment_status`, `amount_paid`, `amount_remaining`, `confirmations`, `txid`, `payer_address`. Полное
+описание полей — [Объект платежа](/reference/payment-object).
+
+### Возвраты: `refunds[]` и `refund_status`
+
+**Только этот метод** дополняет объект платежа сведениями о возвратах (в
+[`/history`](/reference/payment-history) их нет — это сэкономленный запрос на каждую строку списка):
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `refund_status` | string | `none` — ничего не возвращали; `partial` — вернули часть; `full` — вернули всё оплаченное. |
+| `refunds` | array | Каждый возврат: `uuid`, `status`, `amount`, `address`, `txid`, `is_final`, `created_at`. |
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+    "order_id": "order-1",
+    "payment_status": "paid",
+    "payer_currency": "USDT",
+    "payer_address": "TQm9...7bXe",
+    "refund_status": "partial",
+    "refunds": [
+      {
+        "uuid": "f9e8...01",
+        "status": "paid",
+        "amount": "5.000000",
+        "address": "TQm9...7bXe",
+        "txid": "0x9ab…",
+        "is_final": true,
+        "created_at": "2026-07-13T14:02:00Z"
+      }
+    ]
+  }
+}
+```
+
+Отменённые и провалившиеся возвраты (`cancel`, `fail`) в `refund_status` не учитываются — денег они не
+вернули. По этой паре полей удобно проверять, не возвращён ли заказ, **не заводя своего учёта
+возвратов**.
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 payment.bad_uuid` | `uuid` некорректного формата. |
+| `400 payment.no_lookup` | Не передан ни `uuid`, ни `order_id`. |
+| `404 payment.not_found` | Счёт не найден. |
+
+---
+
+## Нюансы
+
+- Чужой счёт и несуществующий UUID отдают **одинаковый** `404 payment.not_found` — намеренно, чтобы
+  нельзя было проверить существование чужого счёта.
+- Для отслеживания оплаты в реальном времени лучше полагаться на [вебхуки](/reference/webhook-object), а
+  `/info` использовать как резервный опрос.
+
+---
+
+## Связанные страницы
+
+- [Объект платежа](/reference/payment-object) · [`POST /v1/payment`](/reference/payment-create)
+- [`POST /v1/payment/refund`](/reference/payment-refund) — возврат (адрес по умолчанию — `payer_address`).
+- [Вебхуки](/reference/webhook-object)

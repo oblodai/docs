@@ -1,0 +1,79 @@
+---
+title: "POST /v1/payment/autorefund/get · /set"
+---
+
+Авто‑возврат средств плательщику при платежах **вне допуска**: возврат излишка при переплате и возврат
+суммы при истёкшей недоплате.
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## POST /v1/payment/autorefund/get
+
+Тело — `{}`.
+
+```json
+{ "state": 0, "result": { "overpay": true, "underpay": true, "configured": false } }
+```
+
+Оба флага по умолчанию **включены**. `configured: false` означает, что явной записи нет и возвращён
+дефолт.
+
+---
+
+## POST /v1/payment/autorefund/set
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `overpay` | bool | да | Возвращать излишек при переплате (`paid_over`). |
+| `underpay` | bool | да | Возвращать средства при истёкшей недоплате (`wrong_amount`). |
+
+### Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"overpay":true,"underpay":true}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/autorefund/set' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/autorefund/set \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/autorefund/set", {"overpay": True, "underpay": True})
+```
+
+```js Node.js
+await call("/v1/payment/autorefund/set", { overpay: true, underpay: true });
+```
+
+</CodeGroup>
+
+---
+
+## Нюансы
+
+- Возврат идёт на **адрес плательщика**. **По умолчанию из суммы удерживаются и наша комиссия, и
+  сетевой газ** (авто-возвраты по умолчанию «за счёт клиента»). То есть плательщик получает
+  `сумма − наша комиссия − газ`. Кто несёт комиссию возврата — настраивается на уровне проекта через
+  [refund-fee-config](/reference/payout-refund-fee-config); можно переключить на «за счёт мерчанта».
+  (Важно: у **ручного** [`/v1/payment/refund`](/reference/payment-refund) дефолт обратный — за счёт мерчанта.)
+- Поддержаны сети **EVM, Tron, TON, Solana**. Для **Bitcoin/UTXO** возврат ручной.
+- Взаимодействие с допуском: сначала работает [`accuracy`](/reference/payment-accuracy) (недоплата в пределах
+  допуска считается оплатой), а автовозврат обрабатывает то, что в допуск не попало.
+
+---
+
+## Связанные страницы
+
+- [Недоплата, переплата и автовозврат](/guides/under-overpayment)
+- [Допуск недоплаты](/reference/payment-accuracy) · [`POST /v1/payment/refund`](/reference/payment-refund)
