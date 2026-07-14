@@ -1,0 +1,134 @@
+---
+title: "POST /v1/payment/send-email"
+---
+
+Отправить покупателю **письмо со счётом** — с суммой и кнопкой «Оплатить», ведущей на
+[hosted‑страницу оплаты](/reference/pay-get). Полезно, когда счёт выставлен, а покупателя нужно к нему
+привести: выставили инвойс по почте, напомнили о неоплаченном заказе.
+
+**URL:** `https://api.oblodai.com/v1/payment/send-email` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Чек уходит сам
+
+**Если при создании платежа задан `payer_email`, на этот адрес автоматически уходит ЧЕК после
+оплаты.** Ничего вызывать для этого не нужно — достаточно передать `payer_email` в
+[`POST /v1/payment`](/reference/payment-create) (или в
+[`POST /v1/link/{id}/checkout`](/reference/link-public), где его вводит сам покупатель).
+
+`POST /v1/payment/send-email` — про **другое**: это письмо **до** оплаты, приглашение заплатить. Его
+вы шлёте сами и можете слать повторно.
+
+| | Письмо со счётом («Оплатите») | Чек («Оплачено») |
+|---|---|---|
+| Когда | Когда вы вызовете `/v1/payment/send-email` | Автоматически после оплаты |
+| Кому | `email` из запроса, иначе `payer_email` платежа | `payer_email` платежа |
+| Нужен вызов API | Да | **Нет** |
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `uuid` | string | нет\* | Идентификатор платежа в Oblodai. |
+| `order_id` | string | нет\* | Ваша ссылка на заказ. |
+| `email` | string | нет | Кому отправить. По умолчанию — `payer_email`, заданный у платежа. |
+
+\* Нужен `uuid` **или** `order_id`.
+
+Если `email` не передан **и** у платежа нет `payer_email` — слать некуда, придёт
+`400 email.no_recipient`.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"order_id":"order-1"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/send-email' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/send-email \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+# На payer_email, заданный при создании платежа:
+call("/v1/payment/send-email", {"order_id": "order-1"})
+
+# На другой адрес:
+call("/v1/payment/send-email", {"uuid": "8b1d7d2e-…", "email": "buyer@example.com"})
+```
+
+```js Node.js
+await call("/v1/payment/send-email", { order_id: "order-1" });
+await call("/v1/payment/send-email", { uuid: "8b1d7d2e-…", email: "buyer@example.com" });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "sent": true,
+    "email": "buyer@example.com",
+    "uuid": "8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e"
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `sent` | bool | Письмо принято в очередь отправки. |
+| `email` | string | Фактический получатель. |
+| `uuid` | string | Платёж, по которому отправлено письмо. |
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 email.no_recipient` | Получатель не определён: не передан `email` и у платежа нет `payer_email`. |
+| `503 email.disabled` | Почта не настроена на этом шлюзе. |
+| `400 payment.bad_uuid` | Некорректный `uuid`. |
+| `400 payment.no_lookup` | Не передан ни `uuid`, ни `order_id`. |
+| `404 payment.not_found` | Платёж не найден. |
+| `401 auth.*` | Ошибки аутентификации. |
+
+---
+
+## Нюансы
+
+- **Повторная отправка разрешена.** Дедупликации нет: вызвав метод дважды, вы отправите два письма.
+  Это сделано намеренно — «напомнить об оплате» законная операция.
+- **`sent: true` — это «принято в очередь»**, а не «доставлено в почтовый ящик». Доставку писем
+  Oblodai не гарантирует и статус не отдаёт.
+- **Работает только для живого счёта.** По истёкшему счёту письмо отправится, но кнопка «Оплатить»
+  приведёт на страницу просроченного счёта. Перед отправкой напоминания проверяйте статус через
+  [`POST /v1/payment/info`](/reference/payment-info) — или оживите счёт через `is_refresh` у
+  [`POST /v1/payment`](/reference/payment-create).
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment`](/reference/payment-create) — где задаётся `payer_email` (он же включает автоматический чек).
+- [`POST /v1/payment/info`](/reference/payment-info) · [`GET /v1/pay/{id}`](/reference/pay-get)
+- [`POST /v1/link/{id}/checkout`](/reference/link-public) — покупатель вводит email сам.

@@ -1,0 +1,109 @@
+---
+title: "POST /v1/wallet"
+---
+
+Создать (или получить существующий) постоянный статический адрес приёма. Средства на него зачисляются
+напрямую на доступный баланс мерчанта.
+
+**URL:** `https://api.oblodai.com/v1/wallet` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Идемпотентность:** заголовок `Idempotency-Key` или тройка `(currency, network, order_id)`.
+
+### Заголовки
+
+| Заголовок | Обяз. | Описание |
+|---|---|---|
+| `Idempotency-Key` | нет | Любое уникальное значение (≤255 символов), одинаковое во всех повторах. Повтор вернёт тот же ответ и заголовок `Idempotent-Replayed: true`. → [Идемпотентность](/reference/basics-idempotency) |
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `currency` | string | да | Символ валюты приёма (`USDT`, `BTC`, `ETH`, …). |
+| `network` | string | да | Сеть приёма (`tron`, `ethereum`, `bitcoin`, …). |
+| `order_id` | string | нет | Ваш идентификатор клиента/заказа. Закрепляет отдельный постоянный адрес за клиентом. |
+
+Пара `(currency, network)` должна быть принимаемым и отслеживаемым методом из
+[каталога](/reference/basics-networks).
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"currency":"USDT","network":"tron","order_id":"client-42"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/wallet' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/wallet \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/wallet", {"currency": "USDT", "network": "tron", "order_id": "client-42"})
+```
+
+```js Node.js
+await call("/v1/wallet", { currency: "USDT", network: "tron", order_id: "client-42" });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "0e5b6b9a-6a1e-4b7e-9d2b-2c1f4a8e9c11",
+    "address": "TXk9...c3Fd",
+    "network": "tron",
+    "currency": "USDT",
+    "order_id": "client-42",
+    "url": ""
+  }
+}
+```
+
+Полное описание полей — [Объект кошелька](/reference/wallet-object).
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 wallet.unknown_currency` | Неизвестная валюта. |
+| `400 wallet.no_network` | Не указана сеть. |
+| `400 wallet.unsupported_network` | Пара валюта+сеть не поддерживается. |
+
+---
+
+## Нюансы
+
+- **Идемпотентность по `(currency, network, order_id)`.** Для каждого клиента передавайте уникальный
+  `order_id`, чтобы получить его персональный постоянный адрес. Повтор с той же тройкой вернёт тот же
+  кошелёк.
+- **Комиссия платформы удерживается и с депозитов на статический кошелёк** — по ставке мерчанта (по
+  умолчанию ~1.5 %). На баланс идёт нетто; поле `payment_amount` в вебхуке `wallet.paid` — это брутто
+  (что пришло на адрес), до удержания комиссии.
+- Каждое поступление шлёт вебхук [`wallet.paid`](/reference/webhook-object).
+
+---
+
+## Связанные страницы
+
+- [Объект кошелька](/reference/wallet-object) · [Статические кошельки](/guides/static-wallets)
+- [`POST /v1/wallet/block`](/reference/wallet-block) · [`POST /v1/balance`](/reference/balance)

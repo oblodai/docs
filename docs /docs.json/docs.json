@@ -2,9 +2,9 @@
   "theme": "maple",
   "name": "Oblodai",
   "colors": {
-    "primary": "#4F46E5",
-    "light": "#A5B4FC",
-    "dark": "#4338CA"
+    "primary": "#FF0F0F",
+    "light": "#FF6B6B",
+    "dark": "#D90D0D"
   },
   "logo": {
     "light": "/logo/light.svg",
@@ -56,10 +56,10 @@
   },
   "fonts": {
     "heading": {
-      "family": "Inter"
+      "family": "Manrope"
     },
     "body": {
-      "family": "Inter"
+      "family": "Manrope"
     }
   },
   "navigation": {
@@ -73,30 +73,64 @@
             "icon": "rocket",
             "pages": [
               "index",
+              "guides/overview",
               "guides/get-keys",
               "quickstart",
-              "guides/signing-requests"
+              "guides/signing-requests",
+              "guides/end-to-end-example",
+              "guides/testing"
             ]
           },
           {
             "group": "Приём платежей",
             "icon": "credit-card",
-            "pages": []
+            "pages": [
+              "guides/accept-first-payment",
+              "guides/payment-modes",
+              "guides/payment-links",
+              "guides/under-overpayment",
+              "guides/static-wallets",
+              "guides/email-invoices",
+              "guides/balance-and-funds"
+            ]
           },
           {
             "group": "Выплаты и массовые операции",
             "icon": "money-bill-transfer",
-            "pages": []
+            "pages": [
+              "guides/first-payout",
+              "guides/batch-operations",
+              "guides/mass-payouts",
+              "guides/refunds",
+              "guides/split-payments"
+            ]
           },
           {
             "group": "Вебхуки",
             "icon": "bolt",
-            "pages": []
+            "pages": [
+              "guides/webhooks-setup",
+              "guides/webhooks-debug",
+              "guides/webhooks-security"
+            ]
           },
           {
             "group": "Прод и надёжность",
             "icon": "shield-check",
-            "pages": []
+            "pages": [
+              "guides/resilient-client",
+              "guides/production-security",
+              "guides/production-checklist",
+              "guides/faq-troubleshooting",
+              "guides/troubleshooting"
+            ]
+          },
+          {
+            "group": "Миграция",
+            "icon": "arrow-right-arrow-left",
+            "pages": [
+              "guides/migration-heleket"
+            ]
           }
         ]
       },
@@ -107,22 +141,117 @@
           {
             "group": "Основы",
             "icon": "layer-group",
-            "pages": []
+            "pages": [
+              "reference/overview",
+              "reference/basics-format",
+              "reference/basics-auth",
+              "reference/basics-errors",
+              "reference/basics-idempotency",
+              "reference/basics-money",
+              "reference/basics-networks",
+              "reference/basics-ratelimit"
+            ]
+          },
+          {
+            "group": "Публичные методы",
+            "icon": "globe",
+            "pages": [
+              "reference/currencies",
+              "reference/exchange-rate-list"
+            ]
           },
           {
             "group": "Платежи",
             "icon": "credit-card",
-            "pages": []
+            "pages": [
+              "reference/payment-object",
+              "reference/payment-create",
+              "reference/payment-info",
+              "reference/payment-history",
+              "reference/payment-send-email",
+              "reference/payment-services",
+              "reference/payment-qr",
+              "reference/wallet-qr",
+              "reference/payment-accepted",
+              "reference/payment-discount",
+              "reference/payment-accuracy",
+              "reference/payment-autorefund",
+              "reference/vrcs",
+              "reference/pay-get",
+              "reference/pay-select"
+            ]
           },
           {
             "group": "Ссылки и сплиты",
             "icon": "link",
-            "pages": []
+            "pages": [
+              "reference/payment-link",
+              "reference/link-public",
+              "reference/split-rule",
+              "reference/split-config"
+            ]
+          },
+          {
+            "group": "Массовые операции",
+            "icon": "boxes-stacked",
+            "pages": [
+              "reference/payment-batch",
+              "reference/refund-batch",
+              "reference/payout-batch",
+              "reference/batch-info"
+            ]
+          },
+          {
+            "group": "Кошельки и баланс",
+            "icon": "wallet",
+            "pages": [
+              "reference/wallet-object",
+              "reference/wallet-create",
+              "reference/wallet-block",
+              "reference/wallet-blocked-refund",
+              "reference/balance",
+              "reference/referral-info"
+            ]
+          },
+          {
+            "group": "Выплаты и возвраты",
+            "icon": "money-bill-transfer",
+            "pages": [
+              "reference/payout-object",
+              "reference/payout-create",
+              "reference/payout-mass",
+              "reference/payout-info",
+              "reference/payout-history",
+              "reference/payout-services",
+              "reference/payout-calculate",
+              "reference/payout-approve",
+              "reference/payment-refund",
+              "reference/payout-fee-config",
+              "reference/payout-refund-fee-config",
+              "reference/transfer-to-personal"
+            ]
+          },
+          {
+            "group": "Вебхуки",
+            "icon": "bolt",
+            "pages": [
+              "reference/webhook-object",
+              "reference/webhooks-register",
+              "reference/webhooks-deliveries",
+              "reference/webhooks-test",
+              "reference/payment-resend",
+              "reference/auto-withdraw",
+              "reference/api-allowlist"
+            ]
           },
           {
             "group": "Справочные материалы",
             "icon": "book-bookmark",
-            "pages": []
+            "pages": [
+              "reference/errors-catalog",
+              "reference/glossary",
+              "reference/diagrams"
+            ]
           }
         ]
       },
@@ -133,7 +262,15 @@
           {
             "group": "Готовые модули",
             "icon": "puzzle-piece",
-            "pages": []
+            "pages": [
+              "modules/overview",
+              "modules/woocommerce",
+              "modules/opencart",
+              "modules/prestashop",
+              "modules/whmcs",
+              "modules/ips",
+              "modules/xenforo"
+            ]
           }
         ]
       },
@@ -144,7 +281,14 @@
           {
             "group": "Библиотеки",
             "icon": "cubes",
-            "pages": []
+            "pages": [
+              "sdk/overview",
+              "sdk/php",
+              "sdk/typescript",
+              "sdk/python",
+              "sdk/go",
+              "sdk/rust"
+            ]
           }
         ]
       }

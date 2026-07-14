@@ -1,0 +1,142 @@
+---
+title: "Объект платежа (Payment)"
+---
+
+Объект платежа (инвойса) содержит всю информацию о счёте, актуальную на текущий момент. Он формируется
+при создании платежа ([`POST /v1/payment`](/reference/payment-create)) и приходит в ответ на любой запрос,
+связанный с этим счётом ([`/info`](/reference/payment-info), [`/history`](/reference/payment-history)).
+
+Объект может содержать поля, не описанные в этом справочнике, — их следует игнорировать.
+
+---
+
+## Пример объекта
+
+```json
+{
+  "uuid": "8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+  "order_id": "order-1",
+  "amount": "10.00",
+  "payment_amount": null,
+  "amount_paid": "0",
+  "amount_remaining": "10.150000",
+  "payer_amount": "10.150000",
+  "payer_currency": "USDT",
+  "payer_address": "TQm9...7bXe",
+  "currency": "USD",
+  "network": "tron",
+  "address": "TJ4b1...C9xk",
+  "address_qr_code": "data:image/png;base64,iVBORw0KGgo...",
+  "payment_status": "check",
+  "is_multi": false,
+  "url": "https://pay.oblodai.com/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+  "expired_at": 1752192000,
+  "is_final": false,
+  "created_at": "2026-07-10T12:00:00Z",
+  "updated_at": "2026-07-10T12:00:00Z",
+  "additional_data": "",
+  "payer_email": "",
+  "url_return": "",
+  "url_success": "",
+  "rate_expires_at": 1752188700,
+  "confirmations": 0,
+  "required_confirmations": 20,
+  "txid": "",
+  "refund_status": "none",
+  "refunds": []
+}
+```
+
+Поля `refunds[]` и `refund_status` приходят только в ответе
+[`POST /v1/payment/info`](/reference/payment-info) — в списках ([`/history`](/reference/payment-history)) их нет.
+
+---
+
+## Поля
+
+`currency` — **валюта цены**, в которой вы назначили стоимость счёта (напр. `USD`). `payer_currency` —
+**валюта расчёта**, крипта, которой фактически платит покупатель (напр. `USDT`). Поэтому в объекте две
+валюты и две суммы. См. [Форматы сумм и денег](/reference/basics-money).
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `uuid` | string | Идентификатор счёта в Oblodai. |
+| `order_id` | string | Ваша ссылка на заказ; ключ идемпотентности. |
+| `amount` | string | Сумма к оплате в валюте ценообразования `currency`. |
+| `payment_amount` | string \| null | Фактически оплаченная сумма (в крипте); `null`, пока оплаты нет. |
+| `amount_paid` | string | Сколько уже поступило. |
+| `amount_remaining` | string | Сколько осталось доплатить в крипте. |
+| `payer_amount` | string | Ожидаемая сумма к оплате в крипте `payer_currency`. |
+| `payer_currency` | string | Криптовалюта, которой платит покупатель (валюта расчёта). У валюто‑агностичного счёта (`is_multi: true`) — **пустая строка**, пока покупатель не выбрал монету. |
+| `payer_address` | string | **Адрес, с которого пришли деньги.** Это адрес возврата по умолчанию: [`/v1/payment/refund`](/reference/payment-refund) без `address` вернёт средства сюда, и такой возврат авто‑подтверждается. Известен на аккаунтных сетях (EVM, Tron, Solana, TON); на **Bitcoin/UTXO пуст** — там единого отправителя нет. Пуст и до оплаты. |
+| `currency` | string | Валюта цены (напр. `USD`, `EUR`, `USDT`). |
+| `network` | string | Сеть расчёта. |
+| `address` | string | Депозит‑адрес счёта. Для агностичного счёта пуст до выбора валюты. |
+| `address_qr_code` | string | QR депозит‑адреса как `data:`‑URI. Пуст, пока адреса нет. |
+| `payment_status` | string | Статус счёта. См. [таблицу ниже](#статусы-payment_status). |
+| `is_multi` | bool | `true` — валюто‑агностичный (deferred) счёт. |
+| `url` | string | Ссылка на hosted‑страницу оплаты. |
+| `expired_at` | int64 | Момент истечения счёта (unix‑секунды). |
+| `is_final` | bool | Счёт в терминальном статусе (изменений больше не будет). |
+| `created_at` | string | Время создания (ISO 8601). |
+| `updated_at` | string | Время последнего изменения (ISO 8601). |
+| `additional_data` | string | Приватные данные мерчанта, эхом в вебхуках (покупателю не видны). |
+| `payer_email` | string | Email плательщика, если передавали. |
+| `url_return` | string | Ссылка «назад в магазин» на странице оплаты. |
+| `url_success` | string | Редирект после успешной оплаты. |
+| `rate_expires_at` | int64 | До какого момента действителен зафиксированный курс (unix‑секунды). |
+| `confirmations` | int | Набрано подтверждений сети. |
+| `required_confirmations` | int | Сколько подтверждений нужно для зачёта (зависит от суммы/сети). |
+| `txid` | string | Хеш транзакции оплаты; пуст до появления транзакции. |
+| `refund_status` | string | Сводка по возвратам: `none` (ничего не возвращали) \| `partial` (вернули часть) \| `full` (вернули всё оплаченное). Только в [`/v1/payment/info`](/reference/payment-info). |
+| `refunds` | array | Список возвратов по этому счёту (см. ниже). Только в [`/v1/payment/info`](/reference/payment-info). |
+
+### Элемент `refunds[]`
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `uuid` | string | Идентификатор возврата (это выплата — см. [объект выплаты](/reference/payout-object)). |
+| `status` | string | Укрупнённый статус выплаты: `check` \| `process` \| `paid` \| `fail` \| `cancel`. |
+| `amount` | string | Сумма возврата в монете платежа. |
+| `address` | string | Куда ушёл возврат. |
+| `txid` | string | Хеш транзакции возврата; пуст, пока не отправлен. |
+| `is_final` | bool | Возврат в терминальном статусе. |
+| `created_at` | string | Время создания (ISO 8601). |
+
+Отменённые и провалившиеся возвраты (`cancel`, `fail`) **не считаются** в `refund_status` — денег они
+не вернули.
+
+Для валюто‑агностичного счёта (`is_multi: true`) поля `payer_currency`, `address`, `address_qr_code`,
+`payer_amount`, `amount_paid`, `amount_remaining` пусты до выбора монеты покупателем на
+[hosted‑странице](/reference/pay-select): валюты расчёта у такого счёта ещё нет, а значит нет и сумм в ней.
+`currency` и `amount` (цена) при этом заполнены всегда.
+
+---
+
+## Статусы `payment_status`
+
+| Статус | Значение |
+|---|---|
+| `select` | Валюто‑агностичный счёт (`is_multi: true`): ждём, пока покупатель выберет валюту и сеть на [hosted‑странице](/reference/pay-select). До выбора `address`, `payer_amount` и т.п. пусты. |
+| `check` | Счёт создан, ждём оплату. |
+| `confirm_check` | Транзакцию видим, ждём подтверждений сети. |
+| `wrong_amount_waiting` | Пришла недоплата, ждём остаток (срок ещё не вышел). |
+| `paid` | Оплачено в пределах допуска. |
+| `paid_over` | Переплата сверх допуска. |
+| `wrong_amount` | Недоплата, срок вышел. |
+| `cancel` | Счёт истёк или отменён. |
+
+**Терминальные статусы** (`is_final: true`): `paid`, `paid_over`, `wrong_amount`, а также
+истёкшие/отменённые счета.
+
+Недоплата и переплата обрабатываются согласно вашим настройкам
+[`accuracy`](/reference/payment-accuracy) (допуск) и [`autorefund`](/reference/payment-autorefund) (автовозврат).
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment`](/reference/payment-create) — создание счёта.
+- [`POST /v1/payment/info`](/reference/payment-info) — получить актуальный объект (с `refunds[]`).
+- [`POST /v1/payment/refund`](/reference/payment-refund) — возврат; по умолчанию идёт на `payer_address`.
+- [Жизненный цикл платежа](/guides/accept-first-payment) — как это выглядит в потоке приёма.

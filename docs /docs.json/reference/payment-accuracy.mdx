@@ -1,0 +1,93 @@
+---
+title: "POST /v1/payment/accuracy/get · /set"
+---
+
+Допуск недоплаты/переплаты. Счёт, отклонившийся от суммы не более чем на `accuracy_percent`, всё равно
+засчитывается как оплаченный (`paid`). **По умолчанию (без явной настройки) действует допуск ~1 %** —
+см. примечание ниже про то, как потребовать ровную сумму.
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## POST /v1/payment/accuracy/get
+
+Тело — `{}`.
+
+```json
+{ "state": 0, "result": { "enabled": true, "accuracy_percent": 2 } }
+```
+
+Для аккаунта, который **ни разу не настраивал** допуск, `get` вернёт `{ "enabled": false, "accuracy_percent": 0 }`.
+
+<Warning>
+  **Важно: это НЕ означает «ровная сумма».** Пока настройка не сохранена явно, счета используют
+  допуск по умолчанию **~1 %** (недоплата/переплата в пределах ~1 % засчитывается как `paid`). Чтобы
+  требовать точную сумму (нулевой допуск), нужно **явно** сохранить настройку выключенной —
+  `set {"enabled": false}`. То есть «никогда не настраивал» (≈1 %) и «сохранил выключенной» (0 %) —
+  разное поведение.
+</Warning>
+
+---
+
+## POST /v1/payment/accuracy/set
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `enabled` | bool | да | Включить/выключить допуск. |
+| `accuracy_percent` | int | да при `enabled` | Допуск в процентах, 1–5. Кэп 5 %. |
+
+### Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"enabled":true,"accuracy_percent":2}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/accuracy/set' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/accuracy/set \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/accuracy/set", {"enabled": True, "accuracy_percent": 2})
+```
+
+```js Node.js
+await call("/v1/payment/accuracy/set", { enabled: true, accuracy_percent: 2 });
+```
+
+</CodeGroup>
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 accuracy.out_of_range` | При `enabled: true` значение `accuracy_percent` вне диапазона 1–5 % (в т. ч. 0). |
+
+---
+
+## Нюансы
+
+- Кэп допуска — **5 %**.
+- Per‑request поле `accuracy_payment_percent` в [`POST /v1/payment`](/reference/payment-create)
+  **перекрывает** эту настройку для конкретного счёта.
+- Что делать с недоплатой, которая **не** попала в допуск, — регулирует
+  [автовозврат](/reference/payment-autorefund).
+
+---
+
+## Связанные страницы
+
+- [Недоплата, переплата и автовозврат](/guides/under-overpayment)
+- [Автовозврат](/reference/payment-autorefund) · [`POST /v1/payment`](/reference/payment-create)

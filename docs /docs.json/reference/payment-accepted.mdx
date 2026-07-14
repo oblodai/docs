@@ -1,0 +1,95 @@
+---
+title: "POST /v1/payment/accepted/list · /set"
+---
+
+Управление набором принимаемых валют и сетей для **валюто‑агностичных** счетов (счёт без заранее
+выбранной валюты — покупатель выбирает монету и сеть на странице оплаты; см. [Три режима создания
+счёта](/guides/payment-modes)). Именно из этого набора покупатель выбирает валюту на
+[hosted‑странице](/reference/pay-select).
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## POST /v1/payment/accepted/list
+
+Показать текущий набор. Тело — `{}`.
+
+```json
+{ "state": 0, "result": { "accepted": [ { "currency": "USDT", "network": "tron" } ] } }
+```
+
+**Пустой список = «принимаю всё»** — покупателю доступен весь каталог методов.
+
+---
+
+## POST /v1/payment/accepted/set
+
+Полностью **заменяет** набор (не merge — приходит новый список целиком).
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `accepted` | array | да | Массив объектов `{ currency, network }`. |
+| `accepted[].currency` | string | да | Код валюты. |
+| `accepted[].network` | string | да | Код сети. |
+
+### Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"accepted":[{"currency":"USDT","network":"tron"},{"currency":"USDC","network":"polygon"}]}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/accepted/set' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/accepted/set \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/accepted/set", {"accepted": [
+    {"currency": "USDT", "network": "tron"},
+    {"currency": "USDC", "network": "polygon"},
+]})
+```
+
+```js Node.js
+await call("/v1/payment/accepted/set", { accepted: [
+  { currency: "USDT", network: "tron" },
+  { currency: "USDC", network: "polygon" },
+] });
+```
+
+```json Ответ
+{ "state": 0, "result": { "ok": true } }
+```
+
+</CodeGroup>
+
+### Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 accepted.unknown_currency` | Неизвестная валюта в наборе. |
+| `400 accepted.no_network` | Не указана сеть для элемента. |
+
+---
+
+## Нюансы
+
+- `/set` **заменяет** весь набор, а не добавляет к нему. Чтобы «принимать всё», отправьте пустой
+  массив.
+- Выбор покупателя на [`POST /v1/pay/{id}/select`](/reference/pay-select) валидируется против этого набора
+  (или против полного каталога, если набор пуст).
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/pay/{id}/select`](/reference/pay-select) · [Три режима создания счёта](/guides/payment-modes)

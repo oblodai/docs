@@ -1,0 +1,301 @@
+---
+title: "PHP SDK"
+---
+
+Официальная библиотека для PHP. Пакет `oblodai/sdk`. Без внешних зависимостей (работает на cURL),
+поддерживает подстановку своего HTTP-транспорта.
+
+**Требования:** PHP 8.0+, расширения `json` и `curl`.
+
+---
+
+## Установка
+
+```bash
+composer require oblodai/sdk
+```
+
+<Warning>
+  **В Packagist сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
+  Команда выше поставит **v1.0.x**.
+
+  Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
+  повторы») и **нет** групп `batches()` / `links()` / `splits()` и методов `createBatch` /
+  `refundBatch` / `sendEmail`.
+</Warning>
+
+---
+
+## Аутентификация (ключи из окружения)
+
+Ключи берутся в кабинете [my.oblodai.com](https://my.oblodai.com) — см.
+[Регистрация и ключи](/guides/get-keys).
+
+Задайте переменные окружения (не пишите секрет в коде):
+
+```bash
+export OBLODAI_PUBLIC_ID=oblodai_ваш_public_id
+export OBLODAI_SECRET=oblodai_ваш_secret
+# необязательно: export OBLODAI_BASE_URL=https://api.oblodai.com
+```
+
+```php
+use Oblodai\Client;
+
+$client = Client::fromEnv(); // читает OBLODAI_PUBLIC_ID / OBLODAI_SECRET / OBLODAI_BASE_URL
+```
+
+Или явно:
+
+```php
+$client = new Oblodai\Client($publicId, $secret, [
+    'base_url' => 'https://api.oblodai.com', // необязательно
+]);
+```
+
+---
+
+## Быстрый старт: принять платёж
+
+```php
+use Oblodai\Client;
+
+$client = Client::fromEnv();
+
+$payment = $client->payments()->create([
+    'amount'       => '10',
+    'currency'     => 'USD',
+    'order_id'     => 'order-1', // ваш ID заказа
+    'to_currency'  => 'USDT',
+    'network'      => 'tron',
+    'url_callback' => 'https://ваш-сайт.ру/oblodai/webhook',
+    'url_success'  => 'https://ваш-сайт.ру/thanks',
+]);
+
+// Отправьте покупателя оплачивать:
+header('Location: ' . $payment['url']);
+```
+
+<Note>
+  Совет: не хотите указывать валюту/сеть за покупателя? Не передавайте `to_currency` и `network` —
+  получится «валюто-агностичная» ссылка, где покупатель сам выберет монету на странице оплаты.
+</Note>
+
+---
+
+## Ресурсы и методы
+
+Доступ через `$client->имя()`:
+
+| Группа | Методы |
+|---|---|
+| `payments()` | `create`, `info`, `history`, `services`, `qr`, `walletQr`, `resend`, `refund`, `listAccepted`, `setAccepted`, `getAccuracy`, `setAccuracy`, `getAutorefund`, `setAutorefund`, `listDiscounts`, `setDiscount` · **с v1.1.0:** `createBatch`, `refundBatch`, `sendEmail` |
+| `payouts()` | `create`, `createMass`, `info`, `history`, `services`, `calculate`, `approve`, `getFeeConfig`, `setFeeConfig`, `getRefundFeeConfig`, `setRefundFeeConfig`, `refund` · **с v1.1.0:** `createBatch` |
+| `batches()` **(v1.1.0)** | `info` |
+| `links()` **(v1.1.0)** | `create`, `list`, `info`, `toggle`, `publicGet`, `checkout` |
+| `splits()` **(v1.1.0)** | `splitToAddress`, `splitToMerchant`, `listRules`, `deleteRule`, `getConfig`, `setConfig` |
+| `wallets()` | `create`, `block`, `blockedAddressRefund`, `qr` |
+| `account()` | `balance`, `referral`, `transferToPersonal`, `vrcs` |
+| `webhooks()` | `register`, `deliveries`, `testPayment`, `testWallet`, `testPayout` |
+| `settings()` | `listAutoWithdraw`, `setAutoWithdraw`, `deleteAutoWithdraw`, `listAllowlist`, `addAllowlist`, `removeAllowlist`, `enableAllowlist` |
+| `rates()` | `list` (курсы), `currencies` (публичный каталог монет/сетей) |
+
+Каждый метод возвращает уже развёрнутый `result` (массив). Точные поля запроса/ответа — в
+[Справочнике](/reference/overview).
+
+<Warning>
+  Группы `batches()` / `links()` / `splits()` и методы `createBatch` / `refundBatch` / `sendEmail`
+  появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
+</Warning>
+
+```php
+// Массовые операции: до 5000 элементов одним подписанным запросом (одна отметка rate-limit).
+$sub = $client->payments()->createBatch([
+    ['amount' => '10', 'currency' => 'USD', 'order_id' => 'a-1', 'to_currency' => 'USDT', 'network' => 'tron'],
+    ['amount' => '20', 'currency' => 'EUR', 'order_id' => 'a-2', 'to_currency' => 'USDT', 'network' => 'tron'],
+], 'continue');                      // 'continue' (по умолчанию) или 'stop'
+
+$info = $client->batches()->info($sub['batch_id'], 100, 0);  // прогресс и результат по элементам
+
+// Платёжная ссылка: платят многие, каждый платёж — свой инвойс. Работает без вашего бэкенда.
+$link = $client->links()->create(['amount_mode' => 'open', 'currency' => 'USD']);
+
+// Сплит: доля каждого входящего платежа автоматически уходит партнёру.
+$client->splits()->splitToAddress('T...', 'tron', 10.0, 'партнёр А');
+
+// Счёт на e-mail (письмо с кнопкой «Оплатить»).
+$client->payments()->sendEmail($payment['uuid'], null, 'buyer@example.com');
+```
+
+Подробности — [Массовые операции](/guides/batch-operations),
+[Платёжные ссылки](/guides/payment-links), [Сплит-платежи](/guides/split-payments),
+[Счета на e-mail](/guides/email-invoices).
+
+---
+
+## Валюта цены и валюта расчёта
+
+В примере выше `'currency' => 'USD'` — **валюта цены**, а `'to_currency' => 'USDT'` — **валюта
+расчёта**. Это разные вещи:
+
+- **`currency` (цена)** — одна из **23 фиатных валют**: USD, EUR, GBP, RUB, UAH, PLN, CZK, TRY, CNY,
+  INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND, NGN, JPY, KRW — **или любая монета**
+  (USDT, BTC, TRX, …).
+- **`to_currency` (расчёт)** — **только крипта.** Фиата здесь не бывает: баланс, выплаты и возвраты
+  всегда в монете, шлюз не хранит фиат.
+- У **JPY и KRW ноль знаков** после запятой (`'amount' => '10000'`, не `'10000.00'`); у остальных — 2.
+- **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
+- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+  Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
+
+Полный список валют цены — `$client->rates()->currencies()`, поле `pricing_currencies`.
+
+---
+
+## Проверьте, что заработало
+
+1. Запустите код создания платежа из «Быстрого старта». В ответе должен прийти `url` — это ссылка на
+   hosted-страницу оплаты. Откройте её в браузере: если страница открылась, приём платежей настроен.
+2. Чтобы реально **поймать вебхук** об оплате на локальной машине, нужен публичный HTTPS-адрес —
+   поднимите туннель (ngrok / cloudflared) и укажите его URL в `url_callback`. Подробнее — в
+   [Тестировании](/guides/testing) и [Настройке вебхуков](/guides/webhooks-setup).
+
+---
+
+## Вебхуки
+
+### Шаг 1. Один раз зарегистрируйте endpoint и сохраните секрет
+
+```php
+$endpoint = $client->webhooks()->register('https://ваш-сайт.ру/oblodai/webhook');
+// Сохраните $endpoint['secret'] в БД/конфиге — им проверяются ВСЕ вебхуки.
+```
+
+<Note>
+  Важно: этот webhook-секрет — **не** ваш API-`secret`. Без регистрации Oblodai не будет слать
+  уведомления.
+</Note>
+
+### Шаг 2. Принимайте и проверяйте вебхуки
+
+```php
+use Oblodai\Webhooks;
+use Oblodai\Exception\SignatureException;
+
+$raw = file_get_contents('php://input');
+
+// Пробные вебхуки (кнопка «Тест» в кабинете) не подписаны — просто подтверждаем.
+if (Webhooks::isTest($raw)) { http_response_code(200); exit; }
+
+try {
+    $event = Webhooks::constructEvent(
+        $webhookSecret,                              // сохранённый на шаге 1
+        $raw,
+        $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '',
+        $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? ''
+    );
+} catch (SignatureException $e) {
+    http_response_code(403);
+    exit;
+}
+
+// Перепроверяем статус авторитетно (тело вебхука само по себе не финально):
+$info = $client->payments()->info($event['uuid']);
+if (($info['payment_status'] ?? '') === 'paid' || ($info['payment_status'] ?? '') === 'paid_over') {
+    // Пометить заказ $info['order_id'] оплаченным (идемпотентно!)
+}
+
+http_response_code(200);
+```
+
+Статусы `payment_status`: `check`, `confirm_check`, `paid`, `paid_over`, `wrong_amount`,
+`wrong_amount_waiting`, `cancel`, `select`. Оплаченными считайте только `paid` и `paid_over`.
+
+---
+
+## Ошибки и повторы
+
+```php
+use Oblodai\Exception\ApiException;
+use Oblodai\Exception\ConnectionException;
+
+try {
+    $client->payouts()->create([...]);
+} catch (ApiException $e) {
+    $e->getErrorCode();   // напр. "payout.insufficient_funds" — ветвитесь ПО КОДУ, не по тексту
+    $e->getStatusCode();  // HTTP-статус
+    $e->isRetriable();    // временная ли ошибка
+} catch (ConnectionException $e) {
+    // сеть/таймаут — безопасно повторить: SDK сам подставляет ключ идемпотентности
+}
+```
+
+Клиент **сам** повторяет 5xx / 429 / сетевые сбои с экспоненциальной задержкой и учётом заголовка
+`Retry-After`. Отключить повторы: `new Client($id, $secret, ['retry' => false])`.
+
+**Повтор безопасен, но механизм зависит от версии:**
+
+| | **v1.0.x** (сейчас в Packagist) | **v1.1.0** (не опубликована) |
+|---|---|---|
+| Защита от дублей | `order_id`: не задали — **SDK подставит свой** | заголовок `Idempotency-Key`, одинаковый во всех внутренних повторах |
+| Ваш `order_id` | если не задан — в платеже будет сгенерированный SDK | уходит **как есть**, SDK не подставляет и не переписывает |
+| Свой ключ | `idempotency_key` **не существует** | можно передать `idempotency_key` — уйдёт в заголовок |
+
+В обеих версиях таймаут/обрыв сети не создаст дубль счёта или перевода. Для **выплат** `order_id`
+обязателен всегда — его задаёте вы (иначе `payout.order_id_required`).
+
+---
+
+## Свой HTTP-транспорт (необязательно)
+
+По умолчанию — cURL. Хотите Guzzle / PSR-18 / мок для тестов — реализуйте интерфейс
+`Oblodai\Http\Transport`:
+
+```php
+$client = new Oblodai\Client($id, $secret, ['transport' => new MyTransport()]);
+```
+
+---
+
+## Логи и отладка
+
+Включите логи одной переменной окружения — увидите каждый запрос/ответ/ретрай:
+
+```bash
+export OBLODAI_LOG=debug   # уровни: debug · info · warn · error
+```
+
+Строки идут в stderr с префиксом `oblodai:` (метод, путь, статус, номер попытки, задержка ретрая).
+**Секреты, подпись и тела запросов в лог не попадают.** Вместо переменной можно задать свой логгер —
+опция `logger` в конфиге:
+
+```php
+$client = new Oblodai\Client($publicId, $secret, [
+    'logger' => fn (string $lvl, string $msg) => error_log("$lvl $msg"),
+]);
+```
+
+<Note>
+  **Проверяете подпись вебхука статичным (старым) вектором?** По умолчанию действует окно свежести
+  5 минут — старый `timestamp` отклонит replay-защита (валидная подпись → всё равно ошибка). Для
+  офлайн-проверки задайте окно 0: `Webhooks::constructEvent($secret, $raw, $ts, $sig, maxAgeSeconds: 0)`.
+</Note>
+
+---
+
+## Если не получилось
+
+| Симптом | Причина и что делать |
+|---|---|
+| `401` / `ApiException` на каждый вызов | Не заданы `OBLODAI_PUBLIC_ID`/`OBLODAI_SECRET` или перепутаны местами. SDK подписывает сам — руками ничего считать не надо. |
+| `ConfigException` при `fromEnv()` | Переменная окружения не задана (её имя — в тексте ошибки). |
+| Вебхук не проходит проверку | Передавайте **сырое** тело (`file_get_contents('php://input')`) и **webhook‑секрет** из `webhooks()->register()`, а не API‑секрет. |
+| Вебхук вообще не приходит | Не зарегистрировали endpoint (`webhooks()->register($url)`) или сайт недоступен из интернета. |
+| `429` | SDK повторяет сам с учётом `Retry-After`. Не поллите `payments()->info()` в цикле. Много операций — шлите их [пачкой](/guides/batch-operations). |
+
+Полная диагностика — [Что делать, если не работает](/guides/troubleshooting).
+
+## Связанные страницы
+
+- [Обзор SDK](/sdk/overview) · [Приём первого платежа](/guides/accept-first-payment)
+- [Настройка и приём вебхуков](/guides/webhooks-setup) · [Справочник кодов ошибок](/reference/errors-catalog)

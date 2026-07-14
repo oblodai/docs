@@ -1,0 +1,276 @@
+---
+title: "Go SDK"
+---
+
+Официальная библиотека для Go. Модуль `github.com/oblodai/oblodai-go`. Ноль внешних зависимостей
+(только стандартная библиотека).
+
+**Требования:** Go **1.22.2+** (именно эта версия указана в `go.mod` — на 1.22.0/1.22.1 сборка не пройдёт).
+
+---
+
+## Установка
+
+```bash
+go get github.com/oblodai/oblodai-go
+```
+
+<Warning>
+  **Сейчас в Go modules — v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого
+  шлюза). Команда выше поставит **v1.0.x**.
+
+  Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
+  повторы») и **нет** групп `Batches` / `Links` / `Splits` и методов `*Batch` / `SendEmail`.
+  Всё, помеченное «с v1.1.0», появится после публикации.
+</Warning>
+
+---
+
+## Аутентификация (ключи из окружения)
+
+Ключи берутся в кабинете [my.oblodai.com](https://my.oblodai.com) — см.
+[Регистрация и ключи](/guides/get-keys).
+
+```bash
+export OBLODAI_PUBLIC_ID=oblodai_ваш_public_id
+export OBLODAI_SECRET=oblodai_ваш_secret
+# необязательно: export OBLODAI_BASE_URL=https://api.oblodai.com
+```
+
+```go
+import oblodai "github.com/oblodai/oblodai-go"
+
+// читает OBLODAI_PUBLIC_ID / OBLODAI_SECRET / OBLODAI_BASE_URL
+client, err := oblodai.NewFromEnv(oblodai.Config{})
+```
+
+Или явно:
+
+```go
+client, err := oblodai.New(oblodai.Config{
+    PublicID: "...", Secret: "...",
+    BaseURL: "https://api.oblodai.com",
+})
+```
+
+**Повторы настраивать не нужно — они включены по умолчанию** (до 4 попыток, с учётом `Retry-After`).
+Пустое поле `Retry` (`nil`) означает «дефолтные повторы», как и в остальных четырёх SDK. Если повторы
+нужно **отключить**, сделайте это явно:
+
+```go
+client, err := oblodai.New(oblodai.Config{
+    PublicID: "...", Secret: "...",
+    Retry: oblodai.NoRetry(), // отключить повторы
+    // oblodai.DefaultRetry() — то же, что и nil; передавать не обязательно
+})
+```
+
+<Warning>
+  **Это изменилось.** В прежних версиях `Retry: nil` означало «повторов НЕТ» — то есть клиент,
+  созданный самым очевидным способом, молча оставался без повторов и без учёта `Retry-After` на 429.
+  Теперь поведение такое же, как у остальных SDK.
+</Warning>
+
+---
+
+## Быстрый старт: принять платёж
+
+```go
+payment, err := client.Payments.Create(context.Background(), oblodai.Params{
+    "amount":       "10",
+    "currency":     "USD",
+    "order_id":     "order-1",
+    "to_currency":  "USDT",
+    "network":      "tron",
+    "url_callback": "https://ваш-сайт.ру/oblodai/webhook",
+})
+if err != nil { /* обработать */ }
+
+http.Redirect(w, r, payment.URL, http.StatusFound) // на страницу оплаты
+```
+
+`oblodai.Params` — это `map[string]any`. Метод возвращает типизированный объект (`*oblodai.Payment`).
+
+<Note>
+  Совет: не хотите указывать валюту/сеть за покупателя? Не передавайте `to_currency` и `network` —
+  получится «валюто-агностичная» ссылка, где покупатель сам выберет монету на странице оплаты.
+</Note>
+
+---
+
+## Ресурсы и методы
+
+| Группа | Методы |
+|---|---|
+| `client.Payments` | `Create`, `Info`, `History`, `Services`, `QR`, `Resend`, `Refund`, `ListAccepted`, `SetAccepted`, `GetAccuracy`, `SetAccuracy`, `GetAutorefund`, `SetAutorefund`, `SetDiscount`, `ListDiscounts` · **с v1.1.0:** `CreateBatch`, `RefundBatch`, `SendEmail` |
+| `client.Payouts` | `Create`, `CreateMass`, `Info`, `History`, `Services`, `Calculate`, `Approve`, `GetFeeConfig`, `SetFeeConfig`, `GetRefundFeeConfig`, `SetRefundFeeConfig`, `Refund` · **с v1.1.0:** `CreateBatch` |
+| `client.Batches` **(v1.1.0)** | `Info` |
+| `client.Links` **(v1.1.0)** | `Create`, `List`, `Info`, `Toggle`, `PublicGet`, `Checkout` |
+| `client.Splits` **(v1.1.0)** | `SplitToAddress`, `SplitToMerchant`, `ListRules`, `DeleteRule`, `GetConfig`, `SetConfig` |
+| `client.Wallets` | `Create`, `Block`, `BlockedAddressRefund`, `QR` |
+| `client.Account` | `Balance`, `Referral`, `TransferToPersonal`, `VRCS` |
+| `client.Webhooks` | `Register`, `Deliveries`, `TestPayment`, `TestWallet`, `TestPayout` |
+| `client.Settings` | `ListAutoWithdraw`, `SetAutoWithdraw`, `DeleteAutoWithdraw`, `ListAllowlist`, `AddAllowlist`, `RemoveAllowlist`, `EnableAllowlist` |
+| `client.Rates` | `List` (курсы), `Currencies` (публичный каталог) |
+
+Все методы принимают `context.Context` первым аргументом. Точные поля — в [Справочнике](/reference/overview).
+
+<Warning>
+  Группы `Batches` / `Links` / `Splits` и методы `CreateBatch` / `RefundBatch` / `SendEmail`
+  появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
+</Warning>
+
+```go
+// Массовые операции: до 5000 элементов одним подписанным запросом (одна отметка rate-limit).
+sub, err := client.Payments.CreateBatch(ctx, []oblodai.Params{
+    {"amount": "10", "currency": "USD", "order_id": "a-1", "to_currency": "USDT", "network": "tron"},
+    {"amount": "20", "currency": "EUR", "order_id": "a-2", "to_currency": "USDT", "network": "tron"},
+}, "continue") // "continue" (по умолчанию) или "stop"
+
+info, err := client.Batches.Info(ctx, sub.BatchID, 100, 0) // прогресс и результат по каждому элементу
+
+// Платёжная ссылка: платят многие, каждый платёж — свой инвойс. Принимает деньги без вашего бэкенда.
+link, err := client.Links.Create(ctx, oblodai.LinkParams{AmountMode: "open", Currency: "USD"})
+
+// Сплит: доля каждого входящего платежа автоматически уходит партнёру.
+rule, err := client.Splits.SplitToAddress(ctx, "T...", "tron", 10.0, "партнёр А")
+
+// Счёт на e-mail (письмо с кнопкой «Оплатить»).
+_, err = client.Payments.SendEmail(ctx, uuid, "" /* orderID */, "buyer@example.com")
+```
+
+Подробности — [Массовые операции](/guides/batch-operations),
+[Платёжные ссылки](/guides/payment-links), [Сплит-платежи](/guides/split-payments),
+[Счета на e-mail](/guides/email-invoices).
+
+---
+
+## Валюта цены и валюта расчёта
+
+В примере выше `currency: "USD"` — это **валюта цены**, а `to_currency: "USDT"` — **валюта расчёта**.
+Их постоянно путают:
+
+- **`currency` (цена)** — одна из **23 фиатных валют**: USD, EUR, GBP, RUB, UAH, PLN, CZK, TRY, CNY,
+  INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND, NGN, JPY, KRW — **или любая монета**
+  (USDT, BTC, TRX, …).
+- **`to_currency` (расчёт)** — **только крипта.** Фиата здесь не бывает: баланс, выплаты и возвраты
+  всегда в монете, шлюз не хранит фиат.
+- У **JPY и KRW ноль знаков** после запятой (`"amount": "10000"`, не `"10000.00"`); у остальных — 2.
+- **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
+- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+  Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
+
+Полный список валют цены — `client.Rates.Currencies(ctx)`, поле `pricing_currencies`.
+
+---
+
+## Проверьте, что заработало
+
+1. Запустите код создания платежа из «Быстрого старта». В ответе должен прийти `URL` — это ссылка на
+   hosted-страницу оплаты. Откройте её в браузере: если страница открылась, приём платежей настроен.
+2. Чтобы реально **поймать вебхук** об оплате на локальной машине, нужен публичный HTTPS-адрес —
+   поднимите туннель (ngrok / cloudflared) и укажите его URL в `url_callback`. Подробнее — в
+   [Тестировании](/guides/testing) и [Настройке вебхуков](/guides/webhooks-setup).
+
+---
+
+## Вебхуки
+
+<CodeGroup>
+
+```go Шаг 1. Регистрация (один раз)
+ep, err := client.Webhooks.Register(ctx, "https://ваш-сайт.ру/oblodai/webhook")
+// сохраните ep.Secret — им проверяются вебхуки (не API-секрет!)
+```
+
+```go Шаг 2. Приём (обязательно СЫРОЕ тело)
+func webhook(w http.ResponseWriter, r *http.Request) {
+    raw, _ := io.ReadAll(r.Body)
+
+    headers := oblodai.WebhookHeaders{
+        Timestamp: r.Header.Get("X-Webhook-Timestamp"),
+        Signature: r.Header.Get("X-Webhook-Signature"),
+    }
+    if err := oblodai.VerifyWebhook(webhookSecret, raw, headers, nil); err != nil {
+        w.WriteHeader(http.StatusForbidden); return
+    }
+
+    var ev map[string]any
+    json.Unmarshal(raw, &ev)
+    info, _ := client.Payments.Info(r.Context(), ev["uuid"].(string), "")
+    if info.PaymentStatus == "paid" || info.PaymentStatus == "paid_over" {
+        // пометить заказ info.OrderID оплаченным (идемпотентно)
+    }
+    w.WriteHeader(http.StatusOK)
+}
+```
+
+</CodeGroup>
+
+`VerifyWebhook` возвращает `*oblodai.SignatureError` при неудаче; проверяет подпись и окно replay.
+Тестовые вебхуки (`is_test`) не подписаны — их можно просто подтверждать 200.
+
+---
+
+## Ошибки и повторы
+
+```go
+var apiErr *oblodai.APIError
+if errors.As(err, &apiErr) {
+    apiErr.Code        // "payout.insufficient_funds" — ветвитесь по коду
+    apiErr.Status      // HTTP-статус
+    apiErr.IsRetriable()
+}
+```
+
+Клиент **сам** повторяет 5xx/429/сетевые сбои с backoff и учётом `Retry-After` — **повторы включены по
+умолчанию**, настраивать ничего не нужно. Отключить: `Retry: oblodai.NoRetry()`.
+
+**Повтор безопасен, но механизм зависит от версии:**
+
+| | **v1.0.x** (сейчас в реестрах) | **v1.1.0** (не опубликована) |
+|---|---|---|
+| Защита от дублей | `order_id`: не задали — **SDK подставит свой** | заголовок `Idempotency-Key`, одинаковый во всех внутренних повторах |
+| Ваш `order_id` | если не задан — в платеже будет сгенерированный SDK | уходит **как есть**, SDK не подставляет и не переписывает |
+| Свой ключ | `idempotency_key` **не существует** | можно передать `idempotency_key` — уйдёт в заголовок |
+
+В обеих версиях таймаут/обрыв сети не создаст дубль счёта или перевода. Для **выплат** `order_id`
+обязателен всегда — его задаёте вы (иначе `payout.order_id_required`).
+
+---
+
+## Логи и отладка
+
+Включите логи одной переменной окружения — увидите каждый запрос/ответ/ретрай:
+
+```bash
+export OBLODAI_LOG=debug   # уровни: debug · info · warn · error
+```
+
+Строки идут в stderr с префиксом `oblodai:` (метод, путь, статус, номер попытки, задержка ретрая).
+**Секреты, подпись и тела запросов в лог не попадают.** Вместо переменной можно задать свой логгер: `Config{ Logger: slog-логгер }` — учтите, что `slog.Default()` работает на уровне INFO и debug-строки запросов не покажет; задайте debug-хендлер или `OBLODAI_LOG=debug`.
+
+<Note>
+  **Проверяете подпись вебхука статичным (старым) вектором?** По умолчанию действует окно свежести
+  5 минут — старый `timestamp` отклонит replay-защита (валидная подпись → всё равно ошибка). Для
+  офлайн-проверки задайте окно 0: `oblodai.VerifyWebhook(secret, raw, headers, &oblodai.VerifyOptions{MaxAgeSeconds: 0})`.
+</Note>
+
+---
+
+## Если не получилось
+
+| Симптом | Причина и что делать |
+|---|---|
+| `*APIError` `401` на каждый вызов | Не заданы `OBLODAI_PUBLIC_ID`/`OBLODAI_SECRET` или перепутаны. SDK подписывает сам. |
+| `NewFromEnv` возвращает ошибку | Обязательная переменная окружения не задана (её имя — в тексте ошибки). |
+| Вебхук не проходит проверку | Читайте **сырое** тело (`io.ReadAll(r.Body)` до парсинга) и **webhook‑секрет** из `Webhooks.Register()`, не API‑секрет. |
+| Вебхук вообще не приходит | Не зарегистрировали endpoint (`Webhooks.Register(ctx, url)`) или сайт недоступен из интернета. |
+| `429` | SDK повторяет сам с учётом `Retry-After` (повторы включены по умолчанию — если вы не задали `NoRetry()`). Не поллите `Payments.Info()` в цикле. Много операций — шлите их [пачкой](/guides/batch-operations). |
+
+Полная диагностика — [Что делать, если не работает](/guides/troubleshooting).
+
+## Связанные страницы
+
+- [Обзор SDK](/sdk/overview) · [Приём первого платежа](/guides/accept-first-payment)
+- [Настройка вебхуков](/guides/webhooks-setup) · [Коды ошибок](/reference/errors-catalog)

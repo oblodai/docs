@@ -1,0 +1,86 @@
+---
+title: "POST /v1/payment/qr"
+---
+
+Рендерит депозит‑адрес счёта (по `uuid` или `order_id`) в QR‑код — PNG в виде `data:`‑URI.
+
+**URL:** `https://api.oblodai.com/v1/payment/qr` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+Нужен хотя бы один идентификатор.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `uuid` | string | нет\* | Идентификатор счёта. |
+| `order_id` | string | нет\* | Ваша ссылка на заказ. |
+
+\* Требуется хотя бы одно из двух.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"order_id":"order-1"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/qr' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/qr \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/qr", {"order_id": "order-1"})
+```
+
+```js Node.js
+await call("/v1/payment/qr", { order_id: "order-1" });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{ "state": 0, "result": { "image": "data:image/png;base64,…" } }
+```
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 payment.bad_uuid` | Некорректный `uuid`. |
+| `400 payment.no_lookup` | Не передан ни `uuid`, ни `order_id`. |
+| `404 payment.not_found` | Счёт не найден. |
+
+---
+
+## Нюансы
+
+- **Для валюто‑агностичного счёта вызывайте этот метод только после того, как плательщик выбрал валюту
+  и сеть** (см. [`POST /v1/pay/{id}/select`](/reference/pay-select)). До выбора реальный адрес ещё не выделен, и
+  `image` закодирует служебный плейсхолдер, а не платёжный адрес — такой QR показывать покупателю нельзя.
+- Чтобы отрисовать произвольный адрес (не привязанный к счёту), используйте
+  [`POST /v1/wallet/qr`](/reference/wallet-qr).
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/wallet/qr`](/reference/wallet-qr) · [Объект платежа](/reference/payment-object)

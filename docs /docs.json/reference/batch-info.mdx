@@ -1,0 +1,186 @@
+---
+title: "POST /v1/batch/info"
+---
+
+Статус батча и результат по каждому его элементу. Это метод **поллинга**: батчи
+([платежей](/reference/payment-batch), [возвратов](/reference/refund-batch), [выплат](/reference/payout-batch))
+обрабатываются асинхронно, и `/v1/batch/info` — единственный способ узнать, что с ними стало.
+
+**URL:** `https://api.oblodai.com/v1/batch/info` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `batch_id` | string | да | Идентификатор батча из ответа на submit. |
+| `limit` | int | нет | Сколько элементов вернуть в `items` (пагинация). |
+| `offset` | int | нет | Смещение по элементам. |
+
+Счётчики `total` / `succeeded` / `failed` считаются по **всему** батчу и от пагинации не зависят —
+для отслеживания прогресса достаточно их, `items` можно не выбирать целиком.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"batch_id":"9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60","limit":100,"offset":0}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/batch/info' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/batch/info \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/batch/info", {
+    "batch_id": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+    "limit": 100,
+    "offset": 0,
+})
+```
+
+```js Node.js
+await call("/v1/batch/info", {
+  batch_id: "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+  limit: 100,
+  offset: 0,
+});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "batch_id": "9f4c1a2b-77de-4a55-9c1f-0e2b3d4a5f60",
+    "kind": "payment",
+    "status": "completed",
+    "on_error": "continue",
+    "total": 1000,
+    "succeeded": 998,
+    "failed": 2,
+    "created_at": "2026-07-13T12:00:00Z",
+    "updated_at": "2026-07-13T12:01:14Z",
+    "items": [
+      {
+        "idx": 0,
+        "status": "done",
+        "order_id": "order-1",
+        "result": {
+          "uuid": "8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+          "order_id": "order-1",
+          "amount": "10.00",
+          "payer_currency": "USDT",
+          "address": "TJ4b1...C9xk",
+          "url": "https://pay.oblodai.com/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e"
+        }
+      },
+      {
+        "idx": 7,
+        "status": "error",
+        "order_id": "order-8",
+        "error": "unsupported network for this currency"
+      }
+    ]
+  }
+}
+```
+
+### Поля ответа
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `batch_id` | string | Идентификатор батча. |
+| `kind` | string | Вид батча: `payment` \| `refund` \| `payout`. |
+| `status` | string | Статус батча: `pending` \| `processing` \| `completed`. |
+| `on_error` | string | Режим обработки ошибок, с которым батч был отправлен: `continue` \| `stop`. |
+| `total` | int | Всего элементов в батче. |
+| `succeeded` | int | Успешно обработано. |
+| `failed` | int | Завершилось ошибкой. |
+| `created_at` | string | Время приёма батча (ISO 8601). |
+| `updated_at` | string | Время последнего изменения (ISO 8601). |
+| `items` | array | Страница элементов (см. ниже). |
+
+### Элемент `items[]`
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `idx` | int | Порядковый номер элемента в исходном массиве (с нуля). |
+| `status` | string | Статус элемента: `pending` \| `processing` \| `done` \| `error`. |
+| `order_id` | string | `order_id` элемента, если вы его задавали. Присутствует не всегда. |
+| `result` | object | Результат успешной операции — **тот же объект**, что вернул бы одиночный вызов ([платежа](/reference/payment-object), возврата, [выплаты](/reference/payout-object)). Только при `status: "done"`. |
+| `error` | string | **Человекочитаемое сообщение** об ошибке (напр. `"unsupported network for this currency"`), а не код вида `payment.*`. Только при `status: "error"`. |
+
+`result` и `error` — взаимоисключающие: у успешного элемента есть `result`, у неудачного — `error`.
+Отсутствующее поле просто не приходит.
+
+<Note>
+  **`error` — это `message`, а не `code`.** В отличие от общего [конверта ошибки](/reference/basics-errors), у
+  элемента батча машиночитаемого кода нет. Для логики ветвитесь по `status` (`done` / `error`), а
+  текст используйте для логов и диагностики.
+</Note>
+
+---
+
+## Статусы
+
+**Батч:** `pending` (принят, воркер ещё не начал) → `processing` (элементы обрабатываются) →
+`completed` (обработка закончена).
+
+<Note>
+  **`completed` означает «обработка закончена», а НЕ «всё успешно».** Батч с ошибками тоже приходит в
+  `completed`. Смотрите на `succeeded` и `failed`.
+</Note>
+
+**Элемент:** `pending` → `processing` → `done` \| `error`.
+
+**При `on_error: "stop"`** после первой ошибки остальные элементы батча обрабатываться не будут: они
+получают `status: "error"` с сообщением `"skipped: batch stopped after an earlier failure"` и
+**считаются в `failed`**. Отличить их от настоящих ошибок можно по этому тексту.
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 batch.bad_id` | `batch_id` не является корректным UUID. |
+| `404 batch.not_found` | Батч не найден (или принадлежит другому мерчанту). |
+| `503 batch.disabled` | Массовая обработка недоступна на этом шлюзе. |
+| `401 auth.*` | Ошибки аутентификации. |
+
+---
+
+## Нюансы
+
+- **Поллите разумно.** Опрашивайте раз в несколько секунд с backoff, а не в тугом цикле: `/batch/info`
+  тоже считается в [лимит частоты](/reference/basics-ratelimit). Смысла в опросе чаще, чем идёт обработка,
+  нет.
+- **Про оплату счетов `/batch/info` ничего не знает.** Он показывает только, **создались** ли объекты.
+  О том, что счёт оплачен, вам сообщит [вебхук](/reference/webhook-object).
+- **Частичный успех — норма.** При `on_error: "continue"` смотрите на `succeeded`/`failed` и разбирайте
+  `items[].error`, а не «прошёл / не прошёл весь батч».
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment/batch`](/reference/payment-batch) · [`POST /v1/refund/batch`](/reference/refund-batch) · [`POST /v1/payout/batch`](/reference/payout-batch)
+- [Ограничение частоты](/reference/basics-ratelimit) · [Справочник кодов ошибок](/reference/errors-catalog)

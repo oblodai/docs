@@ -4,22 +4,151 @@ description: "От ключей до первого вебхука за пять
 icon: "rocket"
 ---
 
-Пройдите путь от получения ключей до первого боевого вебхука. Подробные примеры кода будут добавлены в каждый шаг.
+За пять шагов вы примете первый платёж: получите ключи, подпишете запрос, создадите счёт,
+покажете покупателю адрес и поймаете вебхук об оплате.
 
-<Steps>
-  <Step title="Получите ключи">
-    Заведите аккаунт и возьмите `public_id` и `secret` — см. [Регистрация и ключи](/guides/get-keys).
-  </Step>
-  <Step title="Подпишите запрос">
-    Сформируйте HMAC-SHA256 подпись — см. [Подпись запросов](/guides/signing-requests).
-  </Step>
-  <Step title="Создайте платёж">
-    Отправьте первый запрос на создание платежа.
-  </Step>
-  <Step title="Примите вебхук">
-    Настройте приём уведомлений об оплате и проверьте подпись.
-  </Step>
-  <Step title="Проверьте интеграцию">
-    Убедитесь, что всё работает, по разделу [Тестирование](/guides/testing).
-  </Step>
-</Steps>
+<Warning>
+  **Песочницы нет — платежи настоящие.** У Oblodai нет тестового режима: «первый платёж» ниже — это
+  **реальная** оплата на маленькую сумму, которую вы отправите сами себе. Что можно проверить без
+  реальных переводов — см. [Тестирование](/guides/testing).
+</Warning>
+
+Весь код здесь — на Python, но подпись и вызовы идентичны на любом языке (см.
+[Как подписать запрос](/guides/signing-requests) для cURL / Node.js / PHP).
+
+---
+
+## Шаг 0. Что понадобится
+
+- **Аккаунт и ключи** — зарегистрируйтесь в кабинете и получите `public_id` + `secret`. Подробно —
+  [Регистрация и ключи](/guides/get-keys).
+- **Сервер/бэкенд**, где будет считаться подпись (секрет не должен попадать в браузер).
+- **Публично доступный HTTPS‑URL для вебхуков.** На своём ноутбуке (`localhost`) вебхуки **не дойдут**.
+  На время разработки поднимите **туннель**: программу, которая даёт вашему локальному серверу
+  временный публичный HTTPS‑адрес. Самый простой — [ngrok](https://ngrok.com/download): установили,
+  запустили `ngrok http 8000` — получили адрес вида `https://xxxx.ngrok-free.app`, его и указывайте как
+  `url_callback`. Альтернативы: Cloudflare Tunnel, localtunnel.
+
+---
+
+## Шаг 1. Получите ключи
+
+Зарегистрируйтесь в кабинете [my.oblodai.com](https://my.oblodai.com) и создайте API‑ключ (пошагово —
+[Регистрация и ключи](/guides/get-keys)). Вы получите:
+
+- **`public_id`** — несекретный идентификатор. Можно логировать. Уходит в заголовке `X-Public-Id`.
+- **`secret`** — секрет для подписи. **Показывается один раз** — сохраните его в секрет‑хранилище.
+
+Один ключ работает и для приёма, и для выплат. Подробнее — [Аутентификация](/reference/basics-auth).
+
+---
+
+## Шаг 2. Научитесь подписывать запрос
+
+Каждый запрос подписывается HMAC‑SHA256 по канонической строке из четырёх частей. Вот минимальная
+функция‑обёртка, которую мы будем переиспользовать:
+
+```python
+import hmac, hashlib, time, json, os, requests
+
+# В реальном коде читайте ключи из ОКРУЖЕНИЯ, не хардкодьте (см. правило ниже).
+SECRET = os.environ["OBLODAI_SECRET"].encode()   # для наглядности здесь — как выглядят ключи
+PUBLIC_ID = os.environ["OBLODAI_PUBLIC_ID"]       # oblodai_… / oblodai_live_…
+BASE = "https://api.oblodai.com"
+
+def call(path: str, payload: dict) -> dict:
+    body = json.dumps(payload, separators=(",", ":"))  # подписываем ровно эту строку
+    ts = str(int(time.time()))
+    signing = f"{ts}\nPOST\n{path}\n{body}"
+    sig = hmac.new(SECRET, signing.encode(), hashlib.sha256).hexdigest()
+    r = requests.post(BASE + path, data=body, headers={
+        "Content-Type": "application/json",
+        "X-Public-Id": PUBLIC_ID,
+        "X-Timestamp": ts,
+        "X-Signature": sig,
+    })
+    return r.json()
+```
+
+Детальный разбор и типичные ошибки — [Как подписать запрос](/guides/signing-requests).
+
+---
+
+## Шаг 3. Зарегистрируйте URL для вебхуков
+
+Один раз на проект зарегистрируйте endpoint и **сохраните `secret`** — им проверяется подпись входящих
+вебхуков (это **другой** секрет, чем ключ API):
+
+```python
+# Внимание: этот эндпоинт возвращает "голый" объект без конверта state/result
+resp = call("/v1/webhooks", {"url": "https://shop.example/oblodai/callback"})
+webhook_secret = resp["secret"]   # ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните
+```
+
+Подробнее — [`POST /v1/webhooks`](/reference/webhooks-register).
+
+---
+
+## Шаг 4. Создайте платёж
+
+```python
+payment = call("/v1/payment", {
+    "amount": "10",
+    "currency": "USD",
+    "order_id": "order-1",
+    "to_currency": "USDT",
+    "network": "tron",
+    "lifetime": 3600,
+})["result"]
+
+print(payment["address"])   # адрес, на который платит покупатель
+print(payment["url"])       # ссылка на hosted-страницу оплаты
+```
+
+Покажите покупателю `address` (или отправьте его на `url`). Полное описание полей ответа —
+[Объект платежа](/reference/payment-object).
+
+---
+
+## Шаг 5. Поймайте вебхук об оплате
+
+Когда покупатель оплатит, на ваш URL придёт вебхук `invoice.paid`. Обработчик должен:
+
+1. Взять **сырое тело** запроса и заголовки `X-Webhook-Timestamp`, `X-Webhook-Signature`.
+2. Проверить подпись секретом из шага 3.
+3. Дедуплицировать по `uuid` + `status` и ответить `2xx` **только после** успешной обработки.
+
+```python
+import hmac, hashlib
+from flask import Flask, request
+
+app = Flask(__name__)
+WEBHOOK_SECRET = b"b7c1e9…"   # из шага 3
+
+@app.post("/oblodai/callback")
+def callback():
+    raw = request.get_data()  # сырое тело — ВАЖНО не пересериализовывать
+    ts = request.headers.get("X-Webhook-Timestamp", "")
+    sig = request.headers.get("X-Webhook-Signature", "")
+    expected = hmac.new(WEBHOOK_SECRET, ts.encode() + b"." + raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        return "bad signature", 403
+
+    event = request.get_json()
+    if event.get("status") == "paid":
+        # ... пометить заказ event["order_id"] оплаченным (идемпотентно)
+        pass
+    return "ok", 200
+```
+
+Подробно про формат, заголовки и идемпотентность — [Объект вебхука](/reference/webhook-object) и
+[Настройка вебхуков](/guides/webhooks-setup).
+
+---
+
+## Что дальше
+
+- [Приём первого платежа](/guides/accept-first-payment) — тот же поток, но с разбором каждого статуса.
+- [Три режима создания счёта](/guides/payment-modes) — фиксированная валюта, авто‑сеть, агностичный счёт.
+- [Первая выплата](/guides/first-payout) — вывести средства с баланса.
+- [Чек‑лист перед запуском](/guides/production-checklist) — перед боевым трафиком.

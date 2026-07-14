@@ -1,0 +1,85 @@
+---
+title: "Объект выплаты (Payout)"
+---
+
+Объект выплаты описывает вывод средств на внешний адрес. Формируется при создании выплаты
+([`POST /v1/payout`](/reference/payout-create)) и возвращается методами [`/info`](/reference/payout-info) и
+[`/history`](/reference/payout-history).
+
+---
+
+## Пример объекта
+
+```json
+{
+  "uuid": "0c1f...e9",
+  "order_id": "payout-1",
+  "amount": "25",
+  "currency": "USDT",
+  "network": "tron",
+  "address": "TXY...",
+  "txid": "",
+  "status": "process",
+  "is_final": false,
+  "approval_required": false,
+  "source": "api",
+  "created_at": "2026-07-10T12:00:00Z",
+  "updated_at": "2026-07-10T12:00:00Z"
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `uuid` | string | Идентификатор выплаты в Oblodai. |
+| `order_id` | string | Ваш номер выплаты; ключ идемпотентности. |
+| `amount` | string | Сумма выплаты в `currency`. |
+| `currency` | string | Код валюты. |
+| `network` | string | Сеть. |
+| `address` | string | Адрес получателя. |
+| `txid` | string | Хеш транзакции; пуст до отправки в сеть. |
+| `status` | string | Укрупнённый статус. См. [таблицу](#статусы-выплаты). |
+| `is_final` | bool | Терминальный статус (`paid`/`fail`/`cancel`). |
+| `approval_required` | bool | Нужно ли ручное подтверждение. Для выплат по API‑ключу — `false`. |
+| `source` | string | Метка происхождения: `api` или `manual`. |
+| `created_at` / `updated_at` | string | Время создания / изменения (ISO 8601). |
+
+При использовании `from_currency` в объект добавляется `convert`:
+
+```json
+{ "from_currency": "USDT", "to_currency": "TRX", "from_amount": "40.12", "rate": "0.062" }
+```
+
+---
+
+## Статусы выплаты
+
+Внутренний жизненный цикл — `pending → approved → (broadcasting) → sent → confirmed` (либо `failed` /
+`cancelled`). Но **в поле `status` ответов приходит укрупнённый (Heleket‑совместимый) статус**:
+
+| Внутренний статус | `status` в ответе | Значение |
+|---|---|---|
+| `pending` | `check` | Создана, средства зарезервированы, ждёт одобрения. |
+| `approved`, `broadcasting`, `sent` | `process` | Одобрена / отправляется / отправлена, ждёт подтверждений. |
+| `confirmed` | `paid` | Подтверждена в блокчейне — готово. |
+| `awaiting_cosign` | `awaiting_cosign` | Ждёт второй подписи (2‑of‑2). Приходит **как есть** — своего укрупнённого статуса нет. Только для мерчантов с обязательным co‑sign. |
+| `failed` | `fail` | Отклонена / отправка не удалась, резерв освобождён. |
+| `cancelled` | `cancel` | Отменена до отправки, резерв освобождён. |
+
+Признак финальности — `is_final: true` (статусы `paid` / `fail` / `cancel`).
+
+---
+
+## Важное про одобрение
+
+- **По API‑ключу выплата авто‑одобряется** (`approval_required: false`) и сразу уходит в отправку —
+  без белых списков и периодов выдержки. Ответственность за адрес назначения на вашей стороне.
+- Статус `pending` + `approval_required: true` возникает только у внутренних/кабинетных сценариев
+  (например, возврат на адрес, отличный от адреса плательщика) и подтверждается через
+  [`POST /v1/payout/approve`](/reference/payout-approve). Обычной интеграции по API‑ключу этот шаг не нужен.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payout`](/reference/payout-create) · [`POST /v1/payout/info`](/reference/payout-info)
+- [Первая выплата](/guides/first-payout)

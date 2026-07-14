@@ -1,0 +1,73 @@
+---
+title: "POST /v1/payout/info"
+---
+
+Найти выплату по `uuid` (наш) или `order_id` (ваш).
+
+**URL:** `https://api.oblodai.com/v1/payout/info` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+Нужен хотя бы один идентификатор.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `uuid` | string | нет\* | Идентификатор выплаты в Oblodai. |
+| `order_id` | string | нет\* | Ваш номер выплаты. |
+
+\* Требуется хотя бы одно из двух.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"order_id":"payout-1"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/info' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/info \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/info", {"order_id": "payout-1"})
+```
+
+```js Node.js
+await call("/v1/payout/info", { order_id: "payout-1" });
+```
+
+</CodeGroup>
+
+---
+
+## Ответ
+
+Объект выплаты с актуальным `status` и `txid`. Полное описание — [Объект выплаты](/reference/payout-object).
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 payout.bad_uuid` | Некорректный `uuid`. |
+| `400 payout.no_lookup` | Не передан ни `uuid`, ни `order_id`. |
+| `404 payout.not_found` | Выплата не найдена (включая чужую выплату). |
+
+---
+
+## Связанные страницы
+
+- [Объект выплаты](/reference/payout-object) · [`POST /v1/payout/history`](/reference/payout-history)

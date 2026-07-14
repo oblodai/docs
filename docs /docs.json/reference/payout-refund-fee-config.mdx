@@ -1,0 +1,81 @@
+---
+title: "POST /v1/payout/refund-fee-config/get · /set"
+---
+
+Per‑project настройка: кто несёт **нашу** комиссию при возврате. Шлюз её никогда не покрывает —
+её платит либо клиент (получает net), либо мерчант (клиент получает gross).
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## POST /v1/payout/refund-fee-config/set
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `fee_on_customer` | bool | да | `true` — клиент получает **net** (комиссию платит клиент); `false` — мерчант платит комиссию, клиент получает **gross**. |
+
+Ответ:
+
+```json
+{ "state": 0, "result": { "fee_on_customer": true } }
+```
+
+---
+
+## POST /v1/payout/refund-fee-config/get
+
+Тело — `{}`.
+
+```json
+{ "state": 0, "result": { "fee_on_customer": false, "configured": false } }
+```
+
+`configured: false` — override не задан, действует дефолт шлюза.
+
+---
+
+## Примеры
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"fee_on_customer":true}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/refund-fee-config/set' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/refund-fee-config/set \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/refund-fee-config/set", {"fee_on_customer": True})
+call("/v1/payout/refund-fee-config/get", {})
+```
+
+```js Node.js
+await call("/v1/payout/refund-fee-config/set", { fee_on_customer: true });
+await call("/v1/payout/refund-fee-config/get", {});
+```
+
+</CodeGroup>
+
+---
+
+## Нюансы
+
+- Это про **нашу** комиссию при **возврате** ([`/v1/payment/refund`](/reference/payment-refund)). Не путайте с
+  [`fee-config`](/reference/payout-fee-config), которая про **сетевую** комиссию **выплаты**.
+- Шлюз свою комиссию при возврате не покрывает — выбор только между клиентом и мерчантом.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment/refund`](/reference/payment-refund) · [Кто платит сетевую комиссию выплаты](/reference/payout-fee-config)

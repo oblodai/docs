@@ -1,0 +1,85 @@
+---
+title: "POST /v1/payment/resend"
+---
+
+Повторно ставит в очередь текущий вебхук платежа (по `uuid` или `order_id`). Событие —
+`invoice.<статус>`.
+
+**URL:** `https://api.oblodai.com/v1/payment/resend` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+Нужен хотя бы один идентификатор.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `uuid` | string | нет\* | Идентификатор платежа. |
+| `order_id` | string | нет\* | Ваша ссылка на заказ. |
+
+\* Требуется хотя бы одно из двух.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"order_id":"order-1001"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/resend' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/resend \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/resend", {"order_id": "order-1001"})
+```
+
+```js Node.js
+await call("/v1/payment/resend", { order_id: "order-1001" });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{ "state": 0, "result": { "result": true } }
+```
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 payment.no_lookup` | Не передан ни `uuid`, ни `order_id`. |
+| `400 payment.bad_uuid` | Некорректный `uuid`. |
+| `404 payment.not_found` | Платёж не найден. |
+
+---
+
+## Нюансы
+
+- Переотправка **создаёт ещё одну доставку** того же события. Ваш обработчик должен быть идемпотентен
+  (дедуп по `uuid` + `status`) — см. [Объект вебхука](/reference/webhook-object).
+- Событие соответствует **текущему** статусу платежа: `invoice.<статус>`.
+
+---
+
+## Связанные страницы
+
+- [Объект вебхука](/reference/webhook-object) · [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries)
+- [Отладка вебхуков](/guides/webhooks-debug)

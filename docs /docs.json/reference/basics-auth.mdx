@@ -1,0 +1,194 @@
+---
+title: "Аутентификация и подпись запросов"
+---
+
+Каждый запрос к API (кроме публичных) авторизуется **тремя HTTP‑заголовками**. Тело запроса
+подписывается секретом вашего ключа по алгоритму **HMAC‑SHA256**. Подпись считается только на вашем
+сервере — секрет никогда не должен попадать в браузер или мобильное приложение.
+
+Если вы разбираетесь с подписью впервые, начните с инструкции
+[Как подписать запрос](/guides/signing-requests) — там тот же материал по шагам и с разбором
+ошибок. Эта страница — краткий справочник.
+
+---
+
+## Ключи мерчанта
+
+При онбординге вы получаете **один API‑ключ** — пару значений `public_id` + `secret`:
+
+| Значение | Назначение |
+|---|---|
+| `public_id` | Несекретный идентификатор ключа (`oblodai_…`). Можно логировать. Уходит в заголовке `X-Public-Id`. |
+| `secret` | Секрет для подписи (`oblodai_live_…`). Показывается **один раз** — сохраните его. Никогда не передаётся по сети. |
+
+Этот один ключ аутентифицирует **весь** функционал — и приём платежей, и выплаты, и возвраты. Отдельные
+ключи заводить не нужно.
+
+---
+
+## Заголовки запроса
+
+| Заголовок | Значение |
+|---|---|
+| `X-Public-Id` | Ваш `public_id`. |
+| `X-Timestamp` | Текущее время в **unix‑секундах** (целое). Должно попадать в окно **±5 минут** от времени сервера. |
+| `X-Signature` | HMAC‑подпись запроса (hex, нижний регистр). |
+
+---
+
+## Как считается подпись
+
+Собирается «каноническая строка» из четырёх частей, склеенных символом перевода строки `\n`, и
+подписывается `secret`‑ом по HMAC‑SHA256:
+
+```
+signing_string = "{X-Timestamp}" + "\n" + "{METHOD}" + "\n" + "{path}" + "\n" + "{body}"
+X-Signature    = hex( HMAC_SHA256( secret, signing_string ) )
+```
+
+- `METHOD` — HTTP‑метод в верхнем регистре, то есть всегда `POST`.
+- `path` — путь запроса вместе со строкой запроса (query), если она есть. Для JSON‑эндпоинтов query
+  отсутствует, поэтому `path` — это просто путь, например `/v1/payment`.
+- `body` — **точные байты** тела запроса, ровно как они уходят в сеть. Подписывайте ту же строку,
+  что и отправляете: порядок полей и пробелы должны совпадать байт‑в‑байт.
+
+Подпись сверяется на сервере в постоянном времени. Временная метка проверяется на окно ±5 минут
+(`MaxClockSkew`) — это гасит переигрывание перехваченной подписи.
+
+<Warning>
+  **Самая частая ошибка:** подписать одну строку JSON, а отправить другую — например, библиотека
+  переупорядочила поля или добавила пробелы. Подпись считается по **байтам** тела. Сериализуйте тело
+  **один раз** в переменную и используйте её и для подписи, и для отправки.
+</Warning>
+
+<Note>
+  Подпись **запроса** и подпись **вебхука** — это два разных алгоритма. Не путайте их. Формат подписи
+  вебхука описан на странице [Объект вебхука](/reference/webhook-object).
+</Note>
+
+---
+
+## Примеры
+
+<CodeGroup>
+
+```bash cURL + openssl
+SECRET='oblodai_live_…ваш_секрет'
+PUBLIC_ID='oblodai_…ваш_public_id'
+TS=$(date +%s)
+METHOD='POST'
+PATHQ='/v1/payment'
+BODY='{"order_id":"order-1001","currency":"USDT","network":"tron","amount":"25.00"}'
+
+SIGSTR=$(printf '%s\n%s\n%s\n%s' "$TS" "$METHOD" "$PATHQ" "$BODY")
+SIG=$(printf '%s' "$SIGSTR" | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+
+curl -s https://api.oblodai.com$PATHQ \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" \
+  -H "X-Timestamp: $TS" \
+  -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+import hmac, hashlib, time, json, requests
+
+SECRET = b"oblodai_live_…"
+PUBLIC_ID = "oblodai_…"
+BASE = "https://api.oblodai.com"
+
+def call(path: str, payload: dict) -> dict:
+    body = json.dumps(payload, separators=(",", ":"))  # компактный JSON — подписываем ровно его
+    ts = str(int(time.time()))
+    signing = f"{ts}\nPOST\n{path}\n{body}"
+    sig = hmac.new(SECRET, signing.encode(), hashlib.sha256).hexdigest()
+    r = requests.post(BASE + path, data=body, headers={
+        "Content-Type": "application/json",
+        "X-Public-Id": PUBLIC_ID,
+        "X-Timestamp": ts,
+        "X-Signature": sig,
+    })
+    return r.json()
+
+print(call("/v1/payment", {"order_id": "order-1001", "currency": "USDT",
+                            "network": "tron", "amount": "25.00"}))
+```
+
+```js Node.js
+import crypto from "node:crypto";
+
+const SECRET = "oblodai_live_…";
+const PUBLIC_ID = "oblodai_…";
+const BASE = "https://api.oblodai.com";
+
+async function call(path, payload) {
+  const body = JSON.stringify(payload);          // подписываем ровно эту строку
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const signing = `${ts}\nPOST\n${path}\n${body}`;
+  const sig = crypto.createHmac("sha256", SECRET).update(signing).digest("hex");
+  const res = await fetch(BASE + path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Public-Id": PUBLIC_ID,
+      "X-Timestamp": ts,
+      "X-Signature": sig,
+    },
+    body,
+  });
+  return res.json();
+}
+```
+
+```php PHP
+<?php
+$secret = 'oblodai_live_…';
+$publicId = 'oblodai_…';
+$base = 'https://api.oblodai.com';
+
+function call(string $path, array $payload): array {
+    global $secret, $publicId, $base;
+    $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    $ts = (string) time();
+    $signing = "$ts\nPOST\n$path\n$body";
+    $sig = hash_hmac('sha256', $signing, $secret);
+    $ch = curl_init($base . $path);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            "X-Public-Id: $publicId",
+            "X-Timestamp: $ts",
+            "X-Signature: $sig",
+        ],
+    ]);
+    return json_decode(curl_exec($ch), true);
+}
+```
+
+</CodeGroup>
+
+---
+
+## Ошибки аутентификации
+
+| Код | HTTP | Причина |
+|---|---|---|
+| `auth.bad_timestamp` | 401 | `X-Timestamp` **отсутствует или не число**. (Само окно ±5 минут проверяется позже — см. `merchant.bad_signature`.) |
+| `auth.ip_not_allowed` | 401 | IP‑адрес не входит в включённый [IP‑allowlist](/reference/api-allowlist). |
+| `merchant.bad_signature` | 401 | Подпись не совпала **или** `X-Timestamp` вне окна ±5 минут (проверка skew встроена в сверку подписи). |
+| `merchant.unknown_key` | 401 | Неизвестный или отозванный `X-Public-Id`. |
+| `merchant.wrong_key_kind` | **403** | Только для старых **раздельных** ключей: ключ не имеет права на этот эндпоинт. Единый API‑ключ (`oblodai_…`) подходит везде и эту ошибку не вызывает. |
+
+---
+
+## Связанные страницы
+
+- [Как подписать запрос](/guides/signing-requests) — пошаговая инструкция.
+- [Идемпотентность](/reference/basics-idempotency) — почему подписи недостаточно для защиты от дублей.
+- [IP‑allowlist](/reference/api-allowlist) — ограничение доступа по IP.
+- [Объект вебхука](/reference/webhook-object) — другой алгоритм подписи, для входящих вебхуков.

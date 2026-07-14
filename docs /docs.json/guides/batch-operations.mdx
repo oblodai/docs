@@ -1,0 +1,336 @@
+---
+title: "Массовые операции (батчи)"
+---
+
+Батч — это способ отправить **до 5000 операций одним подписанным запросом**. Работает для трёх видов
+операций: создание платежей, возвраты и выплаты.
+
+Главное, что нужно понять сразу: **батч — это штатный способ не упираться в rate limit.** Лимит
+частоты считается по HTTP‑запросам (по умолчанию 120 запросов/мин на IP). Если вы отправляете 5000
+выплат циклом — это 5000 запросов, и вы гарантированно упрётесь в `429` и растянете работу на часы.
+Тот же список, отправленный батчем, — это **один** запрос и одна подпись.
+
+| Как отправить 5000 выплат | Запросов к API | Что будет |
+|---|---|---|
+| Циклом по одной | 5000 | `429 rate limit`, ретраи, часы ожидания |
+| Пачками по 100 через `/v1/payout/mass` | 50 | Лучше, но всё ещё много запросов и ручная нарезка |
+| **Батчем `/v1/payout/batch`** | **1** | Приняли за секунду, обрабатывается асинхронно |
+
+---
+
+## Как это устроено: асинхронность
+
+Батч **не** обрабатывается синхронно. Шлюз не держит ваше соединение, пока проводит 5000 выплат — это
+заняло бы минуты и любой таймаут убил бы запрос. Вместо этого:
+
+```
+1. Вы отправляете батч (POST /v1/payout/batch)
+        ↓  сразу же, за миллисекунды
+2. Шлюз отвечает: batch_id + status: "pending"
+        ↓  дальше шлюз обрабатывает элементы у себя, в фоне
+3. Вы опрашиваете POST /v1/batch/info по batch_id
+        ↓  pending → processing → completed
+4. Статус completed → разбираете результаты поэлементно
+```
+
+То есть ответ на отправку **не содержит результатов** — только квитанцию с `batch_id`. Результаты
+появляются позже, в `/v1/batch/info`.
+
+---
+
+## Шаг 1. Отправить батч
+
+Три эндпоинта, по одному на вид операции. Внутри массива лежат **ровно те же объекты**, что вы
+отправили бы поштучно:
+
+| Эндпоинт | Ключ массива | Элемент = тело метода |
+|---|---|---|
+| `POST /v1/payment/batch` | `payments` | [`POST /v1/payment`](/reference/payment-create) |
+| `POST /v1/refund/batch` | `refunds` | [`POST /v1/payment/refund`](/reference/payment-refund) |
+| `POST /v1/payout/batch` | `payouts` | [`POST /v1/payout`](/reference/payout-create) |
+
+```python
+resp = call("/v1/payout/batch", {
+    "payouts": [
+        {"amount": "25", "currency": "USDT", "network": "tron", "address": "TXY...", "order_id": "p-1"},
+        {"amount": "10", "currency": "USDT", "network": "tron", "address": "TZZ...", "order_id": "p-2"},
+        # … до 5000 элементов
+    ],
+    "on_error": "continue",
+})["result"]
+
+batch_id = resp["batch_id"]
+print(resp)
+# {"batch_id": "b3f1…", "kind": "payout", "count": 2, "status": "pending"}
+```
+
+Сохраните `batch_id` — без него результаты не забрать.
+
+Элементы батча платежей поддерживают **всё то же**, что и одиночный `POST /v1/payment`, — включая цену
+в фиате, причём в разных валютах внутри одного батча:
+
+```python
+call("/v1/payment/batch", {"payments": [
+    {"amount": "5000", "currency": "RUB", "order_id": "o-1", "to_currency": "USDT", "network": "tron"},
+    {"amount": "100",  "currency": "EUR", "order_id": "o-2", "to_currency": "USDT", "network": "tron"},
+]})
+```
+
+→ [Три режима создания счёта](/guides/payment-modes#цену-можно-назначать-не-только-в-долларах)
+
+### `on_error`: что делать при ошибке в элементе
+
+| Значение | Поведение |
+|---|---|
+| `"continue"` (**по умолчанию**) | Ошибочный элемент помечается `error`, остальные обрабатываются. Частичный успех — норма. |
+| `"stop"` | После первой ошибки обработка прекращается. Оставшиеся элементы **тоже получают статус `error`** — с пояснением `"skipped: batch stopped after an earlier failure"` — и попадают в счётчик `failed`. |
+
+<Note>
+  **Отдельного статуса `skipped` нет.** Непройденный элемент отличается от настоящей ошибки только
+  текстом в поле `error`. Поэтому при `on_error: "stop"` число `failed` включает и те элементы, до
+  которых обработка просто не дошла, — не считайте их все отказами.
+</Note>
+
+Берите `continue`, если элементы независимы (типичный случай: выплаты разным людям). Берите `stop`,
+если пачка осмысленна только целиком и вы хотите разобраться до того, как уйдут остальные деньги.
+
+Как `continue` выглядит на практике: батч из 3 платежей, один элемент с несуществующей парой
+валюта/сеть →
+
+```json
+{"status": "completed", "total": 3, "succeeded": 2, "failed": 1,
+ "items": [
+   {"idx": 0, "status": "done"},
+   {"idx": 1, "status": "error", "error": "unsupported network for this currency"},
+   {"idx": 2, "status": "done"}
+ ]}
+```
+
+Ошибка в середине **не остановила** остальные — элементы 0 и 2 создались.
+
+<Note>
+  **`stop` — это не откат.** Элементы, которые успели пройти **до** ошибки, уже выполнены и назад не
+  откатываются: деньги ушли. `stop` лишь не даёт выполнить оставшиеся. Если вам нужна семантика
+  «всё или ничего» — её нет: проверяйте данные до отправки.
+</Note>
+
+Как выглядит `stop` на практике — тот же батч из 3 платежей, ошибка во втором:
+
+```json
+{"status": "completed", "total": 3, "succeeded": 1, "failed": 2,
+ "items": [
+   {"idx": 0, "status": "done"},
+   {"idx": 1, "status": "error", "error": "unsupported network for this currency"},
+   {"idx": 2, "status": "error", "error": "skipped: batch stopped after an earlier failure"}
+ ]}
+```
+
+Элемент 0 создался и остался. Элемент 2 не выполнялся — но формально он тоже `error`.
+
+---
+
+## Шаг 2. Опрашивать статус
+
+```python
+import time
+
+while True:
+    info = call("/v1/batch/info", {"batch_id": batch_id, "limit": 100, "offset": 0})["result"]
+    if info["status"] == "completed":
+        break
+    time.sleep(5)        # не долбите чаще, чем нужно, — это тоже запросы
+```
+
+Статусы батча: `pending` (принят, ещё не начали) → `processing` (идёт обработка) → `completed`
+(обработаны все элементы, которые должны были обработаться).
+
+<Note>
+  `completed` **не** значит «всё удалось». Оно значит «шлюз закончил». Сколько элементов прошло, а
+  сколько нет — смотрите в `succeeded` / `failed`.
+</Note>
+
+---
+
+## Шаг 3. Разобрать результаты поэлементно
+
+Ответ `/v1/batch/info`:
+
+```json
+{
+  "batch_id": "b3f1…",
+  "kind": "payout",
+  "status": "completed",
+  "on_error": "continue",
+  "total": 1000,
+  "succeeded": 998,
+  "failed": 2,
+  "items": [
+    {"idx": 0, "status": "done",  "order_id": "p-1", "result": { "uuid": "…", "status": "process" }},
+    {"idx": 1, "status": "error", "order_id": "p-2", "error": "available balance is less than the requested amount"}
+  ]
+}
+```
+
+- `idx` — позиция элемента **в исходном массиве**, который вы отправили. По нему вы сопоставляете
+  результат со своей строкой в БД.
+- `result` — то, что вернул бы одиночный вызов (полный объект платежа/выплаты/возврата, с `uuid`).
+- `error` — строка с причиной, если элемент не прошёл.
+
+Статусы **элемента** (`items[].status`) — не путайте их со статусом батча:
+
+| `items[].status` | Значение |
+|---|---|
+| `done` | Элемент выполнен. В `result` — созданный объект. |
+| `error` | Элемент не прошёл. Причина — в `error`. |
+
+Статуса `skipped` **нет**. Элемент, до которого обработка не дошла (при `on_error: "stop"`), тоже
+получает `error` — с текстом `"skipped: batch stopped after an earlier failure"`. Отличить его от
+настоящего отказа можно только по этому тексту:
+
+```python
+SKIPPED = "skipped: batch stopped after an earlier failure"
+```
+
+<Note>
+  **Ветвитесь по `status`, а не по тексту `error`.** Текст — это `message`, а не код ошибки: он
+  предназначен человеку и может измениться. Единственное исключение — проверка на строку выше, если
+  вам важно отличить «не дошли» от «не прошло».
+</Note>
+
+`items` **постраничные** — их может быть 5000. Листайте через `limit`/`offset`:
+
+```python
+def batch_items(batch_id, page=100):
+    offset, out = 0, []
+    while True:
+        info = call("/v1/batch/info",
+                    {"batch_id": batch_id, "limit": page, "offset": offset})["result"]
+        out += info["items"]
+        offset += page
+        if offset >= info["total"]:
+            return info, out
+
+info, items = batch_items(batch_id)
+print(f"{info['succeeded']} ок, {info['failed']} с ошибкой")
+
+SKIPPED = "skipped: batch stopped after an earlier failure"
+
+for item in items:
+    if item["status"] == "done":
+        save_payout_uuid(item["order_id"], item["result"]["uuid"])   # ваш код
+    elif item["error"] == SKIPPED:       # до элемента не дошли (on_error: "stop")
+        requeue(item["order_id"])        # ваш код: отправить в следующем батче
+    else:
+        mark_failed(item["order_id"], item["error"])                 # ваш код
+```
+
+### Node.js: полный цикл
+
+```js
+const submitted = await call("/v1/payout/batch", {
+  payouts: rows.map((r) => ({
+    amount: r.amount, currency: "USDT", network: "tron",
+    address: r.address, order_id: r.orderId,
+  })),
+  on_error: "continue",
+});
+const batchId = submitted.result.batch_id;
+
+// поллинг до completed
+let info;
+do {
+  await new Promise((r) => setTimeout(r, 5000));
+  info = (await call("/v1/batch/info", { batch_id: batchId, limit: 100, offset: 0 })).result;
+} while (info.status !== "completed");
+
+// постранично собрать элементы
+const items = [];
+for (let offset = 0; offset < info.total; offset += 100) {
+  const page = (await call("/v1/batch/info",
+    { batch_id: batchId, limit: 100, offset })).result;
+  items.push(...page.items);
+}
+
+const SKIPPED = "skipped: batch stopped after an earlier failure";
+
+for (const item of items) {
+  if (item.status === "done") await savePayoutUuid(item.order_id, item.result.uuid);
+  else if (item.error === SKIPPED) await requeue(item.order_id); // не дошли (on_error: "stop")
+  else await markFailed(item.order_id, item.error);
+}
+```
+
+---
+
+## Идемпотентность батча
+
+Работает на **двух** уровнях, и оба стоит использовать:
+
+1. **Заголовок `Idempotency-Key` на самом запросе батча.** Защищает от «отправил батч, ответ потерялся,
+   отправил ещё раз» — повтор с тем же ключом вернёт **тот же `batch_id`**, а не создаст второй батч из
+   тех же 5000 выплат. Это ровно тот сценарий, где ошибка стоит очень дорого.
+2. **`order_id` внутри каждого элемента.** Дедуплицирует конкретную операцию (для выплат `order_id`
+   обязателен). Даже если батч каким‑то образом продублируется, элементы с теми же `order_id` не уйдут
+   дважды.
+
+→ [Идемпотентность](/reference/basics-idempotency)
+
+---
+
+## Ошибки уровня батча
+
+Отклоняется **весь** запрос (элементы даже не начинают обрабатываться):
+
+| Код | Значение | Что делать |
+|---|---|---|
+| `400 batch.empty` | Массив пуст. | Не отправляйте пустой батч. |
+| `400 batch.too_large` | Больше **5000** элементов. | Нарежьте на батчи по 5000. |
+| `400 batch.bad_id` | `batch_id` некорректного формата. | Проверьте, что передаёте `batch_id` из ответа на отправку. |
+| `404 batch.not_found` | Батч с таким `batch_id` не найден. | Проверьте `batch_id`; он принадлежит вашему мерчанту. |
+| `503 batch.disabled` | Батчи временно выключены. | Временная ошибка — повторите с backoff. |
+
+Ошибки **отдельных элементов** сюда не попадают: они лежат в `items[].error` и не роняют весь запрос
+(при `on_error: "continue"`).
+
+---
+
+## Что осталось от `/v1/payout/mass`
+
+[`POST /v1/payout/mass`](/reference/payout-mass) (до 100 выплат, **синхронно**) продолжает
+работать, но это **легаси‑путь**. Он оправдан ровно в одном случае: пачка маленькая и вам нужен
+результат **прямо в ответе**, без поллинга. Для всего остального — батч.
+
+| | `/v1/payout/mass` | `/v1/payout/batch` |
+|---|---|---|
+| Максимум элементов | 100 | **5000** |
+| Обработка | Синхронная, результат в ответе | Асинхронная, результат через `/v1/batch/info` |
+| Управление ошибками | Нет (всегда «продолжай») | `on_error`: `continue` / `stop` |
+| Виды операций | Только выплаты | Платежи, возвраты, выплаты |
+| Статус | Легаси | **Рекомендуемый** |
+
+→ [Массовые выплаты](/guides/mass-payouts)
+
+---
+
+## Практические правила
+
+- **Не поллите слишком часто.** `/v1/batch/info` — тоже запрос и тоже ест лимит частоты. Раз в
+  несколько секунд более чем достаточно; вы только что сэкономили 5000 запросов, не тратьте их на
+  поллинг.
+- **Проверьте баланс до батча выплат.** Если денег хватит на половину списка, вторая половина честно
+  вернёт `insufficient_funds` в `items[].error` — но вы об этом узнаете только на разборе.
+- **Храните `batch_id` рядом с задачей.** Если ваш процесс упал в середине поллинга, `batch_id` —
+  единственный способ забрать результаты потом.
+- **Уникальный `order_id` на каждый элемент.** Это ваш якорь для сверки: `idx` привязан к позиции в
+  массиве, `order_id` — к вашей сущности.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment/batch` · `/v1/refund/batch` · `/v1/payout/batch`](/reference/payment-batch) ·
+  [`POST /v1/batch/info`](/reference/batch-info)
+- [Массовые выплаты](/guides/mass-payouts) — легаси `/v1/payout/mass` и когда он ещё уместен.
+- [Ограничение частоты](/reference/basics-ratelimit) — почему батч решает проблему `429`.
+- [Идемпотентность](/reference/basics-idempotency) · [Рецепт устойчивого клиента](/guides/resilient-client)
+- [Первая выплата](/guides/first-payout) · [Возвраты платежей](/guides/refunds)

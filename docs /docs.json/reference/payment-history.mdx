@@ -1,0 +1,89 @@
+---
+title: "POST /v1/payment/history"
+---
+
+Список платежей мерчанта — новые сверху, с limit/offset‑пагинацией.
+
+**URL:** `https://api.oblodai.com/v1/payment/history` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+Все поля опциональны.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `limit` | int | нет | Размер страницы. По умолчанию 25, диапазон 1–100. |
+| `offset` | int | нет | Смещение от начала. |
+| `status` | string | нет | Фильтр по статусу ([`payment_status`](/reference/payment-object#статусы-payment_status)). Пусто = все. |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"limit":25,"offset":0,"status":"paid"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/history' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/history \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/history", {"limit": 25, "offset": 0, "status": "paid"})
+```
+
+```js Node.js
+await call("/v1/payment/history", { limit: 25, offset: 0, status: "paid" });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "items": [
+      { "uuid": "8b1d7d2e-…", "order_id": "order-1", "amount": "10.00",
+        "payment_status": "paid", "is_final": true, "…": "полный объект платежа" }
+    ],
+    "paginate": { "count": 137, "per_page": 25, "offset": 0 }
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `items` | array | Список **полных** объектов платежа — те же поля, что возвращает [`/info`](/reference/payment-info) (в примере показаны не все). |
+| `paginate.count` | int | **Общее** число записей, не размер страницы. |
+| `paginate.per_page` | int | Размер страницы. |
+| `paginate.offset` | int | Текущее смещение. |
+
+---
+
+## Нюансы
+
+- `count` — общее число записей по фильтру. Для постраничного обхода увеличивайте `offset` на `limit`,
+  пока не переберёте `count`.
+- Каждый элемент — **полный** объект платежа (то же, что отдаёт [`POST /v1/payment/info`](/reference/payment-info));
+  в примере выше поля сокращены для краткости.
+
+---
+
+## Связанные страницы
+
+- [Объект платежа](/reference/payment-object) · [`POST /v1/payment/info`](/reference/payment-info)

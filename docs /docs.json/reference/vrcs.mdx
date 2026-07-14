@@ -1,0 +1,82 @@
+---
+title: "POST /v1/vrcs"
+---
+
+Включает или выключает **VRCS** (Volatility Risk Control System) — авто‑конвертацию волатильных
+депозитов в USDT. Без поля `enabled` работает как getter.
+
+**URL:** `https://api.oblodai.com/v1/vrcs` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+VRCS защищает от колебаний курса: как только на баланс приходит волатильный актив, он автоматически
+конвертируется в USDT.
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `enabled` | bool | нет | Включить/выключить VRCS. **Опустите поле для чтения** текущего состояния. |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+# Включить
+BODY='{"enabled":true}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/vrcs' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/vrcs \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/vrcs", {"enabled": True})   # запись
+call("/v1/vrcs", {})                   # чтение
+```
+
+```js Node.js
+await call("/v1/vrcs", { enabled: true }); // запись
+await call("/v1/vrcs", {});                // чтение
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{ "state": 0, "result": { "enabled": true } }
+```
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 vrcs.read` | Ошибка чтения состояния. |
+
+---
+
+## Нюансы
+
+- Настройка привязана к **мерчанту**, а не к проекту.
+- Без поля `enabled` вызов не меняет состояние, а только возвращает текущее.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/balance`](/reference/balance) · [Форматы сумм и денег](/reference/basics-money)

@@ -1,0 +1,95 @@
+---
+title: "POST /v1/exchange-rate/list"
+---
+
+Возвращает текущие обменные курсы к **USDT**.
+
+<Note>
+  **Публичный метод.** Подпись и ключ не нужны — это витринные котировки, а не финансовая операция.
+</Note>
+
+<Note>
+  **Отличие от Heleket:** здесь это `POST /v1/exchange-rate/list` (не
+  `GET /v1/exchange-rate/{currency}/list`), и котировка даётся **к USDT**, а не к USD.
+</Note>
+
+**URL:** `https://api.oblodai.com/v1/exchange-rate/list`
+
+---
+
+## Параметры запроса
+
+Тело опционально.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `currency_from` | string | нет | Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело `{}` — по всем валютам. |
+
+---
+
+## Пример запроса
+
+По всем валютам — тело `{}`. По одной валюте:
+
+<CodeGroup>
+
+```bash cURL
+curl -s https://api.oblodai.com/v1/exchange-rate/list \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"currency_from":"ETH"}'
+```
+
+```python Python
+import requests
+
+r = requests.post("https://api.oblodai.com/v1/exchange-rate/list",
+                  json={"currency_from": "ETH"})
+print(r.json())
+```
+
+```js Node.js
+const res = await fetch("https://api.oblodai.com/v1/exchange-rate/list", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ currency_from: "ETH" }),
+});
+console.log(await res.json());
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": [
+    { "from": "ETH", "to": "USDT", "course": "3450.12000000" }
+  ]
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `from` | string | Валюта, для которой дана котировка. |
+| `to` | string | Всегда `USDT`. |
+| `course` | string | Курс строкой с фиксированной точностью. |
+
+---
+
+## Нюансы
+
+- **Неизвестная `currency_from`** вернёт пустой `result: []`, а не ошибку.
+- **Пары без котировки** просто опускаются из ответа.
+- Курс — **оценочная** рыночная котировка для отображения, не гарантия исполнения. Фактический курс
+  платежа фиксируется при создании инвойса (см. [`POST /v1/payment`](/reference/payment-create)).
+
+---
+
+## Связанные страницы
+
+- [Форматы сумм и денег](/reference/basics-money)
+- [`POST /v1/payment`](/reference/payment-create) — там курс фиксируется под конкретный счёт.

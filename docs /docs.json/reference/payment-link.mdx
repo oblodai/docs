@@ -1,0 +1,312 @@
+---
+title: "POST /v1/payment/link · /list · /info · /toggle"
+---
+
+**Платёжная ссылка** — многоразовый URL оплаты, который вы просто даёте покупателю (в письме, в чате,
+кнопкой на сайте). Каждый, кто по ней платит, получает **свой отдельный счёт** — ссылку можно
+использовать сколько угодно раз.
+
+<Note>
+  **Ссылка — единственный способ принимать платежи БЕЗ бэкенда.** Обычный [`POST /v1/payment`](/reference/payment-create)
+  нужно подписывать секретом, а секрет нельзя класть в браузер — значит, нужен ваш сервер. У ссылки
+  счёт создаёт **публичный** [`POST /v1/link/{id}/checkout`](/reference/link-public), подпись не нужна. Поэтому
+  она работает на Tilda, Wix, в Notion, в письме — везде, где своего бэкенда нет.
+</Note>
+
+**Базовый URL:** `https://api.oblodai.com` · **Аутентификация:** обязательна (управление ссылками).
+Страница оплаты по ссылке — [публичные методы](/reference/link-public), без ключа.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Три режима суммы
+
+Главное решение при создании ссылки — кто задаёт сумму.
+
+| `amount_mode` | Кто задаёт сумму | Для чего |
+|---|---|---|
+| `fixed` | Вы — в `amount_fixed`. Покупатель изменить не может. | Товар, услуга, счёт с конкретной ценой. |
+| `open` | **Покупатель — любую.** `amount_min` — необязательный «пол». | **Донаты**, чаевые, «заплати сколько хочешь». |
+| `range` | Покупатель — в пределах `amount_min`…`amount_max`. | «От 5 до 1000 $»: поддержка проекта с рамками, пополнение баланса. |
+
+---
+
+## POST /v1/payment/link — создать ссылку
+
+### Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `title` | string | нет | Заголовок на странице оплаты. |
+| `description` | string | нет | Описание на странице оплаты. |
+| `amount_mode` | string | да | Режим суммы: `fixed` \| `open` \| `range`. |
+| `currency` | string | да | **Валюта цены** — фиат (`USD`, `EUR`, `RUB`, …) или монета. Список — `pricing_currencies` из [`GET /v1/currencies`](/reference/currencies). |
+| `amount_fixed` | string | нет\* | Сумма — для `fixed`. Обязательна в этом режиме. |
+| `amount_min` | string | нет | Нижняя граница: «пол» для `open` (необязателен) и минимум для `range` (обязателен). |
+| `amount_max` | string | нет\* | Верхняя граница — для `range`. Обязательна в этом режиме. |
+| `pinned_currency` | string | нет | **Валюта расчёта** (монета), закреплённая за ссылкой. Пусто — монету выбирает покупатель. |
+| `pinned_network` | string | нет | Сеть расчёта, закреплённая за ссылкой. Пусто — сеть выбирает покупатель. |
+| `expires_in` | int64 | нет | Срок жизни ссылки, секунд от момента создания. **`0` (по умолчанию) — ссылка бессрочная.** |
+
+\* Обязательность зависит от `amount_mode` — см. таблицу режимов выше.
+
+**Бессрочность.** `expires_in: 0` — ссылка живёт, пока вы её не выключите через `/toggle`. Это
+нормальный режим для кнопки «Поддержать» на сайте. Ограниченный срок нужен только под разовую акцию.
+
+**Закрепление монеты и сети.** Если задать `pinned_currency` + `pinned_network` — все платежи по
+ссылке пойдут в этой монете и сети. Если оставить пустыми — покупатель выберет монету и сеть сам
+(счёт создастся [валюто‑агностичным](/guides/payment-modes)). Промежуточный вариант (закрепить
+только сеть, оставив монету на выбор) смысла не имеет: закрепляйте либо оба поля, либо ни одного.
+
+### Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"title":"Поддержать проект","description":"Спасибо!","amount_mode":"open","currency":"USD","amount_min":"1.00","expires_in":0}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/link' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/link \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+# Донат: сумму вводит покупатель, минимум $1, ссылка бессрочная, монету выбирает покупатель.
+call("/v1/payment/link", {
+    "title": "Поддержать проект",
+    "description": "Спасибо!",
+    "amount_mode": "open",
+    "currency": "USD",
+    "amount_min": "1.00",
+    "expires_in": 0,
+})
+
+# Товар: фиксированные 25 EUR, оплата только USDT в Tron.
+call("/v1/payment/link", {
+    "title": "Футболка",
+    "amount_mode": "fixed",
+    "currency": "EUR",
+    "amount_fixed": "25.00",
+    "pinned_currency": "USDT",
+    "pinned_network": "tron",
+})
+
+# Диапазон: от 5 до 1000 USD.
+call("/v1/payment/link", {
+    "title": "Пополнение баланса",
+    "amount_mode": "range",
+    "currency": "USD",
+    "amount_min": "5.00",
+    "amount_max": "1000.00",
+})
+```
+
+```js Node.js
+await call("/v1/payment/link", {
+  title: "Поддержать проект",
+  description: "Спасибо!",
+  amount_mode: "open",
+  currency: "USD",
+  amount_min: "1.00",
+  expires_in: 0,
+});
+```
+
+```json Пример ответа
+{
+  "state": 0,
+  "result": {
+    "link_id": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+    "url": "https://pay.oblodai.com/link/5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40"
+  }
+}
+```
+
+</CodeGroup>
+
+`url` — это и есть то, что вы даёте покупателю: ставите ссылкой на кнопку, шлёте в письме, кладёте в
+QR‑код.
+
+---
+
+## POST /v1/payment/link/list — список ссылок
+
+### Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `limit` | int | нет | Сколько ссылок вернуть. |
+| `offset` | int | нет | Смещение. |
+
+```python
+call("/v1/payment/link/list", {"limit": 50, "offset": 0})
+```
+
+```js
+await call("/v1/payment/link/list", { limit: 50, offset: 0 });
+```
+
+### Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "items": [
+      {
+        "link_id": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+        "title": "Поддержать проект",
+        "description": "Спасибо!",
+        "amount_mode": "open",
+        "currency": "USD",
+        "amount_min": "1.00",
+        "active": true,
+        "url": "https://pay.oblodai.com/link/5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+        "created_at": "2026-07-13T12:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `link_id` | string | Идентификатор ссылки. |
+| `title` / `description` | string | Что видит покупатель. |
+| `amount_mode` | string | `fixed` \| `open` \| `range`. |
+| `currency` | string | Валюта цены. |
+| `amount_fixed` / `amount_min` / `amount_max` | string | Границы суммы. Присутствуют только те, что заданы. |
+| `pinned_currency` / `pinned_network` | string | Закреплённые монета и сеть. Отсутствуют, если выбирает покупатель. |
+| `active` | bool | Работает ли ссылка сейчас. |
+| `url` | string | Публичный URL страницы оплаты. |
+| `expires_at` | string | Момент истечения (ISO 8601). **Отсутствует у бессрочной ссылки.** |
+| `created_at` | string | Время создания. |
+
+---
+
+## POST /v1/payment/link/info — ссылка и её платежи
+
+### Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `link_id` | string | да | Идентификатор ссылки. |
+| `limit` | int | нет | Пагинация списка платежей. |
+| `offset` | int | нет | Смещение. |
+
+```python
+call("/v1/payment/link/info", {"link_id": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40"})
+```
+
+```js
+await call("/v1/payment/link/info", { link_id: "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40" });
+```
+
+### Пример ответа
+
+Та же карточка ссылки, что в `/list`, плюс массив `payments` — все счета, порождённые этой ссылкой:
+
+```json
+{
+  "state": 0,
+  "result": {
+    "link_id": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+    "title": "Поддержать проект",
+    "amount_mode": "open",
+    "currency": "USD",
+    "active": true,
+    "url": "https://pay.oblodai.com/link/5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40",
+    "created_at": "2026-07-13T12:00:00Z",
+    "payments": [
+      {
+        "uuid": "8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+        "status": "paid",
+        "amount": "10.00",
+        "currency": "USD",
+        "created_at": "2026-07-13T12:31:00Z"
+      }
+    ]
+  }
+}
+```
+
+Полный объект каждого платежа берите через [`POST /v1/payment/info`](/reference/payment-info) по его `uuid`.
+
+---
+
+## POST /v1/payment/link/toggle — включить / выключить
+
+Выключенная ссылка перестаёт открываться: публичные методы отдают `404 paylink.not_found`, новые
+счета по ней не создаются. Уже созданные счета продолжают жить и оплачиваться.
+
+### Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `link_id` | string | да | Идентификатор ссылки. |
+| `active` | bool | да | `false` — выключить, `true` — включить обратно. |
+
+```python
+call("/v1/payment/link/toggle", {"link_id": "5d3f2a71-…", "active": False})
+```
+
+```js
+await call("/v1/payment/link/toggle", { link_id: "5d3f2a71-…", active: false });
+```
+
+### Пример ответа
+
+```json
+{ "state": 0, "result": { "link_id": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40", "active": false } }
+```
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 paylink.bad_id` | `link_id` не является корректным UUID. |
+| `404 paylink.not_found` | Ссылка не найдена (или принадлежит другому мерчанту). |
+| `400 paylink.bad_mode` | `amount_mode` не `fixed` / `open` / `range`. |
+| `400 paylink.unknown_currency` | Неизвестная `currency`. |
+| `400 paylink.bad_amount` | `amount_fixed` не положительное число (режим `fixed`). |
+| `400 paylink.bad_min` | `amount_min` не положительное число. |
+| `400 paylink.bad_max` | `amount_max` не положительное число. |
+| `400 paylink.bad_range` | `amount_min` больше `amount_max`. |
+| `503 paylink.disabled` | Платёжные ссылки недоступны на этом шлюзе. |
+| `401 auth.*` | Ошибки аутентификации. |
+
+Ошибки, которые возникают при оплате **покупателем** (`paylink.amount_required`, `paylink.below_min`,
+`paylink.above_max`, `paylink.not_positive`), — на странице [публичных методов](/reference/link-public).
+
+---
+
+## Нюансы
+
+- **Один счёт на плательщика.** Ссылка — не счёт, а «фабрика счетов»: каждый checkout создаёт новый
+  инвойс со своим адресом и своим сроком жизни.
+- **Комиссия, скидки, минимумы, допуски — как у обычного счёта.** Платёж по ссылке проходит ровно
+  тот же путь, что [`POST /v1/payment`](/reference/payment-create), и точно так же присылает
+  [вебхуки](/reference/webhook-object).
+- **Цена в фиате работает.** `currency` может быть любым из 23 поддерживаемых фиатов, а не только
+  `USD` — см. [Форматы сумм и денег](/reference/basics-money).
+- **`order_id` у платежей по ссылке нет** — вы его не задаёте (покупатель приходит без вашего
+  контекста). Сопоставляйте платежи со ссылкой через `/link/info` или по полю ссылки в
+  [вебхуке](/reference/webhook-object).
+
+---
+
+## Связанные страницы
+
+- [`GET /v1/link/{id}` · `POST /v1/link/{id}/checkout`](/reference/link-public) — публичная страница оплаты.
+- [`POST /v1/payment`](/reference/payment-create) · [Объект платежа](/reference/payment-object)
+- [`GET /v1/currencies`](/reference/currencies) — какие валюты цены и какие монеты доступны.
+- [Форматы сумм и денег](/reference/basics-money)

@@ -1,0 +1,389 @@
+---
+title: "Справочник кодов ошибок"
+---
+
+Полный список кодов ошибок API Oblodai, сгруппированных по домену. Для каждого — HTTP‑статус, значение
+и что делать. Это сводная страница для отладки: увидели код → нашли строку.
+
+Общие правила обработки, HTTP‑классы и формат конверта ошибки — на странице
+[Формат ответа и коды ошибок](/reference/basics-errors). Пошаговая диагностика по симптомам («что делать
+если…») — [Что делать, если не работает](/guides/troubleshooting).
+
+<Note>
+  **Ветвитесь по `error.code`, а не по `message`.** Текст сообщения может меняться; код — контракт.
+</Note>
+
+---
+
+## Как читать таблицу
+
+- **HTTP** — статус ответа (отражает класс: `4xx` — ваша ошибка запроса, `5xx`/`503` — временная).
+- **Повтор поможет?** — это и есть краткое «что делать»: «нет — &lt;как исправить>» значит сначала
+  поправьте запрос; «да (backoff)» — временная ошибка, повторяйте с задержкой (повтор денег‑движущих
+  операций безопасен благодаря [идемпотентности](/reference/basics-idempotency) — заголовку `Idempotency-Key`
+  и/или `order_id`).
+
+Если по коду непонятно, что делать, — найдите симптом в
+[хабе диагностики](/guides/troubleshooting).
+
+---
+
+## auth — аутентификация
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `auth.bad_timestamp` | 401 | `X-Timestamp` отсутствует или не число. | Нет — передайте unix‑секунды. |
+| `auth.ip_not_allowed` | 401 | IP вне включённого [IP‑allowlist](/reference/api-allowlist). | Нет — добавьте IP в allowlist. |
+| `merchant.bad_signature` | 401 | Подпись не совпала или `X-Timestamp` вне окна ±5 минут. | Нет — проверьте подпись; синхронизируйте часы (NTP). |
+| `merchant.unknown_key` | 401 | Неизвестный или отозванный `X-Public-Id`. | Нет — проверьте ключ. |
+| `merchant.wrong_key_kind` | 403 | Только для старых **раздельных** ключей: ключ без права на этот эндпоинт. Единый API‑ключ (`oblodai_…`) подходит везде. | Нет — используйте единый API‑ключ. |
+| `auth.body_read` | 400 | Сервер не смог прочитать тело запроса (обрыв соединения при отправке). | Да — повторите запрос. |
+
+Диагностика подписи — [Как подписать запрос](/guides/signing-requests).
+
+---
+
+## request — общий разбор запроса
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `request.bad_json` | 400 | Тело не парсится как JSON. | Нет — исправьте тело. |
+
+---
+
+## idempotency — заголовок `Idempotency-Key`
+
+Приходят на создающих методах, если вы прислали заголовок
+[`Idempotency-Key`](/reference/basics-idempotency).
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `idempotency.in_progress` | 409 | Запрос с этим ключом **ещё выполняется**. Объект, возможно, уже создаётся. | Да (backoff) — повторите тот же запрос с тем же ключом чуть позже; получите исходный ответ. |
+| `idempotency.bad_key` | 400 | Некорректный `Idempotency-Key` (пустой или длиннее 255 символов). | Нет — исправьте ключ. |
+| `idempotency.unavailable` | 503 | Хранилище идемпотентности временно недоступно. Запрос **не выполнен** — молча продублировать операцию шлюз не станет. | Да (backoff) — повторите с тем же ключом. |
+
+---
+
+## payment — приём платежей
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `payment.unknown_currency` | 400 | Неизвестная `currency`. | Нет. |
+| `payment.unknown_to_currency` | 400 | Неизвестная `to_currency`. | Нет. |
+| `payment.to_currency_required` | 400 | Цена в фиате (`currency: "USD"`), задана `network`, но не задана `to_currency`: из долларов монету расчёта вывести нельзя. | Нет — задайте `to_currency` (монету, в которой платят) либо уберите и `network` тоже — тогда монету выберет покупатель. |
+| `payment.network_required` | 400 | У валюты несколько сетей, `network` не задан. | Нет — укажите сеть. |
+| `payment.unsupported_network` | 400 | Пара валюта+сеть не поддерживается. | Нет — см. [каталог](/reference/basics-networks). |
+| `payment.bad_amount` | 400 | Некорректная сумма. | Нет. |
+| `payment.bad_subtract` | 400 | `subtract` вне 0–100. | Нет. |
+| `payment.bad_accuracy` | 400 | `accuracy_payment_percent` вне 0–5. | Нет. |
+| `payment.below_minimum` | 400 | Сумма ниже минимума сети. | Нет — увеличьте сумму или смените сеть. |
+| `payment.bad_url_callback` | 400 | `url_callback` не валидный http(s)-URL (или приватный адрес). | Нет — исправьте URL. |
+| `payment.bad_uuid` | 400 | Некорректный формат `uuid`. | Нет. |
+| `payment.no_lookup` | 400 | Не передан ни `uuid`, ни `order_id`. | Нет. |
+| `payment.not_found` | 404 | Счёт не найден (или скрыт как чужой). | Нет — проверьте идентификатор. |
+
+Методы: [`/v1/payment`](/reference/payment-create), [`/v1/payment/info`](/reference/payment-info).
+
+---
+
+## invoice — движок счёта
+
+Ошибки самого движка счёта. Всплывают при создании ([`/v1/payment`](/reference/payment-create)), выборе валюты
+на hosted‑странице ([`/v1/pay/{id}/select`](/reference/pay-select)) и при переоценке счёта.
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `invoice.bad_price` | 400 | Некорректная сумма счёта. | Нет — исправьте сумму. |
+| `invoice.no_pay_asset` | 400 | Не удалось определить актив оплаты. | Нет — задайте `to_currency`/`network`. |
+| `invoice.not_selectable` | 400 | Счёт не в статусе `select` (валюта уже выбрана). | Нет. |
+| `invoice.expired` | 400 | Срок счёта истёк. | Нет — создайте новый счёт. |
+| `invoice.generation_stale` | 409 | Состояние счёта изменилось параллельно (reorg/гонка). | Да — перечитайте счёт и повторите. |
+| `invoice.quote_failed` | 503 | Оракул курса временно недоступен. | Да — повторите с backoff. |
+| `invoice.fee_quote_failed` | 503 | Не удалось оценить по курсу фиксированную часть комиссии ($0.30 с платежа). Счёт **не создаётся** — комиссия не «обнуляется» молча. | Да — повторите с backoff. |
+| `invoice.address_failed` | 503 | Не удалось выделить депозит‑адрес. | Да — повторите с backoff. |
+
+---
+
+## pay — hosted‑страница оплаты
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `pay.bad_uuid` | 400 | Некорректный `{id}` в пути. | Нет. |
+| `pay.not_found` | 404 | Счёт не найден. | Нет. |
+| `pay.not_selectable` | 400 | Валюта уже выбрана (счёт не в статусе `select`). | Нет. |
+| `pay.unknown_currency` | 400 | Неизвестная валюта при выборе. | Нет. |
+| `pay.method_not_accepted` | 400 | Метод не входит в набор [`accepted`](/reference/payment-accepted). | Нет. |
+| `pay.below_minimum` | 400 | Сумма ниже минимума сети. | Нет. |
+
+Методы: [`GET /v1/pay/{id}`](/reference/pay-get), [`POST /v1/pay/{id}/select`](/reference/pay-select).
+
+---
+
+## wallet — статические кошельки
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `wallet.unknown_currency` | 400 | Неизвестная валюта. | Нет. |
+| `wallet.no_network` | 400 | Не указана сеть. | Нет. |
+| `wallet.unsupported_network` | 400 | Пара валюта+сеть не поддерживается. | Нет. |
+| `wallet.no_address` | 400 | Не передан `address`. | Нет. |
+| `wallet.bad_uuid` | 400 | Некорректный `uuid` кошелька. | Нет. |
+| `wallet.static_not_found` | 404 | Статический кошелёк не найден. | Нет — проверьте `uuid`. |
+
+Методы: [`/v1/wallet`](/reference/wallet-create), [`/v1/wallet/block`](/reference/wallet-block),
+[`/v1/wallet/blocked-address-refund`](/reference/wallet-blocked-refund).
+
+---
+
+## qr — генерация QR
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `qr.no_address` | 400 | Не передан `address`. | Нет. |
+
+Метод: [`/v1/wallet/qr`](/reference/wallet-qr).
+
+---
+
+## payout — выплаты
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `payout.unknown_currency` | 400 | Неизвестная валюта. | Нет. |
+| `payout.bad_amount` | 400 | Некорректная сумма. | Нет. |
+| `payout.order_id_required` | 400 | Не передан `order_id`. | Нет — задавайте всегда. |
+| `payout.destination_internal` | 400 | Адрес принадлежит шлюзу (self‑dealing). | Нет — укажите внешний адрес. |
+| `payout.no_destination` | 400 | Не передан адрес назначения. | Нет. |
+| `payout.bad_address` | 400 | Пустой/некорректный адрес. | Нет. |
+| `payout.address_network_mismatch` | 400 | Адрес не соответствует выбранной сети. | Нет — проверьте сеть. |
+| `payout.asset_mismatch` | 400 | Валюта и сеть не соответствуют друг другу. | Нет. |
+| `payout.frozen` | 409 | Выплаты заморожены (kill‑switch). | Да (backoff) — после снятия заморозки. |
+| `payout.from_currency_unsupported` | 400 | Неподдерживаемая конвертация (только `USDT`→`currency`). | Нет. |
+| `payout.convert_same_asset` | 400 | `from_currency` совпадает с валютой выплаты — конвертировать нечего. | Нет. |
+| `payout.convert_bad_amount` | 400 | Некорректная сумма для конвертации из `from_currency`. | Нет. |
+| `payout.convert_unsupported` | 400 | Такая конвертация не поддерживается. | Нет. |
+| `payout.convert_no_rate` | 503 | Нет курса для конвертации (оракул недоступен). | Да — повторите с backoff. |
+| `payout.convert_frozen` | 409 | Конвертации временно заморожены. | Да (backoff) — после снятия. |
+| `payout.convert_insufficient` | 409 | Недостаточно баланса в `from_currency` для конвертации. | Да, после пополнения. |
+| `payout.memo_too_long` | 400 | `memo` длиннее 120 символов. | Нет. |
+| `payout.bad_url_callback` | 400 | Некорректный `url_callback` (SSRF). | Нет. |
+| `payout.amount_below_fee` | 400 | Сумма меньше сетевой комиссии. | Нет — увеличьте сумму. |
+| `payout.bad_uuid` | 400 | Некорректный `uuid`. | Нет. |
+| `payout.no_lookup` | 400 | Не передан ни `uuid`, ни `order_id`. | Нет. |
+| `payout.empty_batch` | 400 | Пустой массив `payouts` (mass). | Нет. |
+| `payout.batch_too_large` | 400 | Больше 100 элементов (mass). | Нет — режьте на пачки. |
+| `payout.not_pending` | 409 | Выплата не в статусе `pending` (approve). | Нет. |
+| `payout.approver_is_creator` | 403 | Подтверждающий совпадает с создателем (maker‑checker). | Нет. |
+| `payout.insufficient_funds` | 409 | Недостаточно доступного баланса. | Да, после пополнения. |
+| `payout.funds_maturing` | 409 | Средства ещё дозревают (maturity‑холд). | Да (backoff) — дождитесь подтверждений. |
+| `payout.duplicate_reference` | 409 | Гонка двух одновременных вставок с одним `reference`/`order_id`. Обычный повтор — не ошибка (вернётся уже созданная выплата). | Повторите — идемпотентность вернёт существующую выплату; либо сверьтесь через [`/payout/info`](/reference/payout-info). |
+
+Методы: [`/v1/payout`](/reference/payout-create), [`/v1/payout/mass`](/reference/payout-mass),
+[`/v1/payout/approve`](/reference/payout-approve).
+
+---
+
+## refund — возвраты
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `refund.no_address` | 400 | Не передан адрес назначения. | Нет. |
+| `refund.bad_amount` | 400 | Некорректная сумма. | Нет. |
+| `refund.nothing_to_refund` | 400 | Нечего возвращать. Также приходит на валюто‑агностичный счёт (`is_multi: true`), где покупатель ещё не выбрал монету: валюты расчёта нет — возвращать нечего. | Нет. |
+| `refund.destination_internal` | 400 | Адрес назначения принадлежит шлюзу. | Нет. |
+| `refund.dust` | 400 | Сумма слишком мала (dust). | Нет. |
+| `refund.exceeds_refundable` | 400 | Больше оплаченной суммы вернуть нельзя. | Нет. |
+| `refund.exceeds_excess` | 400 | Возврат переплаты превышает саму переплату. | Нет. |
+| `refund.reference_collision` | 409 | Тот же `(платёж, адрес, сумма)` уже в работе. | Нет — это идемпотентность. |
+
+Методы: [`/v1/payment/refund`](/reference/payment-refund),
+[`/v1/wallet/blocked-address-refund`](/reference/wallet-blocked-refund).
+
+---
+
+## batch — массовые операции
+
+Ошибки **уровня батча** (весь запрос отклонён). Ошибки отдельных элементов приходят не сюда, а в
+`items[].error` ответа [`/v1/batch/info`](/reference/batch-info) — там это коды соответствующего домена
+(`payment.*`, `refund.*`, `payout.*`).
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `batch.empty` | 400 | Массив элементов (`payments` / `refunds` / `payouts`) пуст. | Нет — добавьте элементы. |
+| `batch.too_large` | 400 | Больше **5000** элементов в одном батче. | Нет — разбейте на несколько батчей. |
+| `batch.bad_id` | 400 | `batch_id` не является корректным UUID. | Нет — проверьте идентификатор. |
+| `batch.not_found` | 404 | Батч не найден (или принадлежит другому мерчанту). | Нет. |
+| `batch.disabled` | 503 | Массовая обработка недоступна на этом шлюзе. | Да (backoff) — либо отправляйте операции по одной. |
+
+Методы: [`/v1/payment/batch`](/reference/payment-batch), [`/v1/refund/batch`](/reference/refund-batch),
+[`/v1/payout/batch`](/reference/payout-batch), [`/v1/batch/info`](/reference/batch-info).
+
+---
+
+## paylink — платёжные ссылки
+
+Часть кодов приходит вам (при создании ссылки), часть — покупателю (при оплате по ссылке).
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `paylink.bad_id` | 400 | `link_id` / `{id}` не является корректным UUID. | Нет. |
+| `paylink.not_found` | 404 | Ссылка не найдена, выключена или истекла. | Нет — проверьте `link_id` или включите ссылку через `/toggle`. |
+| `paylink.bad_mode` | 400 | `amount_mode` не `fixed` / `open` / `range`. | Нет — исправьте режим. |
+| `paylink.unknown_currency` | 400 | Неизвестная валюта ссылки. | Нет — см. `pricing_currencies` в [`/v1/currencies`](/reference/currencies). |
+| `paylink.bad_amount` | 400 | `amount_fixed` не положительное число (режим `fixed`). | Нет. |
+| `paylink.bad_min` | 400 | `amount_min` не положительное число. | Нет. |
+| `paylink.bad_max` | 400 | `amount_max` не положительное число. | Нет. |
+| `paylink.bad_range` | 400 | `amount_min` больше `amount_max`. | Нет. |
+| `paylink.amount_required` | 400 | Режим `open`/`range`, а покупатель не ввёл сумму. | Нет — покажите покупателю поле ввода суммы. |
+| `paylink.not_positive` | 400 | Введённая сумма не положительная. | Нет. |
+| `paylink.below_min` | 400 | Введённая сумма меньше `amount_min`. | Нет — покажите покупателю минимум. |
+| `paylink.above_max` | 400 | Введённая сумма больше `amount_max`. | Нет — покажите покупателю максимум. |
+| `paylink.disabled` | 503 | Платёжные ссылки недоступны на этом шлюзе. | Да (backoff). |
+
+Методы: [`/v1/payment/link` и др.](/reference/payment-link), [`GET /v1/link/{id}` · `/checkout`](/reference/link-public).
+
+При оплате по ссылке может прийти **любая ошибка создания счёта** (`payment.*`, `invoice.*`) —
+checkout проходит тот же путь, что и [`POST /v1/payment`](/reference/payment-create).
+
+---
+
+## split — сплит‑платежи
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `split.bad_destination` | 400 | Получатель не задан либо заданы **оба** (`address` и `merchant_id`). | Нет — задайте ровно один вариант. |
+| `split.network_required` | 400 | Задан `address`, но не задана `network`. | Нет — укажите сеть. |
+| `split.bad_percent` | 400 | `percent` вне диапазона 0–100. | Нет. |
+| `split.exceeds_100` | 400 | Сумма долей всех правил превысила 100 %. | Нет — уменьшите доли или удалите правило. |
+| `split.bad_merchant` | 400 | `merchant_id` не является корректным UUID. | Нет. |
+| `split.self_destination` | 400 | Получатель сплита — вы сами. | Нет — укажите другого получателя. |
+| `split.bad_hold` | 400 | `refund_hold_hours` вне диапазона 0–2160 (90 суток). | Нет. |
+| `split.bad_id` | 400 | `rule_id` не является корректным UUID. | Нет. |
+| `split.not_found` | 404 | Правило не найдено. | Нет. |
+| `split.disabled` | 503 | Сплит‑платежи недоступны на этом шлюзе. | Да (backoff). |
+
+Методы: [`/v1/split/rule*`](/reference/split-rule), [`/v1/split/config/*`](/reference/split-config).
+
+---
+
+## email — письма покупателю
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `email.no_recipient` | 400 | Получатель не определён: не передан `email` и у платежа нет `payer_email`. | Нет — передайте `email` либо задавайте `payer_email` при создании счёта. |
+| `email.disabled` | 503 | Почта не настроена на этом шлюзе. | Да (backoff) — либо шлите письмо сами. |
+
+Метод: [`/v1/payment/send-email`](/reference/payment-send-email).
+
+---
+
+## compliance — AML‑проверка
+
+Если у шлюза включён комплаенс‑провайдер, адрес назначения выплаты/возврата проверяется перед отправкой.
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `compliance.blocked` | 403 | Адрес назначения заблокирован AML‑проверкой. | Нет — используйте другой адрес. |
+| `compliance.no_destination` | 400 | Для проверки не передан адрес назначения. | Нет. |
+
+Методы: [`/v1/payout`](/reference/payout-create), [`/v1/payment/refund`](/reference/payment-refund),
+[`/v1/wallet/blocked-address-refund`](/reference/wallet-blocked-refund).
+
+---
+
+## transfer — перевод на личный кошелёк
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `transfer.no_personal_wallet` | 400 | У мерчанта нет привязанного владельца. | Нет. |
+| `transfer.unknown_currency` | 400 | Неизвестная валюта. | Нет. |
+| `transfer.bad_amount` | 400 | Некорректная сумма. | Нет. |
+| `personal.amount_invalid` | 400 | Сумма перевода некорректна (≤0 или неверный формат). | Нет. |
+| `personal.insufficient` | 400 | Недостаточно средств на балансе для перевода. | Да, после пополнения. |
+
+Метод: [`/v1/transfer/to-personal`](/reference/transfer-to-personal).
+
+---
+
+## Настройки приёма
+
+### accepted — принимаемые валюты
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `accepted.unknown_currency` | 400 | Неизвестная валюта в наборе. | Нет — исправьте валюту. |
+| `accepted.no_network` | 400 | Не указана сеть для элемента. | Нет — укажите сеть. |
+
+### discount — скидки/наценки
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `discount.unknown_currency` | 400 | Неизвестная валюта. | Нет — исправьте валюту. |
+| `discount.out_of_range` | 400 | `discount_percent` вне −99…99. | Нет — задайте значение в диапазоне. |
+
+### accuracy — допуск недоплаты
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `accuracy.out_of_range` | 400 | При `enabled: true` значение `accuracy_percent` вне 1–5 %. | Нет — задайте значение 1–5 %. |
+
+### vrcs
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `vrcs.read` | 400 | Ошибка чтения состояния VRCS. | Да (backoff) — повторите позже. |
+
+---
+
+## Вебхуки, автовывод, allowlist
+
+### webhook
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `webhook.no_url` | 400 | Не передан `url` / `url_callback`. | Нет — передайте URL. |
+| `webhook.bad_url` | 400 | Некорректный или запрещённый (приватный/локальный) URL. | Нет — исправьте URL. |
+| `webhook.test_failed` | 503 | Ваш эндпоинт не принял пробное тело. | Да (backoff) — после починки эндпоинта. |
+
+### autowithdraw
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `autowithdraw.unknown_currency` | 400 | Неизвестный актив. | Нет — исправьте актив. |
+| `autowithdraw.bad_min` | 400 | Некорректный порог. | Нет — исправьте порог. |
+| `autowithdraw.missing` | 400 | Не хватает обязательного поля. | Нет — добавьте поле. |
+
+При `set` адрес также проходит валидацию сети — возможны `payout.bad_address` и
+`payout.address_network_mismatch` (см. раздел payout).
+
+### apiallow — IP‑allowlist
+
+| Код | HTTP | Значение | Повтор поможет? |
+|---|---|---|---|
+| `apiallow.bad_cidr` | 400 | Некорректный IP или CIDR. | Нет — исправьте IP/CIDR. |
+| `apiallow.empty` | 400 | Нельзя включить контроль с пустым списком. | Нет — добавьте хотя бы один адрес. |
+
+---
+
+## Общие серверные ошибки
+
+| HTTP | Класс | Значение | Повтор поможет? |
+|---|---|---|---|
+| 429 | rate limit | Превышен лимит частоты. Тело `{"state":1,"message":"rate limit exceeded"}` + `Retry-After: 60`. См. [лимиты частоты](/reference/basics-ratelimit). | Да (backoff). |
+| 503 | `unavailable` | Временная недоступность зависимости (напр. оракул курсов). | Да (backoff). |
+| 500 | `internal` | Внутренняя ошибка, детали не раскрываются. | Да (backoff). |
+
+<Note>
+  **Транзиентные коды с HTTP 503.** Кроме перечисленных выше, при недоступности зависимостей могут
+  прийти доменные коды класса 503 — например `rates.no_source` / `rates.non_positive` / `rates.deviation`
+  (курс), `payout.freeze_unknown` (хранилище kill‑switch), `ledger.unavailable` (учёт). Все они —
+  **временные**: повторяйте тот же идемпотентный запрос с backoff.
+</Note>
+
+---
+
+## Связанные страницы
+
+- [Формат ответа и коды ошибок](/reference/basics-errors) — HTTP‑классы и правила обработки.
+- [FAQ и устранение неполадок](/guides/faq-troubleshooting) — что делать при частых ошибках.
+- [Глоссарий](/reference/glossary) — термины, встречающиеся в описаниях.

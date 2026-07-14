@@ -1,0 +1,84 @@
+---
+title: "POST /v1/wallet/block"
+---
+
+Заблокировать или разблокировать статический кошелёк по адресу. Заблокированный кошелёк перестаёт
+зачислять новые пополнения.
+
+**URL:** `https://api.oblodai.com/v1/wallet/block` · **Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `address` | string | да | Адрес статического кошелька. |
+| `is_force_block` | bool | нет | `true` — заблокировать (значение по умолчанию, если поле опущено); `false` — снять блокировку. |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+# Заблокировать
+BODY='{"address":"TXk9...c3Fd"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/wallet/block' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/wallet/block \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/wallet/block", {"address": "TXk9...c3Fd"})                       # заблокировать
+call("/v1/wallet/block", {"address": "TXk9...c3Fd", "is_force_block": False})  # разблокировать
+```
+
+```js Node.js
+await call("/v1/wallet/block", { address: "TXk9...c3Fd" });                        // заблокировать
+await call("/v1/wallet/block", { address: "TXk9...c3Fd", is_force_block: false }); // разблокировать
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{ "state": 0, "result": { "uuid": "0e5b6b9a-…", "address": "TXk9...c3Fd", "blocked": true } }
+```
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 wallet.no_address` | Не передан `address`. |
+| `404 wallet.static_not_found` | Кошелёк не найден. |
+
+---
+
+## Нюансы
+
+- `is_force_block` по умолчанию `true`. **Чтобы снять блокировку, явно передайте `false`.**
+- Операция скоуплена мерчантом — заблокировать можно только свой кошелёк.
+- Средства, уже полученные на заблокированный кошелёк, можно вернуть через
+  [`POST /v1/wallet/blocked-address-refund`](/reference/wallet-blocked-refund).
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/wallet/blocked-address-refund`](/reference/wallet-blocked-refund) · [Объект кошелька](/reference/wallet-object)

@@ -1,0 +1,109 @@
+---
+title: "Тестовые вебхуки"
+---
+
+Набор методов, чтобы отправить пробное уведомление на ваш URL и проверить приёмник, не дожидаясь
+реальной оплаты.
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+<Note>
+  **Пробные тела содержат `"is_test": true` и НЕ подписываются** (нет заголовка `X-Webhook-Signature`)
+  — это синтетический payload. Настоящую [проверку подписи](/reference/webhook-object) отрабатывайте на боевых
+  вебхуках.
+</Note>
+
+---
+
+## POST /v1/payment/testing-webhook (легаси)
+
+Синхронно шлёт пробное тело на `url` и возвращает HTTP‑код вашего эндпоинта.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `url` | string | да | Куда отправить пробное тело. |
+| `status` | string | нет | Статус в теле. По умолчанию `paid`. |
+
+---
+
+## POST /v1/test-webhook/payment · /wallet · /payout
+
+Пробный вебхук заданного типа на `url_callback`.
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `url_callback` | string | да | Куда отправить пробное тело. |
+| `currency` | string | нет | Валюта в теле. |
+| `network` | string | нет | Сеть в теле. |
+| `uuid` | string | нет | UUID в теле. |
+| `order_id` | string | нет | `order_id` в теле. |
+| `status` | string | нет | Статус в теле. |
+
+Ответ:
+
+```json
+{ "state": 0, "result": { "result": true, "status_code": 200 } }
+```
+
+`status_code` — HTTP‑код, которым ответил ваш эндпоинт.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"url_callback":"https://shop.example/oblodai/callback","status":"paid","currency":"USDT","network":"tron"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/test-webhook/payment' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/test-webhook/payment \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/test-webhook/payment", {
+    "url_callback": "https://shop.example/oblodai/callback",
+    "status": "paid", "currency": "USDT", "network": "tron",
+})
+```
+
+```js Node.js
+await call("/v1/test-webhook/payment", {
+  url_callback: "https://shop.example/oblodai/callback",
+  status: "paid", currency: "USDT", network: "tron",
+});
+```
+
+</CodeGroup>
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 webhook.no_url` | Не передан `url` / `url_callback`. |
+| `400 webhook.bad_url` | Некорректный URL. |
+| `503 webhook.test_failed` | Ваш эндпоинт не принял пробное тело. |
+
+---
+
+## Нюансы
+
+- Пробные тела **не подписаны** и помечены `"is_test": true`. Ваш код проверки подписи должен уметь
+  отличать их (или тестируйте подпись отдельно на боевых событиях).
+- `testing-webhook` — легаси‑форма; для новых интеграций предпочитайте `test-webhook/*`.
+
+---
+
+## Связанные страницы
+
+- [Объект вебхука и проверка подписи](/reference/webhook-object) · [Отладка вебхуков](/guides/webhooks-debug)

@@ -1,0 +1,181 @@
+---
+title: "Справочник API Oblodai"
+sidebarTitle: "Обзор"
+description: "Точное описание каждого метода и объекта API Oblodai."
+---
+
+<Note>
+  🏠 [Вся документация Oblodai](/) → **Справочник** · рядом: [Инструкции](/guides/overview) · [SDK](/sdk/overview) · [Модули для CMS](/modules/overview)
+</Note>
+
+В справочнике описаны все методы API Oblodai и все объекты, которыми он оперирует. Для каждого метода
+указаны параметры, их типы и обязательность, примеры запроса (cURL / Python / Node.js), пример ответа,
+коды ошибок и важные нюансы поведения.
+
+**API‑версия:** `v1` · **Базовый URL:** `https://api.oblodai.com`
+
+Почти все методы — `POST` с телом в формате JSON. `GET`‑эндпоинтов **три**, и все публичные:
+[`GET /v1/currencies`](/reference/currencies), [`GET /v1/link/{id}`](/reference/link-public) и
+[`GET /v1/pay/{id}`](/reference/pay-get). Все запросы, кроме явно помеченных «публичный», подписываются вашим
+API‑ключом. См. [Аутентификация и подпись запросов](/reference/basics-auth).
+
+<Note>
+  **Про `call(...)` в примерах.** В примерах на Python/Node встречается хелпер `call("/v1/...", {...})` —
+  это ваша функция‑обёртка, которая добавляет подпись запроса. Её готовое определение (на 4 языках) —
+  в [Как подписать запрос](/guides/signing-requests). Проще не писать её вручную, а взять
+  [SDK](/sdk/overview) — он подписывает за вас.
+</Note>
+
+Если вам нужна не отдельная справка по методу, а пошаговое руководство под задачу — откройте
+[Инструкции](/guides/overview).
+
+---
+
+## Как проходит платёж (за 20 секунд)
+
+Покупатель создаёт счёт и получает депозит‑адрес. Он платит в крипте на этот адрес, а сеть блокчейна
+подтверждает транзакцию. После достаточного числа подтверждений Oblodai присылает вам вебхук, и вы
+отмечаете заказ оплаченным. Наглядно — [диаграммы](/reference/diagrams).
+
+---
+
+## Основы работы с API
+
+- [Формат взаимодействия](/reference/basics-format) — `POST` + JSON, конверт `state`/`result`.
+- [Аутентификация и подпись запросов](/reference/basics-auth) — HMAC‑SHA256, три заголовка, примеры на 4 языках.
+- [Формат ответа и коды ошибок](/reference/basics-errors) — HTTP‑классы и коды вида `<домен>.<причина>`.
+- [Идемпотентность](/reference/basics-idempotency) — безопасные повторы: заголовок `Idempotency-Key` и `order_id`.
+- [Форматы сумм и денег](/reference/basics-money) — суммы строками, без float.
+- [Поддерживаемые сети и валюты](/reference/basics-networks) — пары `currency` + `network`.
+- [Ограничение частоты и IP‑allowlist](/reference/basics-ratelimit) — rate limit, доверенные IP.
+
+## Справочные материалы
+
+- [Справочник кодов ошибок](/reference/errors-catalog) — все коды одной таблицей, сгруппированы по домену.
+- [Глоссарий](/reference/glossary) — все термины документации.
+- [Диаграммы: жизненные циклы и потоки](/reference/diagrams) — схемы платежей, выплат, вебхуков.
+
+---
+
+## Публичные методы (без ключа)
+
+- [`GET /v1/currencies`](/reference/currencies) — каталог: **два списка** — в чём можно получать (`currencies`)
+  и в чём можно назначать цену (`pricing_currencies`: 23 фиата + монеты).
+- [`POST /v1/exchange-rate/list`](/reference/exchange-rate-list) — текущие курсы валют к USDT.
+
+---
+
+## Приём платежей
+
+- [Объект платежа (Payment)](/reference/payment-object) — структура и статусы `payment_status`.
+
+| Метод | Назначение |
+|---|---|
+| [`POST /v1/payment`](/reference/payment-create) | Создание платёжного счёта (инвойса) |
+| [`POST /v1/payment/batch`](/reference/payment-batch) | **Массовое создание счетов** (до 5000, асинхронно) |
+| [`POST /v1/payment/info`](/reference/payment-info) | Информация о счёте (включая `refunds[]`) |
+| [`POST /v1/payment/history`](/reference/payment-history) | Список платежей мерчанта |
+| [`POST /v1/payment/send-email`](/reference/payment-send-email) | Отправить счёт письмом покупателю |
+| [`POST /v1/payment/services`](/reference/payment-services) | Доступные методы приёма |
+| [`POST /v1/payment/qr`](/reference/payment-qr) | QR‑код депозит‑адреса счёта |
+| [`POST /v1/wallet/qr`](/reference/wallet-qr) | QR‑код произвольного адреса |
+| [`POST /v1/payment/accepted/list · /set`](/reference/payment-accepted) | Принимаемые валюты для агностичных счетов |
+| [`POST /v1/payment/discount/list · /set`](/reference/payment-discount) | Скидки/наценки плательщику |
+| [`POST /v1/payment/accuracy/get · /set`](/reference/payment-accuracy) | Допуск недоплаты |
+| [`POST /v1/payment/autorefund/get · /set`](/reference/payment-autorefund) | Автовозврат при недо/переплате |
+| [`POST /v1/vrcs`](/reference/vrcs) | Авто‑конвертация волатильных депозитов в USDT |
+
+### Платёжные ссылки
+
+Многоразовый URL оплаты: фиксированная сумма, донат (сумму вводит покупатель) или диапазон.
+**Единственный способ принимать платежи без своего бэкенда** (Tilda, Wix и т. п.).
+
+| Метод | Назначение |
+|---|---|
+| [`POST /v1/payment/link` · `/list` · `/info` · `/toggle`](/reference/payment-link) | Создание и управление ссылками |
+
+### Hosted‑страница оплаты и страница ссылки (публичные)
+
+| Метод | Назначение |
+|---|---|
+| [`GET /v1/pay/{id}`](/reference/pay-get) | Публичные данные счёта |
+| [`POST /v1/pay/{id}/select`](/reference/pay-select) | Выбор валюты и сети покупателем |
+| [`GET /v1/link/{id}`](/reference/link-public) | Публичные данные платёжной ссылки |
+| [`POST /v1/link/{id}/checkout`](/reference/link-public) | Создать счёт по ссылке (без ключа) |
+
+---
+
+## Массовые операции (батчи)
+
+До **5000** элементов в одном подписанном запросе, обработка асинхронная. **Штатный способ не
+упираться в [лимит частоты](/reference/basics-ratelimit)** — один запрос вместо тысяч.
+
+| Метод | Назначение |
+|---|---|
+| [`POST /v1/payment/batch`](/reference/payment-batch) | Массовое создание счетов |
+| [`POST /v1/refund/batch`](/reference/refund-batch) | Массовые возвраты |
+| [`POST /v1/payout/batch`](/reference/payout-batch) | Массовые выплаты |
+| [`POST /v1/batch/info`](/reference/batch-info) | Статус батча и результат по каждому элементу |
+
+---
+
+## Сплиты
+
+Доля каждого входящего платежа автоматически уходит партнёру — для партнёрских программ,
+маркетплейсов, разделения выручки.
+
+| Метод | Назначение |
+|---|---|
+| [`POST /v1/split/rule` · `/rule/list` · `/rule/delete`](/reference/split-rule) | Правила распределения (внешний адрес или мерчант платформы) |
+| [`POST /v1/split/config/get · /set`](/reference/split-config) | Окно удержания `refund_hold_hours` (и почему расчёт откладывается) |
+
+---
+
+## Кошельки, баланс, рефералы
+
+- [Объект кошелька (Wallet)](/reference/wallet-object) — статический адрес и чем он отличается от инвойса.
+
+| Метод | Назначение |
+|---|---|
+| [`POST /v1/wallet`](/reference/wallet-create) | Создать статический кошелёк |
+| [`POST /v1/wallet/block`](/reference/wallet-block) | Заблокировать/разблокировать кошелёк |
+| [`POST /v1/wallet/blocked-address-refund`](/reference/wallet-blocked-refund) | Возврат средств с кошелька |
+| [`POST /v1/balance`](/reference/balance) | Балансы мерчанта |
+| [`POST /v1/referral/info`](/reference/referral-info) | Реферальная статистика |
+
+---
+
+## Выплаты и возвраты
+
+- [Объект выплаты (Payout)](/reference/payout-object) — структура и статусы.
+
+| Метод | Назначение |
+|---|---|
+| [`POST /v1/payout`](/reference/payout-create) | Создать выплату |
+| [`POST /v1/payout/batch`](/reference/payout-batch) | **Массовая выплата (до 5000, асинхронно)** — основной путь |
+| [`POST /v1/payout/mass`](/reference/payout-mass) | Массовая выплата (до 100, синхронно) — легаси |
+| [`POST /v1/payout/info`](/reference/payout-info) | Информация о выплате |
+| [`POST /v1/payout/history`](/reference/payout-history) | История выплат |
+| [`POST /v1/payout/services`](/reference/payout-services) | Доступные методы выплат |
+| [`POST /v1/payout/calculate`](/reference/payout-calculate) | Предрасчёт комиссии и сумм |
+| [`POST /v1/payout/approve`](/reference/payout-approve) | Подтверждение выплаты (maker‑checker) |
+| [`POST /v1/payment/refund`](/reference/payment-refund) | Возврат платежа (адрес необязателен) |
+| [`POST /v1/refund/batch`](/reference/refund-batch) | Массовые возвраты (до 5000) |
+| [`POST /v1/payout/fee-config/get · /set`](/reference/payout-fee-config) | Кто платит сетевую комиссию выплаты |
+| [`POST /v1/payout/refund-fee-config/get · /set`](/reference/payout-refund-fee-config) | Кто платит комиссию возврата |
+| [`POST /v1/transfer/to-personal`](/reference/transfer-to-personal) | Перевод на личный кошелёк владельца |
+
+---
+
+## Вебхуки
+
+- [Объект вебхука и проверка подписи](/reference/webhook-object) — заголовки, формат тела, HMAC вебхука.
+
+| Метод | Назначение |
+|---|---|
+| [`POST /v1/webhooks`](/reference/webhooks-register) | Регистрация URL для вебхуков |
+| [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries) | Журнал доставок |
+| [`POST /v1/payment/resend`](/reference/payment-resend) | Переотправка вебхука платежа |
+| [Тестовые вебхуки](/reference/webhooks-test) | `/testing-webhook`, `/test-webhook/*` |
+| [`POST /v1/auto-withdraw/list · /set · /delete`](/reference/auto-withdraw) | Автовывод на внешний адрес |
+| [`POST /v1/api-allowlist/*`](/reference/api-allowlist) | IP‑allowlist для API |

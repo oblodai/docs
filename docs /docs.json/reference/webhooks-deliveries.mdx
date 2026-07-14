@@ -1,0 +1,89 @@
+---
+title: "POST /v1/webhooks/deliveries"
+---
+
+Журнал последних доставок вебхуков (до 50) — для отладки.
+
+**URL:** `https://api.oblodai.com/v1/webhooks/deliveries` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Тело:** `{}`.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/webhooks/deliveries' '{}' \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/webhooks/deliveries \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d '{}'
+```
+
+```python Python
+call("/v1/webhooks/deliveries", {})
+```
+
+```js Node.js
+await call("/v1/webhooks/deliveries", {});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "deliveries": [
+      { "id": "9a2b…", "url": "https://shop.example/…", "event_type": "invoice.paid",
+        "status": "delivered", "attempts": 1, "last_error": "",
+        "created_at": "2026-07-10T08:15:04Z", "updated_at": "2026-07-10T08:15:05Z" }
+    ]
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `id` | string | Идентификатор доставки. |
+| `url` | string | Куда доставлялось. |
+| `event_type` | string | Тип события. |
+| `status` | string | Статус доставки (см. ниже). |
+| `attempts` | int | Сколько попыток сделано. |
+| `last_error` | string | Текст последней неуспешной попытки. |
+| `created_at` | string | Момент создания доставки (RFC 3339). |
+| `updated_at` | string | Момент последнего обновления (RFC 3339). |
+
+### Статусы доставки
+
+| Статус | Значение |
+|---|---|
+| `pending` | В очереди или ждёт ретрая. |
+| `delivered` | Endpoint вернул `2xx`. |
+| `dead` | Исчерпаны попытки. |
+
+---
+
+## Нюансы
+
+- В журнале до **50** последних доставок.
+- Статус `dead` означает, что вебхук так и не был доставлен за все попытки. Такой платёж можно
+  переотправить через [`POST /v1/payment/resend`](/reference/payment-resend).
+
+---
+
+## Связанные страницы
+
+- [Объект вебхука](/reference/webhook-object) · [`POST /v1/payment/resend`](/reference/payment-resend)
+- [Отладка вебхуков](/guides/webhooks-debug)

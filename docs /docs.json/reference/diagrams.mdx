@@ -1,0 +1,177 @@
+---
+title: "Диаграммы: жизненные циклы и потоки"
+---
+
+Визуальные схемы ключевых процессов Oblodai. Диаграммы написаны на Mermaid — они рендерятся в
+большинстве просмотрщиков Markdown (включая GitHub). Если ваш просмотрщик не поддерживает Mermaid,
+рядом с каждой есть текстовое описание.
+
+---
+
+## Поток приёма платежа (sequence)
+
+Кто с кем взаимодействует при обычном платеже.
+
+```mermaid
+sequenceDiagram
+    participant B as Покупатель
+    participant S as Ваш backend
+    participant O as Oblodai
+    participant Chain as Блокчейн
+
+    S->>O: POST /v1/payment (создать счёт)
+    O-->>S: uuid, address, payer_amount, url
+    S-->>B: показать адрес / ссылку на оплату
+    B->>Chain: отправить средства на address
+    Chain-->>O: транзакция замечена
+    O->>O: набор подтверждений (reorg-безопасность)
+    O-->>S: webhook invoice.paid (после порога)
+    S->>S: проверить подпись, дедуп, выдать товар
+    S-->>O: 200 OK
+```
+
+**Текстом:** ваш backend создаёт счёт → показывает покупателю адрес → покупатель платит в сеть →
+Oblodai видит транзакцию и ждёт подтверждений → присылает вебхук `invoice.paid` → вы проверяете
+подпись, дедуплицируете и выдаёте товар, отвечая `2xx`.
+
+---
+
+## Жизненный цикл платежа (статусы)
+
+Как счёт переходит между [статусами `payment_status`](/reference/payment-object#статусы-payment_status).
+
+```mermaid
+stateDiagram-v2
+    [*] --> check: счёт создан
+    check --> confirm_check: транзакция замечена
+    check --> cancel: истёк / отменён
+    confirm_check --> paid: оплачено в допуске
+    confirm_check --> paid_over: переплата
+    confirm_check --> wrong_amount_waiting: недоплата, срок не вышел
+    wrong_amount_waiting --> paid: доплатили в срок
+    wrong_amount_waiting --> wrong_amount: срок вышел
+    paid --> [*]
+    paid_over --> [*]
+    wrong_amount --> [*]
+    cancel --> [*]
+```
+
+**Текстом:** `check` (ждём оплату) → `confirm_check` (ждём подтверждений) → далее `paid`,
+`paid_over` или `wrong_amount_waiting`. Недоплата в срок может дойти до `paid`, иначе — `wrong_amount`.
+Неоплаченный счёт истекает в `cancel`. Терминальные (`is_final`): `paid`, `paid_over`, `wrong_amount`,
+`cancel`.
+
+---
+
+## Жизненный цикл выплаты (статусы)
+
+Внутренний цикл и его отображение в укрупнённый [`status`](/reference/payout-object#статусы-выплаты).
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: создана (status: check)
+    pending --> awaiting_cosign: нужен второй подписант*
+    awaiting_cosign --> approved: второй co-sign получен
+    pending --> approved: одобрена
+    approved --> broadcasting: отправляется
+    broadcasting --> sent: отправлена (status: process)
+    sent --> confirmed: подтверждена (status: paid)
+    pending --> cancelled: отменена (status: cancel)
+    approved --> failed: сбой (status: fail)
+    sent --> failed: сбой отправки (status: fail)
+    confirmed --> [*]
+    failed --> [*]
+    cancelled --> [*]
+```
+
+\* `awaiting_cosign` — для мерчантов с обязательным co‑sign: выплата ждёт второй подписи, прежде чем
+перейти в `approved`. В укрупнённом `status` это отображается как `check`.
+
+**Текстом:** внутренний путь `pending → approved → broadcasting → sent → confirmed` (для мерчантов с
+обязательным co‑sign между `pending` и `approved` вклинивается `awaiting_cosign` — ожидание второй
+подписи). В ответах API это сворачивается в `check` (pending/awaiting_cosign), `process`
+(approved/broadcasting/sent), `paid` (confirmed), `fail` (failed), `cancel` (cancelled). По API‑ключу
+выплата авто‑одобряется и сразу идёт в `process`.
+
+<Note>
+  Внутренние состояния (`pending`/`awaiting_cosign`/`approved`/`broadcasting`/`sent`/`confirmed`) показаны для справки;
+  в API вам приходит укрупнённый `status` — см. [объект выплаты](/reference/payout-object).
+</Note>
+
+---
+
+## Обработка вебхука (flow)
+
+Что должен делать ваш обработчик на каждый входящий вебхук.
+
+```mermaid
+flowchart TD
+    A[Пришёл вебхук] --> B{is_test?}
+    B -->|да| Z[Ответить 200]
+    B -->|нет| C[Взять сырое тело + заголовки]
+    C --> D{Подпись верна?}
+    D -->|нет| E[Ответить 403]
+    D -->|да| F{uuid + status уже виден?}
+    F -->|да| Z
+    F -->|нет| G[Обработать событие]
+    G --> H{Обработка успешна?}
+    H -->|да| I[Запомнить ключ, ответить 200]
+    H -->|нет| J[Ответить 5xx — придёт ретрай]
+```
+
+**Текстом:** пробное тело (`is_test`) — сразу `200`. Иначе проверить подпись по сырому телу (неверна —
+`403`), затем дедуп по `uuid` + `status` (уже видели — `200`, no‑op), затем обработать. Успех — `200`
+и запомнить ключ; неуспех — не‑2xx, чтобы Oblodai повторил доставку. →
+[Настройка вебхуков](/guides/webhooks-setup)
+
+---
+
+## Три режима создания счёта (выбор)
+
+Какой режим получится в зависимости от переданных полей. `currency` (валюта цены) обязателен всегда;
+пустыми можно оставить `to_currency` и `network`.
+
+```mermaid
+flowchart TD
+    A[POST /v1/payment<br/>currency обязателен] --> B{to_currency и network заданы?}
+    B -->|оба заданы| C[Одновалютный счёт<br/>адрес сразу]
+    B -->|to_currency задан, network пуст| D{у монеты одна сеть?}
+    D -->|да| E[Авто-сеть<br/>адрес сразу]
+    D -->|нет| F[Ошибка<br/>payment.network_required]
+    B -->|to_currency пуст, network задан| H{currency — фиат или монета?}
+    H -->|монета<br/>USDT, BTC, …| I[to_currency = currency<br/>адрес сразу]
+    H -->|фиат<br/>USD, EUR, RUB, …| J[Ошибка<br/>payment.to_currency_required]
+    B -->|оба пусты| G[Валюто-агностичный счёт<br/>is_multi true, адрес после выбора]
+```
+
+**Текстом:** заданы валюта расчёта и сеть → обычный счёт. Задана только валюта расчёта → сеть
+подставится, если она единственная, иначе `payment.network_required`. Задана только сеть: если цена в
+**монете** — валютой расчёта станет она же; если цена в **фиате** (`USD`, `EUR`, `RUB`, …) — вывести из
+неё монету расчёта невозможно, будет `payment.to_currency_required`. Ни `to_currency`, ни `network` не
+заданы → покупатель выбирает монету и сеть на странице. →
+[Три режима создания счёта](/guides/payment-modes)
+
+---
+
+## Инвойс vs статический кошелёк (выбор)
+
+Что использовать под задачу.
+
+```mermaid
+flowchart TD
+    A[Нужно принять оплату] --> B{Фиксированная сумма<br/>за конкретный заказ?}
+    B -->|да| C[Инвойс<br/>POST /v1/payment]
+    B -->|нет, пополнение баланса| D[Статический кошелёк<br/>POST /v1/wallet]
+    C --> E[Вебхук invoice.*]
+    D --> F[Вебхук wallet.paid]
+```
+
+**Текстом:** разовая покупка на фиксированную сумму — инвойс. Постоянный адрес пополнения (депозиты,
+баланс клиента) — статический кошелёк. → [Статические кошельки](/guides/static-wallets)
+
+---
+
+## Связанные страницы
+
+- [Объект платежа](/reference/payment-object) · [Объект выплаты](/reference/payout-object) · [Объект вебхука](/reference/webhook-object)
+- [Приём первого платежа](/guides/accept-first-payment) · [Настройка вебхуков](/guides/webhooks-setup)

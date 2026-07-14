@@ -1,0 +1,108 @@
+---
+title: "POST /v1/wallet/blocked-address-refund"
+---
+
+Вернуть средства, полученные на (обычно заблокированном) статическом кошельке, на один указанный адрес.
+Возвращается **чистая** полученная сумма (за вычетом отменённых [reorg](/reference/glossary)‑депозитов —
+депозитов, откатившихся при переписывании недавних блоков сети). По сути это списание с баланса —
+выплата; однократно и идемпотентно на уровне кошелька.
+
+**URL:** `https://api.oblodai.com/v1/wallet/blocked-address-refund` · **Аутентификация:**
+обязательна.
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `uuid` | string | да | Идентификатор статического кошелька (из ответа [`/v1/wallet`](/reference/wallet-create)). |
+| `address` | string | да | Адрес назначения возврата. |
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"uuid":"0e5b6b9a-…","address":"TYr2...9kQp"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/wallet/blocked-address-refund' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/wallet/blocked-address-refund \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/wallet/blocked-address-refund", {"uuid": "0e5b6b9a-…", "address": "TYr2...9kQp"})
+```
+
+```js Node.js
+await call("/v1/wallet/blocked-address-refund", { uuid: "0e5b6b9a-…", address: "TYr2...9kQp" });
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "b71c2d3e-…",
+    "wallet_uuid": "0e5b6b9a-…",
+    "amount": "149.50",
+    "commission": "0.50",
+    "currency": "USDT",
+    "address": "TYr2...9kQp",
+    "status": "check",
+    "is_final": false
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `uuid` | string | Идентификатор операции возврата. |
+| `wallet_uuid` | string | Кошелёк, с которого возвращаются средства. |
+| `amount` | string | Возвращаемая чистая сумма. |
+| `commission` | string | Удержанный сетевой газ. |
+| `currency` | string | Валюта возврата. |
+| `address` | string | Адрес назначения. |
+| `status` | string | Статус операции (как у выплаты). |
+| `is_final` | bool | Достигнут ли [терминальный статус](/reference/glossary) (конечное состояние, объект больше не изменится). |
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 refund.no_address` | Не передан адрес назначения. |
+| `400 wallet.bad_uuid` | Некорректный `uuid`. |
+| `400 refund.nothing_to_refund` | На кошельке нет средств к возврату. |
+| `400 refund.destination_internal` | Адрес назначения принадлежит шлюзу ([self‑dealing](/reference/glossary) — выплата на собственный адрес шлюза запрещена). |
+| `400 refund.dust` | Сумма слишком мала ([dust](/reference/glossary) — не покрывает даже сетевую комиссию). |
+| `404 wallet.static_not_found` | Кошелёк не найден. |
+
+Адрес назначения дополнительно проходит проверку формата под сеть и комплаенс‑скрининг.
+
+---
+
+## Нюансы
+
+- Возвращается только **чистая** сумма — reorg‑отменённые депозиты исключаются.
+- Единственное удержание — сетевой газ (`commission`).
+- Идемпотентно по кошельку (ключ `refund-wallet:<uuid>`).
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/wallet/block`](/reference/wallet-block) · [Объект кошелька](/reference/wallet-object)

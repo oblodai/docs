@@ -1,0 +1,88 @@
+---
+title: "Поддерживаемые сети и валюты"
+---
+
+Метод оплаты или выплаты задаётся **парой коротких кодов**: `currency` (код валюты) + `network`
+(код сети). Ниже — полный список поддерживаемых пар на момент версии документа.
+
+<Note>
+  **Уточняйте программно.** Публичный каталог всех активов и сетей — [`GET /v1/currencies`](/reference/currencies)
+  (без ключа). Списки методов для приёма/выплат **вашего** мерчанта — [`POST /v1/payment/services`](/reference/payment-services)
+  и [`POST /v1/payout/services`](/reference/payout-services). Каталог может меняться, а флаг `is_available`
+  показывает, доступен ли метод прямо сейчас.
+</Note>
+
+---
+
+## Поддерживаемые пары
+
+| `currency` | `network` | Описание |
+|---|---|---|
+| `USDT` | `tron` | Tron USDT (TRC‑20) |
+| `USDT` | `ethereum` | Ethereum USDT (ERC‑20) |
+| `USDT` | `bsc` | BNB Smart Chain USDT (BEP‑20) |
+| `USDT` | `polygon` | Polygon USDT |
+| `USDT` | `avalanche` | Avalanche C‑Chain USDT |
+| `USDT` | `solana` | Solana USDT (SPL) |
+| `USDT` | `ton` | TON USDT (Jetton) |
+| `USDT` | `base` | Base USDT |
+| `USDT` | `arbitrum` | Arbitrum USDT |
+| `USDC` | `ethereum` | Ethereum USDC |
+| `USDC` | `bsc` | BNB Smart Chain USDC |
+| `USDC` | `polygon` | Polygon USDC |
+| `USDC` | `avalanche` | Avalanche C‑Chain USDC |
+| `USDC` | `solana` | Solana USDC (SPL) |
+| `USDC` | `base` | Base USDC |
+| `USDC` | `arbitrum` | Arbitrum USDC |
+| `DAI` | `ethereum` | Ethereum DAI |
+| `DAI` | `polygon` | Polygon DAI |
+| `POL` | `polygon` | Polygon — нативный POL |
+| `POL` | `ethereum` | Ethereum POL (ERC‑20) |
+| `ETH` | `ethereum` | Ethereum — нативный ETH |
+| `BNB` | `bsc` | BNB Smart Chain — нативный BNB |
+| `AVAX` | `avalanche` | Avalanche C‑Chain — нативный AVAX |
+| `TRX` | `tron` | Tron — нативный TRX |
+| `SOL` | `solana` | Solana — нативный SOL |
+| `TON` | `ton` | TON — нативный TON |
+| `BTC` | `bitcoin` | Bitcoin |
+
+---
+
+## Коды сетей
+
+`ethereum`, `bsc`, `polygon`, `avalanche`, `base`, `arbitrum`, `tron`, `solana`, `ton`, `bitcoin`.
+
+---
+
+## Важные отличия (частые вопросы)
+
+- **AVAX / `avalanche` — поддерживается** (нативный AVAX на C‑Chain).
+- **Нативный ETH — только на `ethereum`.** На L2 (`base`, `arbitrum`) поддерживаются только токены
+  USDT/USDC. Нативного ETH там **нет**.
+- **Bitcoin‑семейство — только `BTC`.** `litecoin`, `dogecoin`, `bitcoincash`, `dash`, `monero` в API
+  намеренно **не предлагаются**: создание инвойса или кошелька на такую сеть будет отклонено. Не
+  используйте эти сети.
+
+---
+
+## Как задаётся сеть
+
+- Если у валюты **несколько** сетей, `network` обязателен. Иначе — `payment.network_required` при
+  создании счёта или `payout` без сети.
+- Если у валюты **ровно одна** сеть, `network` можно не передавать — он подставится автоматически.
+- Для валюто‑агностичного счёта пустыми оставляют **`to_currency` и `network`** — монету и сеть
+  выберет покупатель. См. [Три режима создания счёта](/guides/payment-modes).
+
+<Note>
+  **`currency` обязателен ВСЕГДА.** Это валюта цены — без неё счёт не имеет стоимости. Пустым можно
+  оставить только `to_currency` (валюту расчёта) и `network`. Цену задавайте в фиате (`USD`, `EUR`,
+  `RUB`, …) или в монете — см. [Форматы сумм и денег](/reference/basics-money).
+</Note>
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment/services`](/reference/payment-services) — доступные методы приёма.
+- [`POST /v1/payout/services`](/reference/payout-services) — доступные методы выплат.
+- [Форматы сумм и денег](/reference/basics-money)

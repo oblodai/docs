@@ -1,0 +1,262 @@
+---
+title: "Rust SDK"
+---
+
+Официальная библиотека для Rust. Крейт `oblodai`. Синхронный клиент на `reqwest` (blocking) с
+инъектируемым транспортом.
+
+**Требования:** Rust **1.75+**, edition 2021.
+
+---
+
+## Установка
+
+```bash
+cargo add oblodai
+cargo add serde_json   # нужен для serde_json::json!({...}) в примерах
+```
+
+<Warning>
+  **В crates.io сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
+  Команда выше поставит **v1.0.x**.
+
+  Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
+  повторы») и **нет** групп `batches()` / `links()` / `splits()` и методов `*_batch` / `send_email`.
+</Warning>
+
+По умолчанию включена фича `reqwest-client` (встроенный HTTP-клиент). Для своего транспорта отключите
+дефолтные фичи и реализуйте трейт `HttpTransport`.
+
+---
+
+## Аутентификация (ключи из окружения)
+
+Ключи берутся в кабинете [my.oblodai.com](https://my.oblodai.com) — см.
+[Регистрация и ключи](/guides/get-keys).
+
+```bash
+export OBLODAI_PUBLIC_ID=oblodai_ваш_public_id
+export OBLODAI_SECRET=oblodai_ваш_secret
+# необязательно: export OBLODAI_BASE_URL=https://api.oblodai.com
+```
+
+```rust
+// читает OBLODAI_PUBLIC_ID / OBLODAI_SECRET / OBLODAI_BASE_URL
+let client = oblodai::Client::from_env()?;
+```
+
+Или явно:
+
+```rust
+use oblodai::{Client, Config};
+
+let client = Client::new(
+    Config::new("public_id", "secret").base_url("https://api.oblodai.com"),
+)?;
+```
+
+---
+
+## Быстрый старт: принять платёж
+
+```rust
+use serde_json::json;
+
+let payment = client.payments().create(json!({
+    "amount": "10",
+    "currency": "USD",
+    "order_id": "order-1",
+    "to_currency": "USDT",
+    "network": "tron",
+    "url_callback": "https://ваш-сайт.ру/oblodai/webhook",
+}))?;
+
+println!("{}", payment.url); // редиректите покупателя сюда
+```
+
+Тела запроса передаются как `serde_json::json!({...})`; ответ — типизированная структура (`Payment`).
+
+<Note>
+  Совет: не хотите указывать валюту/сеть за покупателя? Не передавайте `to_currency` и `network` —
+  получится «валюто-агностичная» ссылка, где покупатель сам выберет монету на странице оплаты.
+</Note>
+
+---
+
+## Ресурсы и методы
+
+Доступ через `client.название()`:
+
+| Группа | Методы |
+|---|---|
+| `client.payments()` | `create`, `info`, `history`, `services`, `qr`, `resend`, `refund`, `list_accepted`, `set_accepted`, `get_accuracy`, `set_accuracy`, `get_autorefund`, `set_autorefund`, `set_discount`, `list_discounts` · **с v1.1.0:** `create_batch`, `refund_batch`, `send_email` |
+| `client.payouts()` | `create`, `create_mass`, `info`, `history`, `services`, `calculate`, `approve`, `get_fee_config`, `set_fee_config`, `get_refund_fee_config`, `set_refund_fee_config`, `refund` · **с v1.1.0:** `create_batch` |
+| `client.batches()` **(v1.1.0)** | `info` |
+| `client.links()` **(v1.1.0)** | `create`, `list`, `info`, `toggle`, `public_get`, `checkout` |
+| `client.splits()` **(v1.1.0)** | `split_to_address`, `split_to_merchant`, `list_rules`, `delete_rule`, `get_config`, `set_config` |
+| `client.wallets()` | `create`, `block`, `blocked_address_refund`, `qr` |
+| `client.account()` | `balance`, `referral`, `transfer_to_personal`, `vrcs` |
+| `client.webhooks()` | `register`, `deliveries`, `test_payment`, `test_wallet`, `test_payout` |
+| `client.settings()` | `list_auto_withdraw`, `set_auto_withdraw`, `delete_auto_withdraw`, `list_allowlist`, `add_allowlist`, `remove_allowlist`, `enable_allowlist` |
+| `client.rates()` | `list` (курсы), `currencies` (публичный каталог) |
+
+Точные поля — в [Справочнике](/reference/overview).
+
+<Warning>
+  Группы `batches()` / `links()` / `splits()` и методы `create_batch` / `refund_batch` /
+  `send_email` появятся **в v1.1.0**, которая **ещё не опубликована**. В текущей v1.0.x их нет.
+</Warning>
+
+```rust
+use oblodai::{LinkParams, CheckoutParams};
+
+// Массовые операции: до 5000 элементов одним подписанным запросом (одна отметка rate-limit).
+let sub = client.payments().create_batch(vec![
+    json!({"amount": "10", "currency": "USD", "order_id": "a-1", "to_currency": "USDT", "network": "tron"}),
+    json!({"amount": "20", "currency": "EUR", "order_id": "a-2", "to_currency": "USDT", "network": "tron"}),
+], Some("continue"))?;                       // "continue" (по умолчанию) или "stop"
+
+let info = client.batches().info(&sub.batch_id, Some(100), Some(0))?;
+
+// Платёжная ссылка: платят многие, каждый платёж — свой инвойс. Работает без вашего бэкенда.
+let link = client.links().create(LinkParams::new("open", "USD"))?;
+
+// Сплит: доля каждого входящего платежа автоматически уходит партнёру.
+let rule = client.splits().split_to_address("T...", "tron", 10.0, Some("партнёр А"))?;
+
+// Счёт на e-mail (письмо с кнопкой «Оплатить»).
+client.payments().send_email(Some(&uuid), None, Some("buyer@example.com"))?;
+```
+
+Подробности — [Массовые операции](/guides/batch-operations),
+[Платёжные ссылки](/guides/payment-links), [Сплит-платежи](/guides/split-payments),
+[Счета на e-mail](/guides/email-invoices).
+
+---
+
+## Валюта цены и валюта расчёта
+
+В примере выше `"currency": "USD"` — **валюта цены**, а `"to_currency": "USDT"` — **валюта расчёта**.
+Это разные вещи:
+
+- **`currency` (цена)** — одна из **23 фиатных валют**: USD, EUR, GBP, RUB, UAH, PLN, CZK, TRY, CNY,
+  INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND, NGN, JPY, KRW — **или любая монета**
+  (USDT, BTC, TRX, …).
+- **`to_currency` (расчёт)** — **только крипта.** Фиата здесь не бывает: баланс, выплаты и возвраты
+  всегда в монете, шлюз не хранит фиат.
+- У **JPY и KRW ноль знаков** после запятой (`"amount": "10000"`, не `"10000.00"`); у остальных — 2.
+- **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
+- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+  Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
+
+Полный список валют цены — `client.rates().currencies()`, поле `pricing_currencies`.
+
+---
+
+## Проверьте, что заработало
+
+1. Запустите код создания платежа из «Быстрого старта». В ответе должен прийти `url` — это ссылка на
+   hosted-страницу оплаты. Откройте её в браузере: если страница открылась, приём платежей настроен.
+2. Чтобы реально **поймать вебхук** об оплате на локальной машине, нужен публичный HTTPS-адрес —
+   поднимите туннель (ngrok / cloudflared) и укажите его URL в `url_callback`. Подробнее — в
+   [Тестировании](/guides/testing) и [Настройке вебхуков](/guides/webhooks-setup).
+
+---
+
+## Вебхуки
+
+<CodeGroup>
+
+```rust Шаг 1. Регистрация (один раз)
+let ep = client.webhooks().register("https://ваш-сайт.ру/oblodai/webhook")?;
+// сохраните ep.secret — им проверяются вебхуки (не API-секрет!)
+```
+
+```rust Шаг 2. Приём (обязательно СЫРОЕ тело)
+use oblodai::{verify_webhook, WebhookHeaders, VerifyOptions};
+
+let headers = WebhookHeaders {
+    timestamp: req_header("X-Webhook-Timestamp"),
+    signature: req_header("X-Webhook-Signature"),
+};
+match verify_webhook(&webhook_secret, raw_body_bytes, &headers, &VerifyOptions::default()) {
+    Ok(_) => { /* подпись верна */ }
+    Err(_) => { /* 403 */ }
+}
+
+let info = client.payments().info(Some(&uuid), None)?;
+if info.payment_status == "paid" || info.payment_status == "paid_over" {
+    // пометить заказ info.order_id оплаченным (идемпотентно)
+}
+```
+
+</CodeGroup>
+
+Тестовые вебхуки (`is_test`) не подписаны — их можно подтверждать без проверки.
+
+---
+
+## Ошибки и повторы
+
+```rust
+match client.payouts().create(json!({ /* ... */ })) {
+    Ok(p) => { /* ... */ }
+    Err(oblodai::Error::Api { code, status, .. }) => {
+        // ветвитесь по code, напр. "payout.insufficient_funds"
+    }
+    Err(e) => { /* сеть/сериализация */ }
+}
+```
+
+Клиент **сам** повторяет 5xx/429/сетевые сбои с backoff и учётом `Retry-After`. **Повторы включены по
+умолчанию** — `Config::new(...)` и `Config::from_env()` уже возвращают конфиг с `RetryConfig::default()`,
+специально ничего задавать не надо. Отключить: `Config::new(id, secret).retry(None)`.
+
+**Повтор безопасен, но механизм зависит от версии:**
+
+| | **v1.0.x** (сейчас в crates.io) | **v1.1.0** (не опубликована) |
+|---|---|---|
+| Защита от дублей | `order_id`: не задали — **SDK подставит свой** | заголовок `Idempotency-Key`, одинаковый во всех внутренних повторах |
+| Ваш `order_id` | если не задан — в платеже будет сгенерированный SDK | уходит **как есть**, SDK не подставляет и не переписывает |
+| Свой ключ | `idempotency_key` **не существует** | можно передать `idempotency_key` — уйдёт в заголовок |
+
+В обеих версиях таймаут/обрыв сети не создаст дубль счёта или перевода. Для **выплат** `order_id`
+обязателен всегда — его задаёте вы (иначе `payout.order_id_required`).
+
+---
+
+## Логи и отладка
+
+Включите логи одной переменной окружения — увидите каждый запрос/ответ/ретрай:
+
+```bash
+export OBLODAI_LOG=debug   # уровни: debug · info · warn · error
+```
+
+Строки идут в stderr с префиксом `oblodai:` (метод, путь, статус, номер попытки, задержка ретрая).
+**Секреты, подпись и тела запросов в лог не попадают.** Вместо переменной можно задать свой логгер: `Config::new(..).logger(Arc::new(|level, msg| ...))`.
+
+<Note>
+  **Проверяете подпись вебхука статичным (старым) вектором?** По умолчанию действует окно свежести
+  5 минут — старый `timestamp` отклонит replay-защита (валидная подпись → всё равно ошибка). Для
+  офлайн-проверки задайте окно 0: `verify_webhook(secret, raw, &headers, &VerifyOptions{ max_age_seconds: 0, ..Default::default() })`.
+</Note>
+
+---
+
+## Если не получилось
+
+| Симптом | Причина и что делать |
+|---|---|
+| `Error::Api` `401` на каждый вызов | Не заданы `OBLODAI_PUBLIC_ID`/`OBLODAI_SECRET` или перепутаны. SDK подписывает сам. |
+| `from_env()` возвращает `Err` | Обязательная переменная окружения не задана (её имя — в тексте ошибки). |
+| Вебхук не проходит проверку | Проверяйте по **сырым** байтам тела и **webhook‑секрету** из `webhooks().register()`, не API‑секрету. |
+| Вебхук вообще не приходит | Не зарегистрировали endpoint (`webhooks().register(url)`) или сайт недоступен из интернета. |
+| `429` | SDK повторяет сам с учётом `Retry-After` (повторы включены по умолчанию). Не поллите `payments().info()` в цикле. Много операций — шлите их [пачкой](/guides/batch-operations). |
+
+Полная диагностика — [Что делать, если не работает](/guides/troubleshooting).
+
+## Связанные страницы
+
+- [Обзор SDK](/sdk/overview) · [Приём первого платежа](/guides/accept-first-payment)
+- [Настройка вебхуков](/guides/webhooks-setup) · [Коды ошибок](/reference/errors-catalog)

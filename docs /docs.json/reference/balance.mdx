@@ -1,0 +1,78 @@
+---
+title: "POST /v1/balance"
+---
+
+Доступные (расходуемые) балансы мерчанта — по одной записи на валюту.
+
+**URL:** `https://api.oblodai.com/v1/balance` · **Аутентификация:** обязательна · **Тело:** `{}`.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/balance' '{}' \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/balance \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d '{}'
+```
+
+```python Python
+call("/v1/balance", {})
+```
+
+```js Node.js
+await call("/v1/balance", {});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "balance": {
+      "merchant": [
+        { "currency": "USDT", "balance": "1240.75" },
+        { "currency": "BTC", "balance": "0.01843000" }
+      ]
+    }
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `balance.merchant` | array | По записи на валюту: `currency` + доступный `balance` (строкой). |
+
+---
+
+## Нюансы
+
+- Показываются только счета **`available`** — «замороженные» части (например, `payout_held`) не
+  включаются.
+- **Незрелые (maturing) средства.** Депозит зачисляется на баланс сразу, но до набора нужных
+  подтверждений остаётся под maturity‑холдом (reorg‑безопасность). Такие средства **видны в
+  `balance`**, но ещё не выводимы: выплата на сумму, включающую незрелые средства, вернёт
+  `409 payout.funds_maturing`. Поэтому выводимый остаток может быть временно **меньше** показанного.
+
+---
+
+## Связанные страницы
+
+- [Модель баланса и движение средств](/guides/balance-and-funds) — общая картина available/maturing/held.
+- [`POST /v1/payout`](/reference/payout-create) — списывает доступный баланс.
+- [Форматы сумм и денег](/reference/basics-money) · [Формат ответа и коды ошибок](/reference/basics-errors)

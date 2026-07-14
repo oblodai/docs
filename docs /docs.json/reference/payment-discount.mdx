@@ -1,0 +1,93 @@
+---
+title: "POST /v1/payment/discount/list · /set"
+---
+
+Скидка или наценка плательщику на чекауте в зависимости от выбранной монеты. Положительный процент —
+**скидка** за оплату этой монетой; отрицательный — **наценка**.
+
+**Аутентификация:** обязательна.
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+
+---
+
+## POST /v1/payment/discount/list
+
+Показать текущие правила. Тело — `{}`.
+
+```json
+{
+  "state": 0,
+  "result": [
+    { "currency": "USDT", "network": "tron", "discount_percent": 3 }
+  ]
+}
+```
+
+Каждый элемент: `currency`, `network`, `discount_percent`.
+
+---
+
+## POST /v1/payment/discount/set
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `currency` | string | нет | Валюта. Пусто = глобальный дефолт для всех монет. |
+| `network` | string | нет | Сеть. Пусто = любая сеть данной валюты. |
+| `discount_percent` | int | да | Процент, −99…99. Плюс — скидка, минус — наценка. |
+
+### Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"currency":"USDT","network":"tron","discount_percent":3}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/discount/set' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payment/discount/set \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payment/discount/set", {"currency": "USDT", "network": "tron", "discount_percent": 3})
+```
+
+```js Node.js
+await call("/v1/payment/discount/set", { currency: "USDT", network: "tron", discount_percent: 3 });
+```
+
+</CodeGroup>
+
+### Пример ответа
+
+Эхо сохранённого правила:
+
+```json
+{ "state": 0, "result": { "currency": "USDT", "network": "tron", "discount_percent": 3 } }
+```
+
+### Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 discount.unknown_currency` | Неизвестная валюта. |
+| `400 discount.out_of_range` | `discount_percent` вне диапазона −99…99. |
+
+---
+
+## Нюансы
+
+- **100 % скидка запрещена** — дала бы нулевую цену.
+- Запись по конкретной монете **перекрывает** глобальный дефолт.
+- Скидка/наценка применяется к цене **до фиксации курса**.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/payment`](/reference/payment-create) · [Допуск недоплаты](/reference/payment-accuracy)

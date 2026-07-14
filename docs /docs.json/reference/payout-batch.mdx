@@ -1,0 +1,151 @@
+---
+title: "POST /v1/payout/batch"
+---
+
+Массовая выплата — до **5000** выплат одним запросом. Обрабатывается асинхронно: в ответ сразу
+приходит `batch_id`, результат по каждому элементу забирается через
+[`POST /v1/batch/info`](/reference/batch-info).
+
+<Note>
+  **Это штатный способ не упираться в rate limit** и основной путь для больших пачек выплат.
+  Один подписанный запрос вместо 5000. Устаревший [`POST /v1/payout/mass`](/reference/payout-mass) (до 100
+  элементов, синхронный) остаётся для маленьких пачек, но для сотен и тысяч выплат используйте
+  батч.
+</Note>
+
+**URL:** `https://api.oblodai.com/v1/payout/batch` · **Аутентификация:** обязательна ·
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+</Note>
+**Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + `order_id` каждого элемента (обязателен).
+
+---
+
+## Параметры запроса
+
+| Поле | Тип | Обяз. | Описание |
+|---|---|---|---|
+| `payouts` | array | да | Массив от 1 до **5000** элементов. Поля каждого элемента — **ровно те же**, что у [`POST /v1/payout`](/reference/payout-create). |
+| `on_error` | string | нет | Что делать при ошибке элемента: `continue` (по умолчанию) — обрабатывать остальные; `stop` — прекратить обработку после первой ошибки. |
+
+У каждого элемента `order_id` **обязателен** — как и у одиночной выплаты. Он же ключ идемпотентности:
+повторная отправка того же элемента вернёт уже созданную выплату, а не вторую.
+
+---
+
+## Пример запроса
+
+<CodeGroup>
+
+```bash cURL
+BODY='{"payouts":[
+  {"amount":"25","currency":"USDT","network":"tron","address":"TXY...","order_id":"p-1"},
+  {"amount":"10","currency":"USDT","network":"tron","address":"TZZ...","order_id":"p-2"}
+],"on_error":"continue"}'
+TS=$(date +%s)
+SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/batch' "$BODY" \
+  | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+curl -s https://api.oblodai.com/v1/payout/batch \
+  -X POST -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" -H "X-Timestamp: $TS" -H "X-Signature: $SIG" \
+  -H "Idempotency-Key: payroll-2026-07" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/batch", {
+    "payouts": [
+        {"amount": "25", "currency": "USDT", "network": "tron",
+         "address": "TXY...", "order_id": "p-1"},
+        {"amount": "10", "currency": "USDT", "network": "tron",
+         "address": "TZZ...", "order_id": "p-2"},
+    ],
+    "on_error": "continue",
+})
+```
+
+```js Node.js
+await call("/v1/payout/batch", {
+  payouts: [
+    { amount: "25", currency: "USDT", network: "tron", address: "TXY...", order_id: "p-1" },
+    { amount: "10", currency: "USDT", network: "tron", address: "TZZ...", order_id: "p-2" },
+  ],
+  on_error: "continue",
+});
+```
+
+</CodeGroup>
+
+---
+
+## Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "batch_id": "b71e0d3f-8a94-4c02-95a7-2f6c8d1e4b55",
+    "kind": "payout",
+    "count": 2,
+    "status": "pending"
+  }
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `batch_id` | string | Идентификатор батча — с ним в [`POST /v1/batch/info`](/reference/batch-info). |
+| `kind` | string | Вид батча — здесь всегда `payout`. |
+| `count` | int | Сколько элементов принято в обработку. |
+| `status` | string | Стартовый статус — всегда `pending`. |
+
+**Выплат в ответе нет** — только подтверждение приёма. `uuid` каждой выплаты появится в
+`items[].result` ответа [`/v1/batch/info`](/reference/batch-info).
+
+---
+
+## Батч vs `/v1/payout/mass`
+
+| | [`/v1/payout/batch`](/reference/payout-batch) | [`/v1/payout/mass`](/reference/payout-mass) |
+|---|---|---|
+| Максимум элементов | **5000** | 100 |
+| Обработка | асинхронная, `batch_id` + поллинг | синхронная, результаты сразу в ответе |
+| Когда использовать | **основной путь**, любые объёмы | маленькая пачка, когда нужен ответ немедленно |
+
+---
+
+## Коды ошибок
+
+| Код | Значение |
+|---|---|
+| `400 request.bad_json` | Тело не парсится. |
+| `400 batch.empty` | Массив `payouts` пуст. |
+| `400 batch.too_large` | Больше 5000 элементов. |
+| `503 batch.disabled` | Массовая обработка недоступна на этом шлюзе. |
+| `401 auth.*` | Ошибки аутентификации. |
+
+Ошибки отдельных выплат (`payout.insufficient_funds`, `payout.bad_address`,
+`payout.order_id_required` и т. п.) приходят в `items[].error` ответа
+[`/v1/batch/info`](/reference/batch-info).
+
+---
+
+## Нюансы
+
+- **Баланса может не хватить на весь батч.** Элементы списывают баланс по очереди; когда средства
+  кончатся, остальные упадут с `payout.insufficient_funds` (при `on_error: "continue"`). Если хотите,
+  чтобы обработка остановилась на первой такой ошибке, — `on_error: "stop"`.
+- **`payout.funds_maturing` — ретраибельная ошибка.** Средства ещё дозревают; такой элемент можно
+  отправить повторно позже (`order_id` не даст создать дубль).
+- **Выплаты по API‑ключу авто‑одобряются** — батч этого не меняет.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/batch/info`](/reference/batch-info) — поллинг статуса и результатов.
+- [`POST /v1/payout`](/reference/payout-create) — поля элемента. · [Объект выплаты](/reference/payout-object)
+- [`POST /v1/payout/mass`](/reference/payout-mass) — легаси‑путь на ≤100 элементов.
+- [`POST /v1/payment/batch`](/reference/payment-batch) · [`POST /v1/refund/batch`](/reference/refund-batch)
+- [Массовые выплаты](/guides/mass-payouts)

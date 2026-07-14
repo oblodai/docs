@@ -1,0 +1,200 @@
+---
+title: "Объект вебхука и проверка подписи"
+---
+
+Вебхуки — это HTTP‑уведомления, которые Oblodai шлёт на ваш URL, когда с платежом, кошельком или
+выплатой что‑то происходит. Боевые вебхуки шлёт фоновый диспетчер (не синхронно с вашим API‑вызовом).
+
+<Warning>
+  **Подпись вебхука ≠ подпись запроса.** Это два разных алгоритма. Подпись запроса описана в
+  [Аутентификации](/reference/basics-auth); подпись вебхука — здесь. Не переиспользуйте один код для обоих.
+</Warning>
+
+---
+
+## Гарантия доставки
+
+Доставка идёт по паттерну transactional‑outbox: строка доставки пишется в **той же транзакции**, что и
+зачисление платежа — уведомление не потеряется.
+
+Доставка — **как минимум один раз** (at‑least‑once). Успех = ответ `2xx`; любой не‑2xx или сетевая
+ошибка считается провалом, и доставка переносится с ретраем.
+
+---
+
+## Заголовки доставки
+
+| Заголовок | Значение |
+|---|---|
+| `Content-Type` | `application/json` |
+| `X-Webhook-Event` | Тип события: `invoice.paid`, `payout.confirmed`, `wallet.paid`, … |
+| `X-Webhook-Timestamp` | unix‑секунды момента отправки |
+| `X-Webhook-Signature` | `hex(HMAC-SHA256(secret, "<unix>." + сырое_тело))` |
+
+Где `secret` — тот, что вернул [`POST /v1/webhooks`](/reference/webhooks-register).
+
+---
+
+## Как считается подпись вебхука
+
+```
+signing_string = "{X-Webhook-Timestamp}" + "." + сырое_тело_запроса
+X-Webhook-Signature = hex( HMAC_SHA256( secret, signing_string ) )
+```
+
+То есть: `timestamp` + точка `.` + **сырое тело** как есть. Никаких метода, пути или переводов строк —
+в отличие от подписи запроса.
+
+---
+
+## Типы событий (`X-Webhook-Event`)
+
+| Событие | Когда | Поле `type` в теле |
+|---|---|---|
+| `invoice.paid` | Инвойс оплачен в пределах допуска. | `payment` |
+| `invoice.paid_over` | Переплата сверх допуска. | `payment` |
+| `invoice.wrong_amount` | Недоплата, срок вышел. | `payment` |
+| `invoice.expired` | Счёт истёк. | `payment` |
+| `wallet.paid` | Пополнение статик‑кошелька. | `wallet` |
+| `payout.<статус>` | Событие выплаты. Суффикс — **внутренний** статус: `payout.pending`, `payout.approved`, `payout.awaiting_cosign` (при 2‑of‑2), `payout.broadcasting`, `payout.sent`, `payout.confirmed` (успех), `payout.failed`, `payout.cancelled`. Обратите внимание: подтверждённая выплата — это `payout.confirmed`, **не** `payout.paid`. | `payout` |
+
+---
+
+## Пример тела платёжного вебхука
+
+```json
+{
+  "type": "payment",
+  "uuid": "3f1c…-e2b1",
+  "order_id": "order-1001",
+  "amount": "10.00",
+  "currency": "USDT",
+  "payment_amount": "10.00",
+  "payer_amount": "10.00",
+  "payer_currency": "USDT",
+  "status": "paid",
+  "is_final": true,
+  "txid": "",
+  "additional_data": "…"
+}
+```
+
+---
+
+## Пример тела вебхука пополнения кошелька (`wallet.paid`)
+
+Приходит при поступлении средств на [статический кошелёк](/reference/wallet-object). Поле `type` — `wallet`.
+
+```json
+{
+  "type": "wallet",
+  "uuid": "0e5b6b9a-…",
+  "order_id": "user-42",
+  "address": "TJ4b1…C9xk",
+  "network": "tron",
+  "currency": "USDT",
+  "payment_amount": "149.50",
+  "payer_currency": "USDT",
+  "txid": "9f2c…a1",
+  "status": "paid",
+  "is_final": true
+}
+```
+
+---
+
+## Пример тела вебхука выплаты (`payout.<статус>`)
+
+Приходит при смене статуса [выплаты](/reference/payout-object). Поле `type` — `payout`.
+
+```json
+{
+  "type": "payout",
+  "uuid": "7d1e…-b3",
+  "order_id": "wd-1001",
+  "amount": "50.00",
+  "currency": "USDT",
+  "network": "tron",
+  "address": "TYr2…9kQp",
+  "txid": "3a1f…c7",
+  "status": "paid",
+  "is_final": true
+}
+```
+
+<Note>
+  **Важно: статус в заголовке и в теле — разного «уровня».** В заголовке `X-Webhook-Event` суффикс —
+  **внутренний** статус (`payout.confirmed`, `payout.sent`, …), а поле `status` в **теле** —
+  **укрупнённый** (`check` / `process` / `paid` / `fail` / `cancel`). Подтверждённая выплата придёт как
+  `X-Webhook-Event: payout.confirmed` с `"status": "paid"` в теле. Ветвитесь по тому, что вам удобнее,
+  но не ждите `payout.paid` в заголовке — такого события нет. См. [статусы выплаты](/reference/payout-object#статусы-выплаты).
+</Note>
+
+---
+
+## Проверка подписи
+
+<CodeGroup>
+
+```python Python
+import hmac, hashlib
+
+def verify(secret: bytes, ts_header: str, raw_body: bytes, sig_header: str) -> bool:
+    msg = ts_header.encode() + b"." + raw_body
+    expected = hmac.new(secret, msg, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, sig_header)
+```
+
+```js Node.js
+import crypto from "node:crypto";
+
+function verify(secret, tsHeader, rawBody, sigHeader) {
+  const msg = `${tsHeader}.` + rawBody;                    // rawBody — строка сырого тела
+  const expected = crypto.createHmac("sha256", secret).update(msg).digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sigHeader));
+}
+```
+
+```php PHP
+<?php
+function verify(string $secret, string $tsHeader, string $rawBody, string $sigHeader): bool {
+    $expected = hash_hmac('sha256', $tsHeader . '.' . $rawBody, $secret);
+    return hash_equals($expected, $sigHeader);
+}
+```
+
+</CodeGroup>
+
+<Note>
+  **Берите именно сырое тело запроса** (raw body), до любого JSON‑парсинга/пересериализации. Если
+  тело переупаковать, байты изменятся и подпись не сойдётся.
+</Note>
+
+---
+
+## Ретраи и dead‑letter
+
+Backoff экспоненциальный: от 10 секунд с удвоением, потолок 1 час; всего до **12 попыток** (в сумме
+~3,5 часа). Исчерпав попытки, доставка получает статус `dead` — она видна в
+[`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries).
+
+---
+
+## Идемпотентность на вашей стороне (обязательно)
+
+Из‑за at‑least‑once один вебхук может прийти **несколько раз** (в том числе после
+[`payment/resend`](/reference/payment-resend)). Правила:
+
+- **Дедуплицируйте** по паре `uuid` + `status` и обрабатывайте повтор как no‑op.
+- **Не полагайтесь на порядок** доставок — он не гарантирован. Опирайтесь на `status`/`is_final`, а не
+  на очерёдность прихода.
+- **Отвечайте `2xx` только после успешной обработки** — иначе диспетчер повторит доставку.
+
+---
+
+## Связанные страницы
+
+- [`POST /v1/webhooks`](/reference/webhooks-register) — регистрация URL и получение `secret`.
+- [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries) — журнал доставок.
+- [Тестовые вебхуки](/reference/webhooks-test) · [`POST /v1/payment/resend`](/reference/payment-resend)
+- [Настройка и приём вебхуков](/guides/webhooks-setup) — пошагово.
