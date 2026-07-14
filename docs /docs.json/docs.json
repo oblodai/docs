@@ -63,20 +63,6 @@
     }
   },
   "navigation": {
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "icon": "book-open-cover",
-          "href": "https://oblodai.mintlify.io"
-        },
-        {
-          "anchor": "GitHub",
-          "icon": "github",
-          "href": "https://github.com/oblodai"
-        }
-      ]
-    },
     "tabs": [
       {
         "tab": "Инструкции",
@@ -86,7 +72,10 @@
             "group": "Начало работы",
             "icon": "rocket",
             "pages": [
-              "index"
+              "index",
+              "guides/get-keys",
+              "quickstart",
+              "guides/signing-requests"
             ]
           },
           {
@@ -113,15 +102,51 @@
       },
       {
         "tab": "Справочник",
-        "icon": "code"
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Основы",
+            "icon": "layer-group",
+            "pages": []
+          },
+          {
+            "group": "Платежи",
+            "icon": "credit-card",
+            "pages": []
+          },
+          {
+            "group": "Ссылки и сплиты",
+            "icon": "link",
+            "pages": []
+          },
+          {
+            "group": "Справочные материалы",
+            "icon": "book-bookmark",
+            "pages": []
+          }
+        ]
       },
       {
         "tab": "Модули CMS",
-        "icon": "cart-shopping"
+        "icon": "cart-shopping",
+        "groups": [
+          {
+            "group": "Готовые модули",
+            "icon": "puzzle-piece",
+            "pages": []
+          }
+        ]
       },
       {
         "tab": "SDK",
-        "icon": "cubes"
+        "icon": "cubes",
+        "groups": [
+          {
+            "group": "Библиотеки",
+            "icon": "cubes",
+            "pages": []
+          }
+        ]
       }
     ]
   }
