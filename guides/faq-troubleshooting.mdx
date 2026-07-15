@@ -167,7 +167,7 @@ backoff или выведите уже зрелую часть.
 </Accordion>
 <Accordion title="Как выплатить сразу тысячам получателей и не поймать 429?">
 
-Используйте **батч** [`POST /v1/payout/batch`](/reference/payment-batch): до **5000** выплат
+Используйте **батч** [`POST /v1/payout/batch`](/reference/payout-batch): до **5000** выплат
 **одним** подписанным запросом, обработка асинхронная, результат — через `/v1/batch/info`. Цикл из
 отдельных вызовов гарантированно упрётся в лимит частоты. → [Массовые операции](/guides/batch-operations)
 
@@ -237,13 +237,7 @@ backoff или выведите уже зрелую часть.
 </AccordionGroup>
 ## Связанные страницы
 
-<AccordionGroup>
-
 - [Справочник кодов ошибок](/reference/errors-catalog) · [Глоссарий](/reference/glossary)
 - [Как подписать запрос](/guides/signing-requests) · [Отладка вебхуков](/guides/webhooks-debug)
 - [Тестирование интеграции](/guides/testing)
 - Пошаговая диагностика по симптомам — [Что делать, если не работает](/guides/troubleshooting)
-
-← Назад: [Все инструкции](/guides/overview) · [Обзор документации](/)
-
-</AccordionGroup>

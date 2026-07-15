@@ -295,7 +295,8 @@
     ]
   },
   "styling": {
-    "eyebrows": "breadcrumbs"
+    "eyebrows": "breadcrumbs",
+    "latex": false
   },
   "search": {
     "prompt": "Поиск по документации…"

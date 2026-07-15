@@ -145,7 +145,7 @@ client.payments.send_email(uuid=payment.uuid, email="buyer@example.com")
   всегда в монете, шлюз не хранит фиат.
 - У **JPY и KRW ноль знаков** после запятой (`amount="10000"`, не `"10000.00"`); у остальных — 2.
 - **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
-- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+- Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
   Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
 
 Полный список валют цены — `client.rates.currencies()`, поле `pricing_currencies`.
@@ -164,14 +164,12 @@ client.payments.send_email(uuid=payment.uuid, email="buyer@example.com")
 
 ## Вебхуки
 
-<CodeGroup>
-
 ```python Шаг 1. Регистрация (один раз)
 endpoint = client.webhooks.register("https://ваш-сайт.ру/oblodai/webhook")
 webhook_secret = endpoint.secret  # сохраните — им проверяются вебхуки (не API-секрет!)
 ```
 
-```python Шаг 2. Приём (пример на Flask — обязательно СЫРОЕ тело)
+```python Шаг 2. Приём (Flask, сырое тело)
 from flask import Flask, request
 from oblodai import verify_webhook, OblodaiSignatureError
 
@@ -193,8 +191,6 @@ def webhook():
         ...  # пометить заказ info.order_id оплаченным (идемпотентно)
     return "", 200
 ```
-
-</CodeGroup>
 
 Оплаченными считайте только `paid` и `paid_over`.
 

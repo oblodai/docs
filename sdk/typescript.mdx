@@ -20,7 +20,7 @@ npm install @oblodai-npm/sdk
 <Note>
   Пакет выходит в npm под scope **`@oblodai-npm`** — ставьте именно `@oblodai-npm/sdk`.
 
-  ⚠️ **В npm сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
+  **В npm сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
   Команда выше поставит **v1.0.x**.
 
   Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
@@ -144,7 +144,7 @@ await client.payments.sendEmail({ uuid, email: 'buyer@example.com' });
   всегда в монете, шлюз не хранит фиат.
 - У **JPY и KRW ноль знаков** после запятой (`amount: '10000'`, не `'10000.00'`); у остальных — 2.
 - **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
-- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+- Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
   Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
 
 Полный список валют цены — `client.rates.currencies()`, поле `pricing_currencies`.
@@ -163,14 +163,12 @@ await client.payments.sendEmail({ uuid, email: 'buyer@example.com' });
 
 ## Вебхуки
 
-<CodeGroup>
-
 ```ts Шаг 1. Регистрация (один раз) и сохранение секрета
 const endpoint = await client.webhooks.register('https://ваш-сайт.ру/oblodai/webhook');
 // сохраните endpoint.secret — им проверяются все вебхуки (это НЕ ваш API-секрет)
 ```
 
-```ts Шаг 2. Приём (пример на Express — обязательно СЫРОЕ тело)
+```ts Шаг 2. Приём (Express, сырое тело)
 import express from 'express';
 import { constructWebhookEvent, OblodaiSignatureError, type WebhookEvent } from '@oblodai-npm/sdk';
 
@@ -197,8 +195,6 @@ app.post('/oblodai/webhook', express.raw({ type: '*/*' }), async (req, res) => {
   res.send('ok');
 });
 ```
-
-</CodeGroup>
 
 Оплаченными считайте только `paid` и `paid_over`.
 

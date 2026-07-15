@@ -158,7 +158,7 @@ _, err = client.Payments.SendEmail(ctx, uuid, "" /* orderID */, "buyer@example.c
   всегда в монете, шлюз не хранит фиат.
 - У **JPY и KRW ноль знаков** после запятой (`"amount": "10000"`, не `"10000.00"`); у остальных — 2.
 - **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
-- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+- Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
   Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
 
 Полный список валют цены — `client.Rates.Currencies(ctx)`, поле `pricing_currencies`.
@@ -176,8 +176,6 @@ _, err = client.Payments.SendEmail(ctx, uuid, "" /* orderID */, "buyer@example.c
 ---
 
 ## Вебхуки
-
-<CodeGroup>
 
 ```go Шаг 1. Регистрация (один раз)
 ep, err := client.Webhooks.Register(ctx, "https://ваш-сайт.ру/oblodai/webhook")
@@ -205,8 +203,6 @@ func webhook(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 ```
-
-</CodeGroup>
 
 `VerifyWebhook` возвращает `*oblodai.SignatureError` при неудаче; проверяет подпись и окно replay.
 Тестовые вебхуки (`is_test`) не подписаны — их можно просто подтверждать 200.

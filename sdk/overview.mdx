@@ -20,34 +20,6 @@ SDK — это готовая библиотека, которая берёт н
 
 ## Какой SDK выбрать
 
-| Язык | Пакет | Установка |
-|---|---|---|
-| **PHP** | `oblodai/sdk` | `composer require oblodai/sdk` |
-| **TypeScript / Node.js** | `@oblodai-npm/sdk` | `npm install @oblodai-npm/sdk` |
-| **Python** | `oblodai` | `pip install oblodai` |
-| **Go** | `github.com/oblodai/oblodai-go` | `go get github.com/oblodai/oblodai-go` |
-| **Rust** | `oblodai` | `cargo add oblodai` |
-
-<Warning>
-  **В реестрах сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** — её публикация ждёт деплоя
-  обновлённого шлюза. Команды установки выше поставят **v1.0.x** (Packagist · npm · PyPI · crates.io ·
-  Go modules).
-
-  **Почему это важно:** эта страница (и страницы языков) описывают поведение **v1.1.0**. У v1.0.x —
-  **другая семантика идемпотентности** (см. принцип 3) и **нет** массовых операций, платёжных ссылок,
-  сплитов и счетов на e-mail. Пока v1.1.0 не вышла, читайте всё, что помечено «с v1.1.0», как «скоро»,
-  а не как «уже работает».
-
-  Обратите внимание: npm-пакет выходит под scope `@oblodai-npm`, поэтому его имя — `@oblodai-npm/sdk`.
-</Warning>
-
-<Note>
-  Чтобы устанавливать пакеты, понадобятся сами инструменты вашего языка:
-  [Composer](https://getcomposer.org/download/) (PHP), [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) (Node.js),
-  [pip](https://pip.pypa.io/en/stable/installation/) (Python), [Go](https://go.dev/doc/install) (go),
-  [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) (Rust).
-</Note>
-
 Все SDK устроены одинаково — одни и те же понятия и почти одинаковые названия методов. Освоив один,
 вы сразу поймёте остальные.
 
@@ -68,6 +40,26 @@ SDK — это готовая библиотека, которая берёт н
     `cargo add oblodai`
   </Card>
 </CardGroup>
+
+<Warning>
+  **В реестрах сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** — её публикация ждёт деплоя
+  обновлённого шлюза. Команды установки в карточках выше поставят **v1.0.x** (Packagist · npm · PyPI · crates.io ·
+  Go modules).
+
+  **Почему это важно:** эта страница (и страницы языков) описывают поведение **v1.1.0**. У v1.0.x —
+  **другая семантика идемпотентности** (см. принцип 3) и **нет** массовых операций, платёжных ссылок,
+  сплитов и счетов на e-mail. Пока v1.1.0 не вышла, читайте всё, что помечено «с v1.1.0», как «скоро»,
+  а не как «уже работает».
+
+  Обратите внимание: npm-пакет выходит под scope `@oblodai-npm`, поэтому его имя — `@oblodai-npm/sdk`.
+</Warning>
+
+<Note>
+  Чтобы устанавливать пакеты, понадобятся сами инструменты вашего языка:
+  [Composer](https://getcomposer.org/download/) (PHP), [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) (Node.js),
+  [pip](https://pip.pypa.io/en/stable/installation/) (Python), [Go](https://go.dev/doc/install) (go),
+  [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) (Rust).
+</Note>
 
 ---
 
@@ -101,14 +93,14 @@ SDK — это готовая библиотека, которая берёт н
    | Ваш `order_id` | если не задан — в платеже окажется **сгенерированный SDK** | уходит **как есть**; SDK ничего не подставляет и не переписывает |
    | Свой ключ идемпотентности | параметра `idempotency_key` **не существует** | передайте `idempotency_key` в вызов создания — уйдёт в **заголовок**, не в тело |
 
-   - ⚠️ **Ловушка при обновлении на v1.1.0.** Если вы полагались на то, что `order_id` «появится сам» в
+   - **Ловушка при обновлении на v1.1.0.** Если вы полагались на то, что `order_id` «появится сам» в
      ответе, — теперь его там **не будет**. Задавайте `order_id` **явно** (см. следующий раздел). Сама
      защита от дублей при этом работает и без него — уже заголовком.
    - **`order_id` — это ВАШ бизнес-идентификатор**, по которому вы потом находите платёж через
      `payments.info` и сопоставляете со своим заказом. Ключом идемпотентности он быть перестал.
    - **Выплаты:** `order_id` **обязателен в обеих версиях** — этого требует сам API (без него вернётся
      `payout.order_id_required`). Задавайте свой уникальный номер выплаты.
-   - ⚠️ **Ходите в API напрямую, без SDK?** Тогда шлите заголовок `Idempotency-Key` сами (или полагайтесь
+   - **Ходите в API напрямую, без SDK?** Тогда шлите заголовок `Idempotency-Key` сами (или полагайтесь
      на `order_id`) — иначе повтор задублирует операцию. Подробно —
      [Идемпотентность](/reference/basics-idempotency).
 4. **Оплату подтверждает вебхук, а не редирект.** Покупателя редиректит на «спасибо», но статус
@@ -125,7 +117,7 @@ SDK — это готовая библиотека, которая берёт н
      выплаты и возвраты — тоже всегда в крипте: шлюз не хранит фиат.
    - У **JPY и KRW ноль знаков после запятой**: `"amount": "10000"`, а не `"10000.00"`. У остальных — 2.
    - **Тенге (KZT), сом (KGS), сум (UZS) пока не поддерживаются** — вернётся `payment.unknown_currency`.
-   - ⚠️ **Правило, о которое спотыкаются:** цена в фиате + задана только `network` **без** `to_currency`
+   - **Правило, о которое спотыкаются:** цена в фиате + задана только `network` **без** `to_currency`
      → `400 payment.to_currency_required`. Либо задайте `to_currency`, либо **не задавайте ни то, ни
      другое** — тогда получится валюто-агностичный счёт и монету выберет сам покупатель.
 
@@ -156,11 +148,13 @@ db.update(order_id, payment_uuid=payment.uuid)
 
 **Где взять `order_id` из ответа:**
 
-| Язык | Доступ |   | Язык | Доступ |
-|---|---|---|---|---|
-| TS/Node | `payment.order_id` |   | Go | `payment.OrderID` |
-| Python | `payment.order_id` |   | PHP | `$payment['order_id']` |
-| Rust | `payment.order_id` |   | | |
+| Язык | Доступ |
+|---|---|
+| TS/Node | `payment.order_id` |
+| Python | `payment.order_id` |
+| Rust | `payment.order_id` |
+| Go | `payment.OrderID` |
+| PHP | `$payment['order_id']` |
 
 ---
 
@@ -194,7 +188,7 @@ db.update(order_id, payment_uuid=payment.uuid)
 - **`address` в возврате больше не обязателен** — по умолчанию вернём на адрес плательщика. Для
   Bitcoin/UTXO, где адрес плательщика неизвестен, `address` по-прежнему нужен.
 
-### ⚠️ Сплиты и возвраты — прочитайте, прежде чем включать
+### Сплиты и возвраты — прочитайте, прежде чем включать
 
 Возврат списывается с **вашего** баланса на всю сумму, что прислал плательщик. Если бы доля партнёра
 уходила сразу, вам могло бы стать нечем возвращать.
@@ -253,7 +247,7 @@ oblodai: webhook signature ok
 | TypeScript | `new OblodaiClient({ ..., logger: (level, msg, fields) => … })` |
 | Python | стандартный `logging`: настройте логгер `logging.getLogger("oblodai")` |
 | Go | `oblodai.Config{ ..., Logger: slog.Default() }` |
-| Rust | `Config::new(...).logger(Arc::new(|level, msg| …))` |
+| Rust | `Config::new(...).logger(Arc::new(\|level, msg\| …))` |
 | PHP | `new Client($publicId, $secret, ['logger' => function (string $level, string $msg) { … }])` |
 
 ---

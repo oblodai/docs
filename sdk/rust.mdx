@@ -147,7 +147,7 @@ client.payments().send_email(Some(&uuid), None, Some("buyer@example.com"))?;
   всегда в монете, шлюз не хранит фиат.
 - У **JPY и KRW ноль знаков** после запятой (`"amount": "10000"`, не `"10000.00"`); у остальных — 2.
 - **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
-- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+- Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
   Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
 
 Полный список валют цены — `client.rates().currencies()`, поле `pricing_currencies`.
@@ -165,8 +165,6 @@ client.payments().send_email(Some(&uuid), None, Some("buyer@example.com"))?;
 ---
 
 ## Вебхуки
-
-<CodeGroup>
 
 ```rust Шаг 1. Регистрация (один раз)
 let ep = client.webhooks().register("https://ваш-сайт.ру/oblodai/webhook")?;
@@ -190,8 +188,6 @@ if info.payment_status == "paid" || info.payment_status == "paid_over" {
     // пометить заказ info.order_id оплаченным (идемпотентно)
 }
 ```
-
-</CodeGroup>
 
 Тестовые вебхуки (`is_test`) не подписаны — их можно подтверждать без проверки.
 

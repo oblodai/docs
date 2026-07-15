@@ -6,7 +6,7 @@ sidebarTitle: "Создание выплаты"
 Создать выплату на внешний адрес. Списывает баланс на `amount`; получателю приходит `amount` минус
 сетевая комиссия (если она переложена на получателя — см. [`fee-config`](/reference/payout-fee-config)).
 
-**URL:** `https://api.oblodai.com/v1/payout` · **Аутентификация:** обязательна · · **Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id` (для выплат `order_id` обязателен).
+**URL:** `https://api.oblodai.com/v1/payout` · **Аутентификация:** обязательна · **Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id` (для выплат `order_id` обязателен).
 
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
@@ -69,7 +69,6 @@ sidebarTitle: "Создание выплаты"
 </ParamField>
 
 
-\* Обязательна, если у валюты несколько сетей.
 
 **По умолчанию сетевую комиссию выплаты несёт получатель.** Кто её платит, определяется настройкой
 проекта [fee-config](/reference/payout-fee-config) (общий дефолт — комиссию несёт получатель), а **не** полем
@@ -142,7 +141,10 @@ await call("/v1/payout", {
 ```
 
 При `from_currency` в `result` добавляется объект `convert`:
-`{ "from_currency": "USDT", "to_currency": "TRX", "from_amount": "40.12", "rate": "0.062" }`.
+
+```json
+{ "from_currency": "USDT", "to_currency": "TRX", "from_amount": "40.12", "rate": "0.062" }
+```
 
 Полное описание полей и статусов — [Объект выплаты](/reference/payout-object).
 

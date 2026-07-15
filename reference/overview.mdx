@@ -30,7 +30,7 @@ API‑ключом. См. [Аутентификация и подпись зап
 
 <CardGroup cols={3}>
   <Card title="Основы" icon="layer-group" href="/reference/basics-format">
-    Формат, подпись, ошибки, идемпотентность, деньги, сети, rate limit.
+    Формат, подпись, ошибки, деньги, сети, лимиты.
   </Card>
   <Card title="Платежи" icon="credit-card" href="/reference/payment-object">
     Объект платежа и все методы приёма — от создания счёта до автовозврата.
@@ -205,6 +205,11 @@ API‑ключом. См. [Аутентификация и подпись зап
 | [`POST /v1/webhooks`](/reference/webhooks-register) | Регистрация URL для вебхуков |
 | [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries) | Журнал доставок |
 | [`POST /v1/payment/resend`](/reference/payment-resend) | Переотправка вебхука платежа |
-| [Тестовые вебхуки](/reference/webhooks-test) | `/testing-webhook`, `/test-webhook/*` |
-| [`POST /v1/auto-withdraw/list · /set · /delete`](/reference/auto-withdraw) | Автовывод на внешний адрес |
+| [`POST /v1/testing-webhook`, `/v1/test-webhook/*`](/reference/webhooks-test) | Тестовые вебхуки |
+
+## Настройки аккаунта
+
+| Метод | Назначение |
+|---|---|
+| [`POST /v1/auto-withdraw/*`](/reference/auto-withdraw) | Автовывод на внешний адрес |
 | [`POST /v1/api-allowlist/*`](/reference/api-allowlist) | IP‑allowlist для API |

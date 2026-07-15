@@ -1,7 +1,9 @@
 ---
-title: "POST /v1/payment/accepted/list · /set"
+title: "Принимаемые валюты"
 sidebarTitle: "Принимаемые валюты"
 ---
+
+**Методы:** `/v1/payment/accepted/list` · `/v1/payment/accepted/set`
 
 Управление набором принимаемых валют и сетей для **валюто‑агностичных** счетов (счёт без заранее
 выбранной валюты — покупатель выбирает монету и сеть на странице оплаты; см. [Три режима создания
@@ -18,7 +20,7 @@ sidebarTitle: "Принимаемые валюты"
 
 ## POST /v1/payment/accepted/list
 
-Показать текущий набор. Тело — `{}`.
+Показать текущий набор — пустое тело `{}` без параметров.
 
 ```json
 { "state": 0, "result": { "accepted": [ { "currency": "USDT", "network": "tron" } ] } }
@@ -74,11 +76,13 @@ await call("/v1/payment/accepted/set", { accepted: [
 ] });
 ```
 
-```json Ответ
+</CodeGroup>
+
+### Пример ответа
+
+```json
 { "state": 0, "result": { "ok": true } }
 ```
-
-</CodeGroup>
 
 ### Коды ошибок
 

@@ -1,7 +1,9 @@
 ---
-title: "POST /v1/payout/refund-fee-config/get · /set"
+title: "Комиссия возврата"
 sidebarTitle: "Комиссия возврата"
 ---
+
+**Методы:** `/v1/payout/refund-fee-config/get` · `/v1/payout/refund-fee-config/set`
 
 Per‑project настройка: кто несёт **нашу** комиссию при возврате. Шлюз её никогда не покрывает —
 её платит либо клиент (получает net), либо мерчант (клиент получает gross).
@@ -11,6 +13,18 @@ Per‑project настройка: кто несёт **нашу** комисси�
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
+
+---
+
+## POST /v1/payout/refund-fee-config/get
+
+Тело — `{}`.
+
+```json
+{ "state": 0, "result": { "fee_on_customer": false, "configured": false } }
+```
+
+`configured: false` — override не задан, действует дефолт шлюза.
 
 ---
 
@@ -26,18 +40,6 @@ Per‑project настройка: кто несёт **нашу** комисси�
 ```json
 { "state": 0, "result": { "fee_on_customer": true } }
 ```
-
----
-
-## POST /v1/payout/refund-fee-config/get
-
-Тело — `{}`.
-
-```json
-{ "state": 0, "result": { "fee_on_customer": false, "configured": false } }
-```
-
-`configured: false` — override не задан, действует дефолт шлюза.
 
 ---
 

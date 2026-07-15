@@ -1,7 +1,9 @@
 ---
-title: "POST /v1/payout/fee-config/get · /set"
+title: "Сетевая комиссия выплаты"
 sidebarTitle: "Комиссия выплаты"
 ---
+
+**Методы:** `/v1/payout/fee-config/get` · `/v1/payout/fee-config/set`
 
 Per‑project настройка: перекладывать ли **сетевую** комиссию выплаты на получателя.
 
@@ -10,6 +12,18 @@ Per‑project настройка: перекладывать ли **сетеву
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
+
+---
+
+## POST /v1/payout/fee-config/get
+
+Тело — пустой объект `{}` без параметров.
+
+```json
+{ "state": 0, "result": { "fee_on_recipient": true, "configured": true } }
+```
+
+`configured: false` означает, что override не задан и действует дефолт шлюза.
 
 ---
 
@@ -25,18 +39,6 @@ Per‑project настройка: перекладывать ли **сетеву
 ```json
 { "state": 0, "result": { "fee_on_recipient": true } }
 ```
-
----
-
-## POST /v1/payout/fee-config/get
-
-Тело — `{}`.
-
-```json
-{ "state": 0, "result": { "fee_on_recipient": true, "configured": true } }
-```
-
-`configured: false` означает, что override не задан и действует дефолт шлюза.
 
 ---
 

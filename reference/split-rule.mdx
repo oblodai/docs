@@ -1,10 +1,12 @@
 ---
-title: "POST /v1/split/rule · /rule/list · /rule/delete"
+title: "Правила сплита"
 sidebarTitle: "Правила сплита"
 ---
 
+**Методы:** `/v1/split/rule` · `/rule/list` · `/rule/delete`
+
 **Сплит‑платёж** — правило, по которому доля каждого входящего платежа автоматически уходит партнёру.
-Пример: из каждых $100 — 70 % остаётся вам, 20 % уходит на адрес A, 10 % на адрес B. Типовые сценарии:
+Пример: из каждых \$100 — 70 % остаётся вам, 20 % уходит на адрес A, 10 % на адрес B. Типовые сценарии:
 партнёрские программы, реселлеры, доля площадки в маркетплейсе, разделение выручки между
 соучредителями.
 
@@ -74,7 +76,9 @@ sidebarTitle: "Правила сплита"
 </ParamField>
 
 
-\* Ровно один вариант получателя: либо `address` + `network`, либо `merchant_id`.
+<Info>
+  Ровно один вариант получателя: либо `address` + `network`, либо `merchant_id`.
+</Info>
 
 **Сумма всех правил не может превышать 100 %** — иначе `split.exceeds_100`. Себе сплит назначить
 нельзя (`split.self_destination`).
@@ -138,13 +142,15 @@ await call("/v1/split/rule", {
 
 Параметров нет — пошлите `{}`.
 
-```python
+<CodeGroup>
+```python Python
 call("/v1/split/rule/list", {})
 ```
 
-```js
+```js Node.js
 await call("/v1/split/rule/list", {});
 ```
+</CodeGroup>
 
 ### Пример ответа
 
@@ -196,13 +202,15 @@ await call("/v1/split/rule/list", {});
 </ParamField>
 
 
-```python
+<CodeGroup>
+```python Python
 call("/v1/split/rule/delete", {"rule_id": "e2a91c47-3f80-4b6d-a512-7c0d9e8f1a23"})
 ```
 
-```js
+```js Node.js
 await call("/v1/split/rule/delete", { rule_id: "e2a91c47-3f80-4b6d-a512-7c0d9e8f1a23" });
 ```
+</CodeGroup>
 
 ### Пример ответа
 

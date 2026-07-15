@@ -146,7 +146,7 @@ $client->payments()->sendEmail($payment['uuid'], null, 'buyer@example.com');
   всегда в монете, шлюз не хранит фиат.
 - У **JPY и KRW ноль знаков** после запятой (`'amount' => '10000'`, не `'10000.00'`); у остальных — 2.
 - **KZT, KGS, UZS пока не поддерживаются** → `payment.unknown_currency`.
-- ⚠️ Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
+- Фиатная цена + **только** `network` без `to_currency` → `400 payment.to_currency_required`.
   Либо задайте `to_currency`, либо не задавайте **ни то, ни другое** (тогда монету выберет покупатель).
 
 Полный список валют цены — `$client->rates()->currencies()`, поле `pricing_currencies`.

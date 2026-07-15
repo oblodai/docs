@@ -12,11 +12,11 @@ sidebarTitle: "Тестовые вебхуки"
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
 </Note>
 
-<Note>
+<Warning>
   **Пробные тела содержат `"is_test": true` и НЕ подписываются** (нет заголовка `X-Webhook-Signature`)
   — это синтетический payload. Настоящую [проверку подписи](/reference/webhook-object) отрабатывайте на боевых
   вебхуках.
-</Note>
+</Warning>
 
 ---
 
@@ -52,11 +52,11 @@ sidebarTitle: "Тестовые вебхуки"
 </ParamField>
 
 <ParamField body="uuid" type="string">
-  UUID в теле.
+  UUID платежа, который попадёт в пробное тело события.
 </ParamField>
 
 <ParamField body="order_id" type="string">
-  `order_id` в теле.
+  Ваш `order_id`, который попадёт в пробное тело события.
 </ParamField>
 
 <ParamField body="status" type="string">

@@ -15,15 +15,10 @@ sidebarTitle: "Rate limit и allowlist"
 | **При превышении** | `HTTP 429`, заголовок `Retry-After: 60`, тело `{"state":1,"message":"rate limit exceeded"}` |
 
 <Note>
-  **Ключ — это IP.** Лимит общий для всех запросов с одного IP. Если ваш backend ходит в API из
-  одного адреса — все его запросы делят один бюджет. Разносить операции по разным ключам, чтобы
-  «обойти» лимит, бесполезно: считается IP.
-</Note>
-
-<Note>
-  **Точное значение в проде может отличаться.** 120/мин — значение по умолчанию; оператор шлюза может
-  задать другой лимит (в т. ч. на уровне edge/reverse‑proxy). Поэтому **не «зашивайте» 120 в логику** —
-  всегда ориентируйтесь на ответ `429` и заголовок `Retry-After`.
+  **Ключ — это IP.** Лимит общий для всех запросов с одного IP: все запросы вашего backend делят
+  один бюджет, и разносить операции по разным API‑ключам бесполезно. Точное значение в проде может
+  отличаться от 120/мин по умолчанию, поэтому **не «зашивайте» 120 в логику** — ориентируйтесь на
+  ответ `429` и заголовок `Retry-After`.
 </Note>
 
 ### Что делать при 429
@@ -79,7 +74,7 @@ IP‑адресами вашего backend.
 
 ## Связанные страницы
 
-- [Массовые операции: `/v1/payment/batch`](/reference/payment-batch) · [`/v1/payout/batch`](/reference/payout-batch) · [`/v1/batch/info`](/reference/batch-info)
+- [Массовые операции: `/v1/payment/batch`](/reference/payout-batch) · [`/v1/payout/batch`](/reference/payout-batch) · [`/v1/batch/info`](/reference/batch-info)
 - [IP‑allowlist — методы](/reference/api-allowlist)
 - [Идемпотентность](/reference/basics-idempotency)
 - [Безопасность в проде](/guides/production-security)

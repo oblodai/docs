@@ -1,7 +1,9 @@
 ---
-title: "POST /v1/payment/link · /list · /info · /toggle"
+title: "Платёжные ссылки"
 sidebarTitle: "Платёжные ссылки"
 ---
+
+**Методы:** `/v1/payment/link` · `/list` · `/info` · `/toggle`
 
 **Платёжная ссылка** — многоразовый URL оплаты, который вы просто даёте покупателю (в письме, в чате,
 кнопкой на сайте). Каждый, кто по ней платит, получает **свой отдельный счёт** — ссылку можно
@@ -31,7 +33,7 @@ sidebarTitle: "Платёжные ссылки"
 |---|---|---|
 | `fixed` | Вы — в `amount_fixed`. Покупатель изменить не может. | Товар, услуга, счёт с конкретной ценой. |
 | `open` | **Покупатель — любую.** `amount_min` — необязательный «пол». | **Донаты**, чаевые, «заплати сколько хочешь». |
-| `range` | Покупатель — в пределах `amount_min`…`amount_max`. | «От 5 до 1000 $»: поддержка проекта с рамками, пополнение баланса. |
+| `range` | Покупатель — в пределах `amount_min`…`amount_max`. | «От 5 до 1000 \$»: поддержка проекта с рамками, пополнение баланса. |
 
 ---
 
@@ -80,7 +82,9 @@ sidebarTitle: "Платёжные ссылки"
 </ParamField>
 
 
-\* Обязательность зависит от `amount_mode` — см. таблицу режимов выше.
+<Info>
+  Обязательность полей зависит от `amount_mode` — см. таблицу режимов выше.
+</Info>
 
 **Бессрочность.** `expires_in: 0` — ссылка живёт, пока вы её не выключите через `/toggle`. Это
 нормальный режим для кнопки «Поддержать» на сайте. Ограниченный срок нужен только под разовую акцию.
@@ -177,13 +181,15 @@ QR‑код.
 </ParamField>
 
 
-```python
+<CodeGroup>
+```python Python
 call("/v1/payment/link/list", {"limit": 50, "offset": 0})
 ```
 
-```js
+```js Node.js
 await call("/v1/payment/link/list", { limit: 50, offset: 0 });
 ```
+</CodeGroup>
 
 ### Пример ответа
 
@@ -240,13 +246,15 @@ await call("/v1/payment/link/list", { limit: 50, offset: 0 });
 </ParamField>
 
 
-```python
+<CodeGroup>
+```python Python
 call("/v1/payment/link/info", {"link_id": "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40"})
 ```
 
-```js
+```js Node.js
 await call("/v1/payment/link/info", { link_id: "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f1b40" });
 ```
+</CodeGroup>
 
 ### Пример ответа
 
@@ -296,13 +304,15 @@ await call("/v1/payment/link/info", { link_id: "5d3f2a71-9c84-4b0e-8d17-3e6a2c9f
 </ParamField>
 
 
-```python
+<CodeGroup>
+```python Python
 call("/v1/payment/link/toggle", {"link_id": "5d3f2a71-…", "active": False})
 ```
 
-```js
+```js Node.js
 await call("/v1/payment/link/toggle", { link_id: "5d3f2a71-…", active: false });
 ```
+</CodeGroup>
 
 ### Пример ответа
 

@@ -12,7 +12,7 @@ sidebarTitle: "Батч: возвраты"
   [лимит частоты](/reference/basics-ratelimit) считается по запросам, а не по элементам внутри них.
 </Note>
 
-**URL:** `https://api.oblodai.com/v1/refund/batch` · **Аутентификация:** обязательна · · **Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + тройка `(платёж, адрес, сумма)` каждого элемента.
+**URL:** `https://api.oblodai.com/v1/refund/batch` · **Аутентификация:** обязательна · **Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + тройка `(платёж, адрес, сумма)` каждого элемента.
 
 <Note>
   Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
@@ -153,5 +153,5 @@ await call("/v1/refund/batch", {
 
 - [`POST /v1/batch/info`](/reference/batch-info) — поллинг статуса и результатов.
 - [`POST /v1/payment/refund`](/reference/payment-refund) — поля элемента.
-- [`POST /v1/payment/batch`](/reference/payment-batch) · [`POST /v1/payout/batch`](/reference/payout-batch)
+- [`POST /v1/payment/batch`](/reference/payout-batch) · [`POST /v1/payout/batch`](/reference/payout-batch)
 - [Возвраты платежей](/guides/refunds)
