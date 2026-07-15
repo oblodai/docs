@@ -29,11 +29,11 @@ sidebarTitle: "Статус батча"
   Идентификатор батча из ответа на submit.
 </ParamField>
 
-<ParamField body="limit" type="int">
+<ParamField body="limit" type="int64">
   Сколько элементов вернуть в `items` (пагинация).
 </ParamField>
 
-<ParamField body="offset" type="int">
+<ParamField body="offset" type="int64">
   Смещение по элементам.
 </ParamField>
 
@@ -136,15 +136,15 @@ await call("/v1/batch/info", {
   Режим обработки ошибок, с которым батч был отправлен: `continue` | `stop`.
 </ResponseField>
 
-<ResponseField name="total" type="int">
+<ResponseField name="total" type="int64">
   Всего элементов в батче.
 </ResponseField>
 
-<ResponseField name="succeeded" type="int">
+<ResponseField name="succeeded" type="int64">
   Успешно обработано.
 </ResponseField>
 
-<ResponseField name="failed" type="int">
+<ResponseField name="failed" type="int64">
   Завершилось ошибкой.
 </ResponseField>
 
@@ -163,7 +163,7 @@ await call("/v1/batch/info", {
 
 ### Элемент `items[]`
 
-<ResponseField name="idx" type="int">
+<ResponseField name="idx" type="int64">
   Порядковый номер элемента в исходном массиве (с нуля).
 </ResponseField>
 

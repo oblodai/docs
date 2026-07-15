@@ -30,9 +30,10 @@ Oblodai подписывает **каждый** запрос HMAC‑SHA256 по 
 
 ## Курсы валют
 
+Метод: `GET /v1/exchange-rate/{currency}/list` → **`POST /v1/exchange-rate/list`**
+
 | | Heleket | Oblodai |
 |---|---|---|
-| Метод | `GET /v1/exchange-rate/{currency}/list` | **`POST /v1/exchange-rate/list`** |
 | Котировка к | USD | **USDT** |
 | Фильтр | в пути | тело `{ "currency_from": "…" }` (опционально) |
 

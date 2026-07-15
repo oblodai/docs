@@ -11,7 +11,8 @@ icon: "wordpress"
 
 ---
 
-## Шаг 1. Установите плагин
+<Steps>
+<Step title="Установите плагин" titleSize="h2">
 
 1. Войдите в админку WordPress (`https://ваш-сайт.ру/wp-admin`).
 2. Слева выберите **Плагины → Добавить новый**.
@@ -23,9 +24,8 @@ icon: "wordpress"
   Плагин появится в списке как «Oblodai – Crypto Gateway for WooCommerce».
 </Note>
 
----
-
-## Шаг 2. Введите ключи
+</Step>
+<Step title="Введите ключи" titleSize="h2">
 
 1. Перейдите в **WooCommerce → Настройки → Платежи** (Settings → Payments).
 2. Найдите в списке **Oblodai** и нажмите **Управление** (Manage).
@@ -44,9 +44,8 @@ icon: "wordpress"
   ключи и что сайт доступен из интернета, и сохраните ещё раз.
 </Note>
 
----
-
-## Шаг 3. Проверьте
+</Step>
+<Step title="Проверьте" titleSize="h2">
 
 1. Откройте магазин, добавьте товар в корзину, перейдите к оформлению.
 2. В способах оплаты выберите способ с названием из **Method title** (по умолчанию — **Pay with Oblodai**).
@@ -58,6 +57,9 @@ icon: "wordpress"
    минут до десятков минут — зависит от сети и суммы (порога подтверждений); статус платежа можно
    смотреть в кабинете, а доставку вебхука — в журнале доставок. Если статус долго не меняется —
    см. раздел [«Если что-то не работает»](#если-что-то-не-работает) ниже.
+
+</Step>
+</Steps>
 
 ---
 
@@ -126,10 +128,10 @@ icon: "wordpress"
   <Card title="Настройка и приём вебхуков" href="/guides/webhooks-setup" icon="arrow-right" horizontal>
     для понимания, как это работает «под капотом»
   </Card>
-  <Card title="Модель баланса и движение средств" href="/guides/balance-and-funds" icon="coins" horizontal>
+  <Card title="Модель баланса и движение средств" href="/guides/balance-and-funds" icon="arrow-right" horizontal>
     где лежат деньги после оплаты и какие комиссии удерживаются
   </Card>
-  <Card title="Первая выплата" href="/guides/first-payout" icon="money-bill-wave" horizontal>
+  <Card title="Первая выплата" href="/guides/first-payout" icon="arrow-right" horizontal>
     как вывести средства на свой кошелёк
   </Card>
 </CardGroup>

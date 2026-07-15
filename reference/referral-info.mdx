@@ -64,11 +64,11 @@ await call("/v1/referral/info", {});
   Готовая пригласительная ссылка `…/?ref=<code>`.
 </ResponseField>
 
-<ResponseField name="tier_bps" type="array<int>">
+<ResponseField name="tier_bps" type="array<int64>">
   Доля **нашей** комиссии рефереру по месяцам, в bps. По умолчанию `[3000, 2000, 1000]` = 30 % / 20 % / 10 % за 1‑й, 2‑й, 3‑й месяц, дальше 0.
 </ResponseField>
 
-<ResponseField name="referred_count" type="int">
+<ResponseField name="referred_count" type="int64">
   Сколько мерчантов приведено.
 </ResponseField>
 

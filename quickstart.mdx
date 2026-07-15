@@ -52,7 +52,7 @@ icon: "rocket"
 
     <CodeGroup>
 
-    ```python Python
+    ```python Python highlight={9-12}
     import hmac, hashlib, time, json, os, requests
 
     # В реальном коде читайте ключи из ОКРУЖЕНИЯ, не хардкодьте (см. правило ниже).
@@ -77,7 +77,7 @@ icon: "rocket"
         return r.json()
     ```
 
-    ```js Node.js
+    ```js Node.js highlight={9-12}
     import crypto from "node:crypto";
 
     // В реальном коде читайте ключи из ОКРУЖЕНИЯ, не хардкодьте (см. правило ниже).
@@ -255,10 +255,22 @@ icon: "rocket"
   </Step>
 </Steps>
 
-## Что дальше
+## Связанные страницы
 
-- [Приём первого платежа](/guides/accept-first-payment) — тот же поток, но с разбором каждого статуса.
-- [Три режима создания счёта](/guides/payment-modes) — фиксированная валюта, авто‑сеть, агностичный счёт.
-- [Первая выплата](/guides/first-payout) — вывести средства с баланса.
-- [Чек‑лист перед запуском](/guides/production-checklist) — перед боевым трафиком.
-- [Что делать, если не работает](/guides/troubleshooting) — диагностика типичных проблем на старте.
+<CardGroup cols={2}>
+  <Card title="Приём первого платежа" href="/guides/accept-first-payment" icon="arrow-right" horizontal>
+    тот же поток, но с разбором каждого статуса.
+  </Card>
+  <Card title="Три режима создания счёта" href="/guides/payment-modes" icon="arrow-right" horizontal>
+    фиксированная валюта, авто‑сеть, агностичный счёт.
+  </Card>
+  <Card title="Первая выплата" href="/guides/first-payout" icon="arrow-right" horizontal>
+    вывести средства с баланса.
+  </Card>
+  <Card title="Чек‑лист перед запуском" href="/guides/production-checklist" icon="arrow-right" horizontal>
+    перед боевым трафиком.
+  </Card>
+  <Card title="Что делать, если не работает" href="/guides/troubleshooting" icon="arrow-right" horizontal>
+    диагностика типичных проблем на старте.
+  </Card>
+</CardGroup>

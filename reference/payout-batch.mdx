@@ -7,12 +7,12 @@ sidebarTitle: "Батч: выплаты"
 приходит `batch_id`, результат по каждому элементу забирается через
 [`POST /v1/batch/info`](/reference/batch-info).
 
-<Note>
+<Tip>
   **Это штатный способ не упираться в rate limit** и основной путь для больших пачек выплат.
   Один подписанный запрос вместо 5000. Устаревший [`POST /v1/payout/mass`](/reference/payout-mass) (до 100
   элементов, синхронный) остаётся для маленьких пачек, но для сотен и тысяч выплат используйте
   батч.
-</Note>
+</Tip>
 
 **URL:** `https://api.oblodai.com/v1/payout/batch` · **Аутентификация:** обязательна · **Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + `order_id` каждого элемента (обязателен).
 
@@ -30,7 +30,7 @@ sidebarTitle: "Батч: выплаты"
   Массив от 1 до **5000** элементов. Поля каждого элемента — **ровно те же**, что у [`POST /v1/payout`](/reference/payout-create).
 </ParamField>
 
-<ParamField body="on_error" type="string">
+<ParamField body="on_error" type="string" default="continue">
   Что делать при ошибке элемента: `continue` (по умолчанию) — обрабатывать остальные; `stop` — прекратить обработку после первой ошибки.
 </ParamField>
 
@@ -107,7 +107,7 @@ await call("/v1/payout/batch", {
   Вид батча — здесь всегда `payout`.
 </ResponseField>
 
-<ResponseField name="count" type="int">
+<ResponseField name="count" type="int64">
   Сколько элементов принято в обработку.
 </ResponseField>
 

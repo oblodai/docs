@@ -22,133 +22,134 @@ icon: "money-bill-wave"
 
 ---
 
-## Шаг 1. Проверить баланс
+<Steps>
+  <Step title="Проверить баланс" titleSize="h2">
 
-<CodeGroup>
+    <CodeGroup>
 
-```python Python
-bal = call("/v1/balance", {})["result"]["balance"]["merchant"]
-# [{"currency": "USDT", "balance": "1240.75"}, ...]
-```
+    ```python Python
+    bal = call("/v1/balance", {})["result"]["balance"]["merchant"]
+    # [{"currency": "USDT", "balance": "1240.75"}, ...]
+    ```
 
-```js Node.js
-const bal = (await call("/v1/balance", {})).result.balance.merchant;
-// [{"currency": "USDT", "balance": "1240.75"}, ...]
-```
+    ```js Node.js
+    const bal = (await call("/v1/balance", {})).result.balance.merchant;
+    // [{"currency": "USDT", "balance": "1240.75"}, ...]
+    ```
 
-</CodeGroup>
+    </CodeGroup>
 
-<Note>
-  **Осторожно с незрелыми средствами.** Свежий депозит виден в балансе, но до набора подтверждений
-  находится под maturity‑холдом и **не выводим**. Выплата на сумму, включающую незрелые средства,
-  вернёт `409 payout.funds_maturing`. Выводимый остаток может быть временно меньше показанного. См.
-  [`POST /v1/balance`](/reference/balance).
-</Note>
+    <Warning>
+      **Осторожно с незрелыми средствами.** Свежий депозит виден в балансе, но до набора подтверждений
+      находится под maturity‑холдом и **не выводим**. Выплата на сумму, включающую незрелые средства,
+      вернёт `409 payout.funds_maturing`. Выводимый остаток может быть временно меньше показанного. См.
+      [`POST /v1/balance`](/reference/balance).
+    </Warning>
 
----
+  </Step>
+  <Step title="Посчитать комиссию (необязательно)" titleSize="h2">
 
-## Шаг 2. Посчитать комиссию (необязательно)
+    Чтобы заранее понять, сколько уйдёт с баланса и сколько получит адрес:
 
-Чтобы заранее понять, сколько уйдёт с баланса и сколько получит адрес:
+    <CodeGroup>
 
-<CodeGroup>
+    ```python Python
+    calc = call("/v1/payout/calculate", {
+        "amount": "25", "currency": "USDT", "network": "tron", "is_subtract": False,
+    })["result"]
+    # {"commission": "1.1", "merchant_amount": "25", "to_amount": "23.9"}
+    ```
 
-```python Python
-calc = call("/v1/payout/calculate", {
-    "amount": "25", "currency": "USDT", "network": "tron", "is_subtract": False,
-})["result"]
-# {"commission": "1.1", "merchant_amount": "25", "to_amount": "23.9"}
-```
+    ```js Node.js
+    const calc = (await call("/v1/payout/calculate", {
+      amount: "25", currency: "USDT", network: "tron", is_subtract: false,
+    })).result;
+    // {"commission": "1.1", "merchant_amount": "25", "to_amount": "23.9"}
+    ```
 
-```js Node.js
-const calc = (await call("/v1/payout/calculate", {
-  amount: "25", currency: "USDT", network: "tron", is_subtract: false,
-})).result;
-// {"commission": "1.1", "merchant_amount": "25", "to_amount": "23.9"}
-```
+    </CodeGroup>
 
-</CodeGroup>
+    - `is_subtract: false` — комиссия **из** суммы (получатель получает меньше).
+    - `is_subtract: true` — комиссия **сверх** суммы (списывается с баланса дополнительно).
 
-- `is_subtract: false` — комиссия **из** суммы (получатель получает меньше).
-- `is_subtract: true` — комиссия **сверх** суммы (списывается с баланса дополнительно).
+    <Note>
+      `is_subtract` здесь — параметр **предрасчёта** `calculate`. На самой выплате `/v1/payout` это поле не
+      действует: кто платит сетевую комиссию, определяет настройка проекта
+      [`fee-config`](/reference/payout-fee-config). Считайте `calculate` с тем же вариантом, что стоит
+      в fee‑config, — тогда превью совпадёт с реальной выплатой.
+    </Note>
 
-<Note>
-  `is_subtract` здесь — параметр **предрасчёта** `calculate`. На самой выплате `/v1/payout` это поле не
-  действует: кто платит сетевую комиссию, определяет настройка проекта
-  [`fee-config`](/reference/payout-fee-config). Считайте `calculate` с тем же вариантом, что стоит
-  в fee‑config, — тогда превью совпадёт с реальной выплатой.
-</Note>
+  </Step>
+  <Step title="Создать выплату" titleSize="h2">
 
----
+    <CodeGroup>
 
-## Шаг 3. Создать выплату
+    ```python Python
+    import uuid
 
-<CodeGroup>
+    key = str(uuid.uuid4())          # Idempotency-Key: ОДИН на действие, не меняется при ретраях
 
-```python Python
-import uuid
+    payout = call("/v1/payout", {
+        "amount": "25",
+        "currency": "USDT",
+        "network": "tron",           # обязательна для монет с несколькими сетями
+        "address": "TXY...",
+        "order_id": "payout-1",      # ОБЯЗАТЕЛЬНО для выплаты — ваш бизнес-ключ
+    }, idempotency_key=key)["result"]
 
-key = str(uuid.uuid4())          # Idempotency-Key: ОДИН на действие, не меняется при ретраях
+    print(payout["status"])          # "process" — уже отправляется
+    print(payout["approval_required"])  # false — подтверждение не нужно
+    ```
 
-payout = call("/v1/payout", {
-    "amount": "25",
-    "currency": "USDT",
-    "network": "tron",           # обязательна для монет с несколькими сетями
-    "address": "TXY...",
-    "order_id": "payout-1",      # ОБЯЗАТЕЛЬНО для выплаты — ваш бизнес-ключ
-}, idempotency_key=key)["result"]
+    ```js Node.js
+    import { randomUUID } from "node:crypto";
 
-print(payout["status"])          # "process" — уже отправляется
-print(payout["approval_required"])  # false — подтверждение не нужно
-```
+    const key = randomUUID();        // Idempotency-Key: ОДИН на действие, не меняется при ретраях
 
-```js Node.js
-import { randomUUID } from "node:crypto";
+    const payout = (await call("/v1/payout", {
+      amount: "25",
+      currency: "USDT",
+      network: "tron",             // обязательна для монет с несколькими сетями
+      address: "TXY...",
+      order_id: "payout-1",        // ОБЯЗАТЕЛЬНО для выплаты — ваш бизнес-ключ
+    }, key)).result;               // key → заголовок Idempotency-Key в вашей обёртке call()
 
-const key = randomUUID();        // Idempotency-Key: ОДИН на действие, не меняется при ретраях
+    console.log(payout.status);             // "process" — уже отправляется
+    console.log(payout.approval_required);  // false — подтверждение не нужно
+    ```
 
-const payout = (await call("/v1/payout", {
-  amount: "25",
-  currency: "USDT",
-  network: "tron",             // обязательна для монет с несколькими сетями
-  address: "TXY...",
-  order_id: "payout-1",        // ОБЯЗАТЕЛЬНО для выплаты — ваш бизнес-ключ
-}, key)).result;               // key → заголовок Idempotency-Key в вашей обёртке call()
+    </CodeGroup>
 
-console.log(payout.status);             // "process" — уже отправляется
-console.log(payout.approval_required);  // false — подтверждение не нужно
-```
+    Выплата — самая дорогая операция для дубля, поэтому здесь работают **оба** механизма защиты:
 
-</CodeGroup>
+    - **`Idempotency-Key`** (HTTP‑заголовок) — генерируется **до первой отправки** и одинаков во всех
+      ретраях. Повтор с тем же ключом вернёт **тот же ответ** и заголовок `Idempotent-Replayed: true`.
+      Если предыдущая попытка ещё выполняется — придёт `409 idempotency.in_progress`: подождите и повторите.
+    - **`order_id`** — для выплаты **обязателен** (без него `400 payout.order_id_required`). Повтор с тем же
+      `order_id` вернёт уже созданную выплату, а не отправит вторую.
 
-Выплата — самая дорогая операция для дубля, поэтому здесь работают **оба** механизма защиты:
+    Как добавить заголовок в свою обёртку `call()` — [Устойчивый
+    клиент](/guides/resilient-client#главный-принцип).
 
-- **`Idempotency-Key`** (HTTP‑заголовок) — генерируется **до первой отправки** и одинаков во всех
-  ретраях. Повтор с тем же ключом вернёт **тот же ответ** и заголовок `Idempotent-Replayed: true`.
-  Если предыдущая попытка ещё выполняется — придёт `409 idempotency.in_progress`: подождите и повторите.
-- **`order_id`** — для выплаты **обязателен** (без него `400 payout.order_id_required`). Повтор с тем же
-  `order_id` вернёт уже созданную выплату, а не отправит вторую.
+  </Step>
+  <Step title="Отследить статус" titleSize="h2">
 
-Как добавить заголовок в свою обёртку `call()` — [Устойчивый
-клиент](/guides/resilient-client#главный-принцип).
+    Статус выплаты в ответах — укрупнённый ([маппинг](/reference/payout-object#статусы-выплаты)):
 
----
+    | `status` | Значение |
+    |---|---|
+    | `check` | Создана, средства зарезервированы, ждёт одобрения. |
+    | `process` | Одобрена / отправляется / отправлена, ждёт подтверждений. |
+    | `paid` | Подтверждена в блокчейне — готово. |
+    | `fail` | Отклонена / отправка не удалась, резерв освобождён. |
+    | `cancel` | Отменена до отправки, резерв освобождён. |
 
-## Шаг 4. Отследить статус
+    Финал — `is_final: true` (`paid`/`fail`/`cancel`). О смене статуса приходит вебхук `payout.*` — ловите
+    его так же, как платёжный (проверка подписи, идемпотентность). См.
+    [Настройка вебхуков](/guides/webhooks-setup).
 
-Статус выплаты в ответах — укрупнённый ([маппинг](/reference/payout-object#статусы-выплаты)):
-
-| `status` | Значение |
-|---|---|
-| `check` | Создана, средства зарезервированы, ждёт одобрения. |
-| `process` | Одобрена / отправляется / отправлена, ждёт подтверждений. |
-| `paid` | Подтверждена в блокчейне — готово. |
-| `fail` | Отклонена / отправка не удалась, резерв освобождён. |
-| `cancel` | Отменена до отправки, резерв освобождён. |
-
-Финал — `is_final: true` (`paid`/`fail`/`cancel`). О смене статуса приходит вебхук `payout.*` — ловите
-его так же, как платёжный (проверка подписи, идемпотентность). См.
-[Настройка вебхуков](/guides/webhooks-setup).
+  </Step>
+</Steps>
 
 ---
 

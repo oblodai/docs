@@ -136,7 +136,7 @@ payment = client.payments.create(amount="10", currency="USDT", order_id=order_id
 db.update(order_id, payment_uuid=payment.uuid)
 ```
 
-```ts TypeScript
+```ts Node.js
 import { randomUUID } from "node:crypto";
 const orderId = "ord-" + randomUUID();
 await db.save({ orderId, status: "pending" });          // сохранили ПЕРЕД отправкой
@@ -169,10 +169,10 @@ await db.update(orderId, { paymentUuid: payment.uuid });
 
 ## Что нового в v1.1.0
 
-<Warning>
+<Info>
   **v1.1.0 ещё не опубликована** и требует обновлённого шлюза (заголовок `Idempotency-Key`).
   Всё, что ниже, **пока недоступно** в пакетах из реестров — это то, что появится после деплоя.
-</Warning>
+</Info>
 
 - **Массовые операции.** До 5000 платежей / возвратов / выплат **одним** запросом — одна отметка
   rate-limit вместо тысячи. Обработка в фоне: постановка возвращает `batch_id`, результаты по каждому
@@ -251,13 +251,11 @@ oblodai: webhook signature ok
 
 **Свой логгер** (в прод — направьте в свою систему логов) задаётся в конфиге клиента:
 
-| Язык | Как включить в коде |
-|---|---|
-| TypeScript | `new OblodaiClient({ ..., logger: (level, msg, fields) => … })` |
-| Python | стандартный `logging`: настройте логгер `logging.getLogger("oblodai")` |
-| Go | `oblodai.Config{ ..., Logger: slog.Default() }` |
-| Rust | `Config::new(...).logger(Arc::new(\|level, msg\| …))` |
-| PHP | `new Client($publicId, $secret, ['logger' => function (string $level, string $msg) { … }])` |
+- **TypeScript** — `new OblodaiClient({ ..., logger: (level, msg, fields) => … })`
+- **Python** — стандартный `logging`: настройте логгер `logging.getLogger("oblodai")`
+- **Go** — `oblodai.Config{ ..., Logger: slog.Default() }`
+- **Rust** — `Config::new(...).logger(Arc::new(|level, msg| …))`
+- **PHP** — `new Client($publicId, $secret, ['logger' => function (string $level, string $msg) { … }])`
 
 ---
 
@@ -280,17 +278,26 @@ oblodai: webhook signature ok
   как везде. Отключить их можно осознанно — `Retry: oblodai.NoRetry()`.
 </Note>
 
-<Note>
+<Tip>
   **Упираетесь в лимит частоты?** Не разгоняйте параллелизм — используйте
   [массовые операции](/guides/batch-operations) (с v1.1.0): до 5000 элементов **одним**
   подписанным запросом = одна отметка rate-limit вместо тысяч.
-</Note>
+</Tip>
 
 ---
 
 ## Куда дальше
 
-- Выберите язык из таблицы выше и откройте его страницу — там установка, рабочий пример и все методы.
-- Незнакомый термин — [Глоссарий](/reference/glossary).
-- Точные поля каждого метода API — [Справочник](/reference/overview).
-- Не пишете код, а хотите модуль для CMS — [Модули для CMS](/modules/overview).
+Выберите язык из таблицы выше и откройте его страницу — там установка, рабочий пример и все методы.
+
+<CardGroup cols={2}>
+  <Card title="Справочник API" href="/reference/overview" icon="arrow-right" horizontal>
+    Точные поля каждого метода API.
+  </Card>
+  <Card title="Глоссарий" href="/reference/glossary" icon="arrow-right" horizontal>
+    Незнакомый термин — смотрите здесь.
+  </Card>
+  <Card title="Модули для CMS" href="/modules/overview" icon="arrow-right" horizontal>
+    Не пишете код — возьмите готовый модуль.
+  </Card>
+</CardGroup>

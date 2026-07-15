@@ -57,7 +57,9 @@ X-Webhook-Signature = hex( HMAC_SHA256( secret, signing_string ) )
 | `invoice.wrong_amount` | Недоплата, срок вышел. | `payment` |
 | `invoice.expired` | Счёт истёк. | `payment` |
 | `wallet.paid` | Пополнение статик‑кошелька. | `wallet` |
-| `payout.<статус>` | Событие выплаты. Суффикс — **внутренний** статус: `payout.pending`, `payout.approved`, `payout.awaiting_cosign` (при 2‑of‑2), `payout.broadcasting`, `payout.sent`, `payout.confirmed` (успех), `payout.failed`, `payout.cancelled`. Обратите внимание: подтверждённая выплата — это `payout.confirmed`, **не** `payout.paid`. | `payout` |
+| `payout.<статус>` | Событие выплаты; суффикс — **внутренний** статус (список ниже). | `payout` |
+
+Возможные события выплат: `payout.pending`, `payout.approved`, `payout.awaiting_cosign` (при 2‑of‑2), `payout.broadcasting`, `payout.sent`, `payout.confirmed` (успех), `payout.failed`, `payout.cancelled`. Подтверждённая выплата — `payout.confirmed`, **не** `payout.paid` (подробнее — в заметке к [примеру вебхука выплаты](#пример-тела-вебхука-выплаты-payoutстатус) ниже).
 
 ---
 
@@ -124,7 +126,7 @@ X-Webhook-Signature = hex( HMAC_SHA256( secret, signing_string ) )
 ```
 
 <Note>
-  **Важно: статус в заголовке и в теле — разного «уровня».** В заголовке `X-Webhook-Event` суффикс —
+  **Статус в заголовке и в теле — разного «уровня».** В заголовке `X-Webhook-Event` суффикс —
   **внутренний** статус (`payout.confirmed`, `payout.sent`, …), а поле `status` в **теле** —
   **укрупнённый** (`check` / `process` / `paid` / `fail` / `cancel`). Подтверждённая выплата придёт как
   `X-Webhook-Event: payout.confirmed` с `"status": "paid"` в теле. Ветвитесь по тому, что вам удобнее,

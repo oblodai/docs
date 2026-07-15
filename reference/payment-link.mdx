@@ -15,12 +15,12 @@ sidebarTitle: "Платёжные ссылки"
 кнопкой на сайте). Каждый, кто по ней платит, получает **свой отдельный счёт** — ссылку можно
 использовать сколько угодно раз.
 
-<Note>
+<Tip>
   **Ссылка — единственный способ принимать платежи БЕЗ бэкенда.** Обычный [`POST /v1/payment`](/reference/payment-create)
   нужно подписывать секретом, а секрет нельзя класть в браузер — значит, нужен ваш сервер. У ссылки
   счёт создаёт **публичный** [`POST /v1/link/{id}/checkout`](/reference/link-public), подпись не нужна. Поэтому
   она работает на Tilda, Wix, в Notion, в письме — везде, где своего бэкенда нет.
-</Note>
+</Tip>
 
 **Базовый URL:** `https://api.oblodai.com` · **Аутентификация:** обязательна (управление ссылками).
 Страница оплаты по ссылке — [публичные методы](/reference/link-public), без ключа.
@@ -85,7 +85,7 @@ sidebarTitle: "Платёжные ссылки"
   Сеть расчёта, закреплённая за ссылкой. Пусто — сеть выбирает покупатель.
 </ParamField>
 
-<ParamField body="expires_in" type="int64">
+<ParamField body="expires_in" type="int64" default="0">
   Срок жизни ссылки, секунд от момента создания. **`0` (по умолчанию) — ссылка бессрочная.**
 </ParamField>
 
@@ -106,7 +106,7 @@ sidebarTitle: "Платёжные ссылки"
 
 <CodeGroup>
 
-```bash cURL
+```bash cURL wrap
 BODY='{"title":"Поддержать проект","description":"Спасибо!","amount_mode":"open","currency":"USD","amount_min":"1.00","expires_in":0}'
 TS=$(date +%s)
 SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment/link' "$BODY" \
@@ -159,7 +159,11 @@ await call("/v1/payment/link", {
 });
 ```
 
-```json Пример ответа
+</CodeGroup>
+
+### Пример ответа
+
+```json
 {
   "state": 0,
   "result": {
@@ -168,8 +172,6 @@ await call("/v1/payment/link", {
   }
 }
 ```
-
-</CodeGroup>
 
 `url` — это и есть то, что вы даёте покупателю: ставите ссылкой на кнопку, шлёте в письме, кладёте в
 QR‑код.
@@ -180,11 +182,11 @@ QR‑код.
 
 ### Параметры запроса
 
-<ParamField body="limit" type="int">
+<ParamField body="limit" type="int64">
   Сколько ссылок вернуть.
 </ParamField>
 
-<ParamField body="offset" type="int">
+<ParamField body="offset" type="int64">
   Смещение.
 </ParamField>
 
@@ -222,18 +224,61 @@ await call("/v1/payment/link/list", { limit: 50, offset: 0 });
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `link_id` | string | Идентификатор ссылки. |
-| `title` / `description` | string | Что видит покупатель. |
-| `amount_mode` | string | `fixed` \| `open` \| `range`. |
-| `currency` | string | Валюта цены. |
-| `amount_fixed` / `amount_min` / `amount_max` | string | Границы суммы. Присутствуют только те, что заданы. |
-| `pinned_currency` / `pinned_network` | string | Закреплённые монета и сеть. Отсутствуют, если выбирает покупатель. |
-| `active` | bool | Работает ли ссылка сейчас. |
-| `url` | string | Публичный URL страницы оплаты. |
-| `expires_at` | string | Момент истечения (ISO 8601). **Отсутствует у бессрочной ссылки.** |
-| `created_at` | string | Время создания. |
+<ResponseField name="link_id" type="string">
+  Идентификатор ссылки.
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Что видит покупатель.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Что видит покупатель.
+</ResponseField>
+
+<ResponseField name="amount_mode" type="string">
+  `fixed` | `open` | `range`.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Валюта цены.
+</ResponseField>
+
+<ResponseField name="amount_fixed" type="string">
+  Границы суммы. Присутствуют только те, что заданы.
+</ResponseField>
+
+<ResponseField name="amount_min" type="string">
+  Границы суммы. Присутствуют только те, что заданы.
+</ResponseField>
+
+<ResponseField name="amount_max" type="string">
+  Границы суммы. Присутствуют только те, что заданы.
+</ResponseField>
+
+<ResponseField name="pinned_currency" type="string">
+  Закреплённые монета и сеть. Отсутствуют, если выбирает покупатель.
+</ResponseField>
+
+<ResponseField name="pinned_network" type="string">
+  Закреплённые монета и сеть. Отсутствуют, если выбирает покупатель.
+</ResponseField>
+
+<ResponseField name="active" type="bool">
+  Работает ли ссылка сейчас.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Публичный URL страницы оплаты.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string">
+  Момент истечения (ISO 8601). **Отсутствует у бессрочной ссылки.**
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Время создания.
+</ResponseField>
 
 ---
 
@@ -245,11 +290,11 @@ await call("/v1/payment/link/list", { limit: 50, offset: 0 });
   Идентификатор ссылки.
 </ParamField>
 
-<ParamField body="limit" type="int">
+<ParamField body="limit" type="int64">
   Пагинация списка платежей.
 </ParamField>
 
-<ParamField body="offset" type="int">
+<ParamField body="offset" type="int64">
   Смещение.
 </ParamField>
 

@@ -14,10 +14,10 @@ sidebarTitle: "Создание выплаты"
   [SDK](/sdk/overview).
 </Note>
 
-<Note>
+<Warning>
   **Выплаты по API‑ключу авто‑одобряются** и уходят сразу — без белых списков и периодов выдержки.
   Ответственность за адрес назначения на вашей стороне.
-</Note>
+</Warning>
 
 ### Заголовки
 
@@ -66,7 +66,7 @@ sidebarTitle: "Создание выплаты"
   Профинансировать выплату конвертацией баланса. Поддерживается только `USDT` → `currency`.
 </ParamField>
 
-<ParamField body="source" type="string">
+<ParamField body="source" type="string" default="api">
   Метка происхождения: `api` (по умолчанию) или `manual`.
 </ParamField>
 
@@ -77,8 +77,8 @@ sidebarTitle: "Создание выплаты"
 запроса.
 
 <Warning>
-  **Важно про `is_subtract`.** Поле в теле `/v1/payout` принимается, но на фактическую выплату
-  **не влияет** — плательщик комиссии всегда берётся из fee‑config проекта. При этом предрасчёт
+  **`is_subtract` не влияет на саму выплату.** Поле в теле `/v1/payout` принимается, но
+  плательщик комиссии всегда берётся из fee‑config проекта. При этом предрасчёт
   [`/v1/payout/calculate`](/reference/payout-calculate) поле `is_subtract` **учитывает**. Чтобы превью
   совпадало с реальной выплатой, вызывайте `calculate` с `is_subtract`, согласованным с текущей
   настройкой fee‑config, либо управляйте комиссией только через fee‑config.
@@ -90,7 +90,7 @@ sidebarTitle: "Создание выплаты"
 
 <CodeGroup>
 
-```bash cURL
+```bash cURL wrap
 BODY='{"amount":"25","currency":"USDT","network":"tron","address":"TXY...","order_id":"payout-1","memo":"invoice-42"}'
 TS=$(date +%s)
 SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout' "$BODY" \

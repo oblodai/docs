@@ -61,10 +61,10 @@ await call("/v1/api-allowlist/enable", { enabled: true });
 
 </CodeGroup>
 
-<Note>
+<Warning>
   **Порядок важен.** Нельзя включить контроль с пустым списком (`apiallow.empty`) — иначе рискуете
   заблокировать сами себя. Сначала добавьте IP, потом включайте.
-</Note>
+</Warning>
 
 Управление списком — [`POST /v1/api-allowlist/*`](/reference/api-allowlist).
 

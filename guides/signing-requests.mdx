@@ -84,7 +84,7 @@ curl -s https://api.oblodai.com$PATHQ \
   -d "$BODY"
 ```
 
-```python Python
+```python Python highlight={8-11}
 import hmac, hashlib, time, json, requests
 
 SECRET = b"oblodai_live_…"
@@ -108,7 +108,7 @@ def call(path: str, payload: dict, idempotency_key: str | None = None) -> dict:
     return r.json()
 ```
 
-```js Node.js
+```js Node.js highlight={8-11}
 import crypto from "node:crypto";
 
 const SECRET = "oblodai_live_…";

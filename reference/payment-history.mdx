@@ -19,11 +19,11 @@ sidebarTitle: "Список платежей"
 
 Все поля опциональны.
 
-<ParamField body="limit" type="int">
+<ParamField body="limit" type="int64" default={25}>
   Размер страницы. По умолчанию 25, диапазон 1–100.
 </ParamField>
 
-<ParamField body="offset" type="int">
+<ParamField body="offset" type="int64">
   Смещение от начала.
 </ParamField>
 
@@ -80,15 +80,15 @@ await call("/v1/payment/history", { limit: 25, offset: 0, status: "paid" });
   Список **полных** объектов платежа — те же поля, что возвращает [`/info`](/reference/payment-info) (в примере показаны не все).
 </ResponseField>
 
-<ResponseField name="paginate.count" type="int">
+<ResponseField name="paginate.count" type="int64">
   **Общее** число записей, не размер страницы.
 </ResponseField>
 
-<ResponseField name="paginate.per_page" type="int">
+<ResponseField name="paginate.per_page" type="int64">
   Размер страницы.
 </ResponseField>
 
-<ResponseField name="paginate.offset" type="int">
+<ResponseField name="paginate.offset" type="int64">
   Текущее смещение.
 </ResponseField>
 

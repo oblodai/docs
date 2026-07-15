@@ -90,40 +90,36 @@ console.log(await r.json());
   Код актива (`USDT`, `BTC`, …).
 </ResponseField>
 
-<ResponseField name="currencies[].decimals" type="int">
+<ResponseField name="currencies[].decimals" type="int64">
   Число знаков после запятой у актива.
 </ResponseField>
 
-<ResponseField name="currencies[].networks" type="array">
+<ResponseField name="currencies[].networks" type="array<object>">
   Сети, на которых доступен актив.
-</ResponseField>
 
-<ResponseField name="networks[].network" type="string">
-  Код сети (`tron`, `ethereum`, …).
-</ResponseField>
-
-<ResponseField name="networks[].kind" type="string">
-  `native` (монета сети) или `token`.
-</ResponseField>
-
-<ResponseField name="networks[].contract" type="string">
-  Адрес контракта токена (только для `token`; у `native` отсутствует).
-</ResponseField>
-
-<ResponseField name="networks[].min_confirmations" type="int">
-  Полный reorg‑безопасный порог подтверждений для этой сети.
-</ResponseField>
-
-<ResponseField name="networks[].available" type="bool">
-  Доступен ли **приём** (депозиты) — синоним `deposit_available`.
-</ResponseField>
-
-<ResponseField name="networks[].deposit_available" type="bool">
-  Доступен ли приём платежей в этой сети прямо сейчас.
-</ResponseField>
-
-<ResponseField name="networks[].payout_available" type="bool">
-  Доступны ли выплаты в этой сети прямо сейчас.
+  <Expandable title="поля networks[]">
+    <ResponseField name="network" type="string">
+      Код сети (`tron`, `ethereum`, …).
+    </ResponseField>
+    <ResponseField name="kind" type="string">
+      `native` (монета сети) или `token`.
+    </ResponseField>
+    <ResponseField name="contract" type="string">
+      Адрес контракта токена (только для `token`; у `native` отсутствует).
+    </ResponseField>
+    <ResponseField name="min_confirmations" type="int64">
+      Полный reorg‑безопасный порог подтверждений для этой сети.
+    </ResponseField>
+    <ResponseField name="available" type="bool">
+      Доступен ли **приём** (депозиты) — синоним `deposit_available`.
+    </ResponseField>
+    <ResponseField name="deposit_available" type="bool">
+      Доступен ли приём платежей в этой сети прямо сейчас.
+    </ResponseField>
+    <ResponseField name="payout_available" type="bool">
+      Доступны ли выплаты в этой сети прямо сейчас.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 
 
@@ -140,7 +136,7 @@ console.log(await r.json());
   Код валюты цены (`USD`, `EUR`, `RUB`, `USDT`, `BTC`, …).
 </ResponseField>
 
-<ResponseField name="pricing_currencies[].decimals" type="int">
+<ResponseField name="pricing_currencies[].decimals" type="int64">
   Число знаков после точки. У большинства фиатов — 2, у `JPY` и `KRW` — **0**.
 </ResponseField>
 

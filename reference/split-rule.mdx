@@ -52,10 +52,10 @@ sidebarTitle: "Правила сплита"
 покупателю возможен целиком. Полный возврат внутри окна **отменяет** сплит, частичный —
 **уменьшает** долю партнёра.
 
-<Note>
+<Warning>
   **Не ставьте `refund_hold_hours: 0` при внешних сплитах.** Доли уйдут почти сразу, и вернуть их
   станет физически невозможно. → [`POST /v1/split/config/set`](/reference/split-config)
-</Note>
+</Warning>
 
 ---
 
@@ -63,7 +63,7 @@ sidebarTitle: "Правила сплита"
 
 ### Параметры запроса
 
-<ParamField body="percent" type="float" required>
+<ParamField body="percent" type="float64" required>
   Доля от каждого платежа: `10` = 10 %, `2.5` = 2.5 %. Больше 0 и не больше 100. Точность — до 0.01 %.
 </ParamField>
 
@@ -132,7 +132,11 @@ await call("/v1/split/rule", {
 });
 ```
 
-```json Пример ответа
+</CodeGroup>
+
+### Пример ответа
+
+```json
 {
   "state": 0,
   "result": {
@@ -141,8 +145,6 @@ await call("/v1/split/rule", {
   }
 }
 ```
-
-</CodeGroup>
 
 ---
 
@@ -189,15 +191,37 @@ await call("/v1/split/rule/list", {});
 }
 ```
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `rule_id` | string | Идентификатор правила. |
-| `percent` | float | Доля от каждого платежа, %. |
-| `active` | bool | Действует ли правило. |
-| `note` | string | Ваш комментарий. |
-| `address` / `network` | string | Получатель — внешний адрес (только у внешних правил). |
-| `merchant_id` | string | Получатель — мерчант платформы (только у внутренних правил). |
-| `reversible` | bool | `true` — доля отзывается при возврате платежа (внутренний сплит); `false` — уходит в блокчейн навсегда (внешний). |
+<ResponseField name="rule_id" type="string">
+  Идентификатор правила.
+</ResponseField>
+
+<ResponseField name="percent" type="float">
+  Доля от каждого платежа, %.
+</ResponseField>
+
+<ResponseField name="active" type="bool">
+  Действует ли правило.
+</ResponseField>
+
+<ResponseField name="note" type="string">
+  Ваш комментарий.
+</ResponseField>
+
+<ResponseField name="address" type="string">
+  Получатель — внешний адрес (только у внешних правил).
+</ResponseField>
+
+<ResponseField name="network" type="string">
+  Сеть внешнего адреса (только у внешних правил).
+</ResponseField>
+
+<ResponseField name="merchant_id" type="string">
+  Получатель — мерчант платформы (только у внутренних правил).
+</ResponseField>
+
+<ResponseField name="reversible" type="bool">
+  `true` — доля отзывается при возврате платежа (внутренний сплит); `false` — уходит в блокчейн навсегда (внешний).
+</ResponseField>
 
 ---
 

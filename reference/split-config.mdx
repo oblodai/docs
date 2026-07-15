@@ -65,12 +65,12 @@ sidebarTitle: "Настройки сплита"
 - **Внешние сплиты защищены только окном.** Как только оно истекло и транзакция ушла в сеть, откатить
   её невозможно — ни вам, ни нам, ни партнёру.
 
-<Note>
+<Warning>
   **`refund_hold_hours: 0` + внешний сплит = возврат за ваш счёт.** Доли уйдут почти сразу, и если
   покупатель попросит возврат, вернуть его долю будет **физически невозможно** — разницу придётся
   покрывать из собственных средств. Ставьте `0`, только если возвратов у вас не бывает в принципе или
   все ваши сплиты внутренние.
-</Note>
+</Warning>
 
 ---
 
@@ -101,11 +101,13 @@ call("/v1/split/config/get", {})
 await call("/v1/split/config/get", {});
 ```
 
-```json Пример ответа
+</CodeGroup>
+
+### Пример ответа
+
+```json
 { "state": 0, "result": { "refund_hold_hours": 48 } }
 ```
-
-</CodeGroup>
 
 ---
 
@@ -113,7 +115,7 @@ await call("/v1/split/config/get", {});
 
 ### Параметры запроса
 
-<ParamField body="refund_hold_hours" type="int" required>
+<ParamField body="refund_hold_hours" type="int64" required>
   На сколько часов откладывать расчёт по сплитам. Диапазон **0–2160** (до 90 суток). `0` — отправлять доли сразу, **риск невозможности возврата берёте на себя**.
 </ParamField>
 
@@ -141,11 +143,13 @@ call("/v1/split/config/set", {"refund_hold_hours": 48})
 await call("/v1/split/config/set", { refund_hold_hours: 48 });
 ```
 
-```json Пример ответа
+</CodeGroup>
+
+### Пример ответа
+
+```json
 { "state": 0, "result": { "refund_hold_hours": 48 } }
 ```
-
-</CodeGroup>
 
 ---
 

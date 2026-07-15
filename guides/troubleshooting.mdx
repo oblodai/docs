@@ -63,9 +63,9 @@ icon: "screwdriver-wrench"
 5. **`401 auth.ip_not_allowed`** — включён [IP‑allowlist](/reference/api-allowlist), а запрос идёт с
    адреса вне списка. Добавьте IP или временно выключите контроль.
 
-<Note>
+<Tip>
   Проще всего — не подписывать вручную, а взять [SDK](/sdk/overview): он не ошибётся в подписи.
-</Note>
+</Tip>
 
 ---
 
@@ -101,7 +101,7 @@ icon: "screwdriver-wrench"
 
 | Код | Что значит | Что делать |
 |---|---|---|
-| `400 payment.to_currency_required` | Цена задана в **фиате** (`USD`, `EUR`, `RUB`…), при этом задан `network`, но **не** задан `to_currency`. Из фиатной цены монету расчёта вывести нельзя: в сети `tron` это и USDT, и TRX, и USDC. | Либо укажите `to_currency`, либо **уберите и `network`** — тогда монету выберет покупатель. → [Три режима создания счёта](/guides/payment-modes#частая-ошибка-цена-в-фиате-и-сеть-без-монеты) |
+| `400 payment.to_currency_required` | Цена в **фиате**, задан `network`, но не `to_currency` — монету расчёта вывести нельзя. | Укажите `to_currency` или уберите `network`. → [Три режима создания счёта](/guides/payment-modes#частая-ошибка-цена-в-фиате-и-сеть-без-монеты) |
 | `400 payment.network_required` | У монеты несколько сетей, а `network` не задан. | Укажите `network` явно. |
 | `400 payment.unknown_currency` | Валюта не поддерживается (частый случай — фиат вне списка: **KZT, KGS, UZS не поддерживаются**). | Сверьтесь с `pricing_currencies` в [`GET /v1/currencies`](/reference/currencies). |
 | `400 payment.below_minimum` | Сумма ниже минимума сети (Ethereum, Bitcoin). | Увеличьте сумму или возьмите дешёвую сеть. |

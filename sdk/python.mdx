@@ -68,10 +68,10 @@ payment = client.payments.create(
 print(payment.address, payment.url)
 ```
 
-<Note>
-  Совет: не хотите указывать валюту/сеть за покупателя? Не передавайте `to_currency` и `network` —
+<Tip>
+  Не хотите указывать валюту/сеть за покупателя? Не передавайте `to_currency` и `network` —
   получится «валюто-агностичная» ссылка, где покупатель сам выберет монету на странице оплаты.
-</Note>
+</Tip>
 
 ### Асинхронно
 
@@ -101,10 +101,10 @@ async with AsyncOblodaiClient.from_env() as client:
 
 Точные поля — в [Справочнике](/reference/overview). У синхронного и асинхронного клиента API одинаков.
 
-<Warning>
+<Info>
   Группы `batches` / `links` / `splits` и методы `create_batch` / `refund_batch` / `send_email`
   появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
-</Warning>
+</Info>
 
 ```python
 # Массовые операции: до 5000 элементов одним подписанным запросом (одна отметка rate-limit).

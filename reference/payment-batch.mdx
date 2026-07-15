@@ -13,11 +13,11 @@ sidebarTitle: "Батч: платежи"
   Статус — в [обзоре SDK](/sdk/overview#что-нового-в-v1-1-0).
 </Info>
 
-<Note>
+<Tip>
   **Это штатный способ не упираться в rate limit.** Один подписанный запрос вместо 5000 —
   [лимит частоты](/reference/basics-ratelimit) считается по запросам, а не по элементам внутри них. Если вам
   нужно выставить тысячу счетов, делайте это батчем, а не тысячей вызовов [`POST /v1/payment`](/reference/payment-create).
-</Note>
+</Tip>
 
 **URL:** `https://api.oblodai.com/v1/payment/batch` · **Аутентификация:** обязательна · **Идемпотентность:** заголовок `Idempotency-Key` (на весь батч) + `order_id` каждого элемента.
 
@@ -35,7 +35,7 @@ sidebarTitle: "Батч: платежи"
   Массив от 1 до **5000** элементов. Поля каждого элемента — **ровно те же**, что у [`POST /v1/payment`](/reference/payment-create).
 </ParamField>
 
-<ParamField body="on_error" type="string">
+<ParamField body="on_error" type="string" default="continue">
   Что делать при ошибке элемента: `continue` (по умолчанию) — обрабатывать остальные; `stop` — прекратить обработку после первой ошибки.
 </ParamField>
 
@@ -113,7 +113,7 @@ await call("/v1/payment/batch", {
   Вид батча — здесь всегда `payment`.
 </ResponseField>
 
-<ResponseField name="count" type="int">
+<ResponseField name="count" type="int64">
   Сколько элементов принято в обработку.
 </ResponseField>
 

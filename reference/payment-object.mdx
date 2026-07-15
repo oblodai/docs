@@ -71,7 +71,7 @@ sidebarTitle: "Объект Payment"
   Сумма к оплате в валюте ценообразования `currency`.
 </ResponseField>
 
-<ResponseField name="payment_amount" type="string \| null">
+<ResponseField name="payment_amount" type="string | null">
   Фактически оплаченная сумма (в крипте); `null`, пока оплаты нет.
 </ResponseField>
 
@@ -159,11 +159,11 @@ sidebarTitle: "Объект Payment"
   До какого момента действителен зафиксированный курс (unix‑секунды).
 </ResponseField>
 
-<ResponseField name="confirmations" type="int">
+<ResponseField name="confirmations" type="int64">
   Набрано подтверждений сети.
 </ResponseField>
 
-<ResponseField name="required_confirmations" type="int">
+<ResponseField name="required_confirmations" type="int64">
   Сколько подтверждений нужно для зачёта (зависит от суммы/сети).
 </ResponseField>
 

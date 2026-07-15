@@ -36,170 +36,172 @@ icon: "bolt"
 
 ---
 
-## Шаг 1. Зарегистрировать endpoint
+<Steps>
+  <Step title="Зарегистрировать endpoint" titleSize="h2">
 
-Один раз на проект зарегистрируйте HTTPS‑URL и сохраните выданный `secret`. В примерах `call()` —
-подписанная обёртка запроса (её определение — в [Как подписать запрос](/guides/signing-requests); проще
-взять [SDK](/sdk/overview)):
+    Один раз на проект зарегистрируйте HTTPS‑URL и сохраните выданный `secret`. В примерах `call()` —
+    подписанная обёртка запроса (её определение — в [Как подписать запрос](/guides/signing-requests); проще
+    взять [SDK](/sdk/overview)):
 
-<CodeGroup>
+    <CodeGroup>
 
-```python Python
-resp = call("/v1/webhooks", {"url": "https://shop.example/oblodai/callback"})
-webhook_secret = resp["secret"]   # ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните в секрет-хранилище
-```
+    ```python Python
+    resp = call("/v1/webhooks", {"url": "https://shop.example/oblodai/callback"})
+    webhook_secret = resp["secret"]   # ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните в секрет-хранилище
+    ```
 
-```js Node.js
-const resp = await call("/v1/webhooks", { url: "https://shop.example/oblodai/callback" });
-const webhookSecret = resp.secret;   // ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните в секрет-хранилище
-```
+    ```js Node.js
+    const resp = await call("/v1/webhooks", { url: "https://shop.example/oblodai/callback" });
+    const webhookSecret = resp.secret;   // ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните в секрет-хранилище
+    ```
 
-</CodeGroup>
+    </CodeGroup>
 
-<Note>
-  Этот эндпоинт — единственный, кто отвечает `201 Created` **без** конверта `state`/`result`.
-</Note>
+    <Note>
+      Этот эндпоинт — единственный, кто отвечает `201 Created` **без** конверта `state`/`result`.
+    </Note>
 
-Особенности:
+    Особенности:
 
-- У проекта **один** активный endpoint. Повторный вызов заменит URL и выдаст **новый** секрет.
-- URL проходит SSRF‑проверку: приватные и локальные адреса запрещены.
-- Индивидуальный `url_callback` конкретного платежа/выплаты доставляется на свой URL, но
-  **подписывается секретом endpoint проекта** — то есть endpoint всё равно должен быть зарегистрирован.
+    - У проекта **один** активный endpoint. Повторный вызов заменит URL и выдаст **новый** секрет.
+    - URL проходит SSRF‑проверку: приватные и локальные адреса запрещены.
+    - Индивидуальный `url_callback` конкретного платежа/выплаты доставляется на свой URL, но
+      **подписывается секретом endpoint проекта** — то есть endpoint всё равно должен быть зарегистрирован.
 
-Полностью — [`POST /v1/webhooks`](/reference/webhooks-register).
+    Полностью — [`POST /v1/webhooks`](/reference/webhooks-register).
 
----
+  </Step>
+  <Step title="Проверять подпись" titleSize="h2">
 
-## Шаг 2. Проверять подпись
+    <Warning>
+      **Подпись вебхука — ДРУГОЙ алгоритм**, не тот, что у подписи запроса. Здесь это `timestamp` +
+      точка `.` + **сырое тело**. Никаких метода/пути/переводов строк.
+    </Warning>
 
-<Warning>
-  **Подпись вебхука — ДРУГОЙ алгоритм**, не тот, что у подписи запроса. Здесь это `timestamp` +
-  точка `.` + **сырое тело**. Никаких метода/пути/переводов строк.
-</Warning>
+    ```
+    X-Webhook-Signature = hex( HMAC_SHA256( secret, "{X-Webhook-Timestamp}." + сырое_тело ) )
+    ```
 
-```
-X-Webhook-Signature = hex( HMAC_SHA256( secret, "{X-Webhook-Timestamp}." + сырое_тело ) )
-```
+    Возьмите **сырое тело** запроса (до JSON‑парсинга) и сравните подписи в постоянном времени.
 
-Возьмите **сырое тело** запроса (до JSON‑парсинга) и сравните подписи в постоянном времени.
+    <CodeGroup>
 
-<CodeGroup>
+    ```python Python
+    # пример на Flask
+    import hmac, hashlib
+    from flask import Flask, request
 
-```python Python
-# пример на Flask
-import hmac, hashlib
-from flask import Flask, request
+    app = Flask(__name__)
+    WEBHOOK_SECRET = b"b7c1e9…"
 
-app = Flask(__name__)
-WEBHOOK_SECRET = b"b7c1e9…"
+    @app.post("/oblodai/callback")
+    def callback():
+        raw = request.get_data()                                  # СЫРОЕ тело
+        ts  = request.headers.get("X-Webhook-Timestamp", "")
+        sig = request.headers.get("X-Webhook-Signature", "")
 
-@app.post("/oblodai/callback")
-def callback():
-    raw = request.get_data()                                  # СЫРОЕ тело
-    ts  = request.headers.get("X-Webhook-Timestamp", "")
-    sig = request.headers.get("X-Webhook-Signature", "")
+        expected = hmac.new(WEBHOOK_SECRET, ts.encode() + b"." + raw, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, sig):
+            return "bad signature", 403
 
-    expected = hmac.new(WEBHOOK_SECRET, ts.encode() + b"." + raw, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, sig):
-        return "bad signature", 403
+        event = request.get_json()
+        handle_event(event)      # см. следующий шаг
+        return "ok", 200
+    ```
 
-    event = request.get_json()
-    handle_event(event)      # см. шаг 3
-    return "ok", 200
-```
+    ```js Node.js
+    // пример на Express
+    import express from "express";
+    import crypto from "node:crypto";
 
-```js Node.js
-// пример на Express
-import express from "express";
-import crypto from "node:crypto";
+    const app = express();
+    const WEBHOOK_SECRET = "b7c1e9…";
 
-const app = express();
-const WEBHOOK_SECRET = "b7c1e9…";
+    // ВАЖНО: берём сырое тело, не express.json()
+    app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
+      const raw = req.body.toString("utf8");
+      const ts  = req.get("X-Webhook-Timestamp") || "";
+      const sig = req.get("X-Webhook-Signature") || "";
 
-// ВАЖНО: берём сырое тело, не express.json()
-app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
-  const raw = req.body.toString("utf8");
-  const ts  = req.get("X-Webhook-Timestamp") || "";
-  const sig = req.get("X-Webhook-Signature") || "";
+      const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(`${ts}.${raw}`).digest("hex");
+      const ok = sig.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+      if (!ok) {
+        return res.status(403).send("bad signature");
+      }
 
-  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(`${ts}.${raw}`).digest("hex");
-  const ok = sig.length === expected.length &&
-    crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
-  if (!ok) {
-    return res.status(403).send("bad signature");
-  }
+      handleEvent(JSON.parse(raw));   // см. следующий шаг
+      res.send("ok");
+    });
+    ```
 
-  handleEvent(JSON.parse(raw));   // см. шаг 3
-  res.send("ok");
-});
-```
+    ```php PHP
+    <?php
+    $secret = 'b7c1e9…';
+    $raw = file_get_contents('php://input');                       // сырое тело
+    $ts  = $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '';
+    $sig = $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? '';
 
-```php PHP
-<?php
-$secret = 'b7c1e9…';
-$raw = file_get_contents('php://input');                       // сырое тело
-$ts  = $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '';
-$sig = $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? '';
+    $expected = hash_hmac('sha256', $ts . '.' . $raw, $secret);
+    if (!hash_equals($expected, $sig)) {
+        http_response_code(403);
+        exit('bad signature');
+    }
+    $event = json_decode($raw, true);
+    handle_event($event);                                          // см. следующий шаг
+    echo 'ok';
+    ```
 
-$expected = hash_hmac('sha256', $ts . '.' . $raw, $secret);
-if (!hash_equals($expected, $sig)) {
-    http_response_code(403);
-    exit('bad signature');
-}
-$event = json_decode($raw, true);
-handle_event($event);                                          // см. шаг 3
-echo 'ok';
-```
+    </CodeGroup>
 
-</CodeGroup>
+  </Step>
+  <Step title="Обрабатывать идемпотентно" titleSize="h2">
 
----
+    Доставка — **как минимум один раз**. Один и тот же вебхук может прийти несколько раз (в том числе
+    после [`payment/resend`](/reference/payment-resend)). Обязательно:
 
-## Шаг 3. Обрабатывать идемпотентно
+    - **Дедуплицируйте по `uuid` + `status`.** Если такое событие уже обработано — верните `2xx` и выйдите
+      (no‑op).
+    - **Не полагайтесь на порядок доставок.** Опирайтесь на `status`/`is_final`, а не на очерёдность.
+    - **Отвечайте `2xx` только после успешной обработки.** Любой не‑2xx — сигнал повторить доставку.
 
-Доставка — **как минимум один раз**. Один и тот же вебхук может прийти несколько раз (в том числе
-после [`payment/resend`](/reference/payment-resend)). Обязательно:
+    <CodeGroup>
 
-- **Дедуплицируйте по `uuid` + `status`.** Если такое событие уже обработано — верните `2xx` и выйдите
-  (no‑op).
-- **Не полагайтесь на порядок доставок.** Опирайтесь на `status`/`is_final`, а не на очерёдность.
-- **Отвечайте `2xx` только после успешной обработки.** Любой не‑2xx — сигнал повторить доставку.
+    ```python Python
+    def handle_event(event):
+        key = (event["uuid"], event["status"])
+        if already_processed(key):        # ваша дедупликация (БД/кэш)
+            return
+        if event["type"] == "payment" and event["status"] == "paid":
+            mark_order_paid(event["order_id"])
+        elif event["type"] == "wallet" and event["status"] == "paid":
+            credit_client(event["order_id"], event["payment_amount"])
+        elif event["type"] == "payout":
+            update_payout(event["uuid"], event["status"])
+        mark_processed(key)
+    ```
 
-<CodeGroup>
+    ```js Node.js
+    function handleEvent(event) {
+      const key = `${event.uuid}:${event.status}`;
+      if (alreadyProcessed(key)) {      // ваша дедупликация (БД/кэш)
+        return;
+      }
+      if (event.type === "payment" && event.status === "paid") {
+        markOrderPaid(event.order_id);
+      } else if (event.type === "wallet" && event.status === "paid") {
+        creditClient(event.order_id, event.payment_amount);
+      } else if (event.type === "payout") {
+        updatePayout(event.uuid, event.status);
+      }
+      markProcessed(key);
+    }
+    ```
 
-```python Python
-def handle_event(event):
-    key = (event["uuid"], event["status"])
-    if already_processed(key):        # ваша дедупликация (БД/кэш)
-        return
-    if event["type"] == "payment" and event["status"] == "paid":
-        mark_order_paid(event["order_id"])
-    elif event["type"] == "wallet" and event["status"] == "paid":
-        credit_client(event["order_id"], event["payment_amount"])
-    elif event["type"] == "payout":
-        update_payout(event["uuid"], event["status"])
-    mark_processed(key)
-```
+    </CodeGroup>
 
-```js Node.js
-function handleEvent(event) {
-  const key = `${event.uuid}:${event.status}`;
-  if (alreadyProcessed(key)) {      // ваша дедупликация (БД/кэш)
-    return;
-  }
-  if (event.type === "payment" && event.status === "paid") {
-    markOrderPaid(event.order_id);
-  } else if (event.type === "wallet" && event.status === "paid") {
-    creditClient(event.order_id, event.payment_amount);
-  } else if (event.type === "payout") {
-    updatePayout(event.uuid, event.status);
-  }
-  markProcessed(key);
-}
-```
-
-</CodeGroup>
+  </Step>
+</Steps>
 
 ---
 

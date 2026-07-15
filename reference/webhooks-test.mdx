@@ -80,7 +80,7 @@ sidebarTitle: "Тестовые вебхуки"
 
 <CodeGroup>
 
-```bash cURL
+```bash cURL wrap
 BODY='{"url_callback":"https://shop.example/oblodai/callback","status":"paid","currency":"USDT","network":"tron"}'
 TS=$(date +%s)
 SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/test-webhook/payment' "$BODY" \

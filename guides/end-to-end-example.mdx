@@ -29,7 +29,7 @@ GET  /order/<id> → показывает статус заказа (для на
 <Tabs>
   <Tab title="Python (Flask)">
 
-  ```python
+  ```python app.py expandable
   # app.py — минимальный сквозной пример приёма платежей Oblodai
   import hmac, hashlib, time, json, os
   import requests
@@ -148,12 +148,10 @@ GET  /order/<id> → показывает статус заказа (для на
   curl -s localhost:8000/order/test-001
   ```
 
-  ---
-
   </Tab>
   <Tab title="Node.js (Express)">
 
-  ```js
+  ```js app.js expandable
   // app.js — минимальный сквозной пример приёма платежей Oblodai
   import express from "express";
   import crypto from "node:crypto";
@@ -248,8 +246,6 @@ GET  /order/<id> → показывает статус заказа (для на
   export OBLODAI_WEBHOOK_SECRET='b7c1e9…'
   node app.js   # Node.js ≥ 20 — используется глобальный fetch
   ```
-
-  ---
 
   </Tab>
 </Tabs>

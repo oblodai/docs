@@ -92,10 +92,10 @@ http.Redirect(w, r, payment.URL, http.StatusFound) // на страницу оп
 
 `oblodai.Params` — это `map[string]any`. Метод возвращает типизированный объект (`*oblodai.Payment`).
 
-<Note>
-  Совет: не хотите указывать валюту/сеть за покупателя? Не передавайте `to_currency` и `network` —
+<Tip>
+  Не хотите указывать валюту/сеть за покупателя? Не передавайте `to_currency` и `network` —
   получится «валюто-агностичная» ссылка, где покупатель сам выберет монету на странице оплаты.
-</Note>
+</Tip>
 
 ---
 
@@ -116,10 +116,10 @@ http.Redirect(w, r, payment.URL, http.StatusFound) // на страницу оп
 
 Все методы принимают `context.Context` первым аргументом. Точные поля — в [Справочнике](/reference/overview).
 
-<Warning>
+<Info>
   Группы `Batches` / `Links` / `Splits` и методы `CreateBatch` / `RefundBatch` / `SendEmail`
   появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
-</Warning>
+</Info>
 
 ```go
 // Массовые операции: до 5000 элементов одним подписанным запросом (одна отметка rate-limit).

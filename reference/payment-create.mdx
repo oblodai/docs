@@ -39,11 +39,11 @@ sidebarTitle: "Создание счёта"
   **Валюта расчёта** — крипта, которой платят (фиат здесь невозможен). По умолчанию `= currency`, но **только если `currency` — крипта**. Если цена в фиате, задайте `to_currency` явно — либо не задавайте и `network`, тогда монету выберет покупатель.
 </ParamField>
 
-<ParamField body="lifetime" type="int64">
+<ParamField body="lifetime" type="int64" default="3600">
   Время жизни счёта, сек; 300–43200. По умолчанию 3600. Значения вне диапазона **обрезаются** к ближайшей границе (не ошибка).
 </ParamField>
 
-<ParamField body="subtract" type="int64">
+<ParamField body="subtract" type="int64" deprecated>
   **Устаревшее; новичку не нужно** — payer‑facing наценки настраиваются через [`discount`](/reference/payment-discount). % сетевой наценки на плательщика (0–100).
 </ParamField>
 
@@ -89,7 +89,7 @@ sidebarTitle: "Создание счёта"
   другого**, каждый вызов создаёт новый счёт — задавайте хотя бы одно из двух.
 </Info>
 
-**Минимально необходимое:** `amount`, `currency`, `order_id`. Остальные поля — по мере надобности.
+**Минимально необходимое:** `amount`, `currency`; настоятельно рекомендуем также `order_id` или заголовок `Idempotency-Key`. Остальные поля — по мере надобности.
 
 ### Заголовки
 
@@ -129,7 +129,7 @@ sidebarTitle: "Создание счёта"
 
 <CodeGroup>
 
-```bash cURL
+```bash cURL wrap
 BODY='{"amount":"10","currency":"USD","order_id":"order-1","to_currency":"USDT","network":"tron","lifetime":3600}'
 TS=$(date +%s)
 SIGSTR=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payment' "$BODY")

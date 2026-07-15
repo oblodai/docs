@@ -165,9 +165,7 @@ $client->payments()->sendEmail($payment['uuid'], null, 'buyer@example.com');
 
 ## Вебхуки
 
-### Шаг 1. Один раз зарегистрируйте endpoint и сохраните секрет
-
-```php
+```php Шаг 1. Регистрация (один раз)
 $endpoint = $client->webhooks()->register('https://ваш-сайт.ру/oblodai/webhook');
 // Сохраните $endpoint['secret'] в БД/конфиге — им проверяются ВСЕ вебхуки.
 ```
@@ -177,9 +175,7 @@ $endpoint = $client->webhooks()->register('https://ваш-сайт.ру/oblodai/
   уведомления.
 </Note>
 
-### Шаг 2. Принимайте и проверяйте вебхуки
-
-```php
+```php Шаг 2. Приём (обязательно СЫРОЕ тело)
 use Oblodai\Webhooks;
 use Oblodai\Exception\SignatureException;
 
