@@ -38,7 +38,9 @@ icon: "heart-pulse"
 же во **всех** ретраях этого действия. Если вы сгенерируете новый ключ на каждую попытку — защиты не
 будет вовсе, вы просто отправите N разных запросов.
 
-```python
+<CodeGroup>
+
+```python Python
 import uuid
 
 key = str(uuid.uuid4())          # ОДИН РАЗ на действие — не внутри цикла ретраев!
@@ -51,10 +53,26 @@ for attempt in range(5):
     ...
 ```
 
+```js Node.js
+const key = crypto.randomUUID();     // ОДИН РАЗ на действие — не внутри цикла ретраев!
+
+for (let attempt = 0; attempt < 5; attempt++) {
+  const resp = await call("/v1/payout", {
+    amount: "25", currency: "USDT", network: "tron",
+    address: "TXY...", order_id: "payout-1",
+  }, key);                           // ТОТ ЖЕ ключ во всех попытках
+  // ...
+}
+```
+
+</CodeGroup>
+
 Чтобы передать заголовок, добавьте его в свою обёртку `call()` (базовая версия — в
 [Быстром старте](/guides/signing-requests)):
 
-```python
+<CodeGroup>
+
+```python Python
 def call(path: str, payload: dict, idempotency_key: str | None = None) -> dict:
     body = json.dumps(payload, separators=(",", ":"))
     ts = str(int(time.time()))
@@ -70,6 +88,28 @@ def call(path: str, payload: dict, idempotency_key: str | None = None) -> dict:
         headers["Idempotency-Key"] = idempotency_key   # ← в подпись НЕ входит
     return requests.post(BASE + path, data=body, headers=headers).json()
 ```
+
+```js Node.js
+async function call(path, payload, idempotencyKey = null) {
+  const body = JSON.stringify(payload);
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const signing = `${ts}\nPOST\n${path}\n${body}`;
+  const sig = crypto.createHmac("sha256", SECRET).update(signing).digest("hex");
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Public-Id": PUBLIC_ID,
+    "X-Timestamp": ts,
+    "X-Signature": sig,
+  };
+  if (idempotencyKey) {
+    headers["Idempotency-Key"] = idempotencyKey;   // ← в подпись НЕ входит
+  }
+  const res = await fetch(BASE + path, { method: "POST", headers, body });
+  return res.json();
+}
+```
+
+</CodeGroup>
 
 <Note>
   Заголовок `Idempotency-Key` **не участвует в подписи** — подписывается только каноническая строка
@@ -100,13 +140,25 @@ def call(path: str, payload: dict, idempotency_key: str | None = None) -> dict:
 
 Повторяйте с **тем же `Idempotency-Key`** и **тем же `order_id`**:
 
-```python
+<CodeGroup>
+
+```python Python
 # Повтор идемпотентен: если выплата уже создана — вернётся ОНА, дубля не будет
 result = call("/v1/payout", {
     "amount": "25", "currency": "USDT", "network": "tron",
     "address": "TXY...", "order_id": "payout-1",   # ТОТ ЖЕ order_id
 }, idempotency_key=key)                            # ТОТ ЖЕ Idempotency-Key
 ```
+
+```js Node.js
+// Повтор идемпотентен: если выплата уже создана — вернётся ОНА, дубля не будет
+const result = await call("/v1/payout", {
+  amount: "25", currency: "USDT", network: "tron",
+  address: "TXY...", order_id: "payout-1",   // ТОТ ЖЕ order_id
+}, key);                                     // ТОТ ЖЕ Idempotency-Key
+```
+
+</CodeGroup>
 
 Если первая попытка прошла — получите ту же выплату (в ответе будет `Idempotent-Replayed: true`). Если
 не прошла — создастся сейчас. В обоих случаях итог один, и денег не уйдёт дважды.
@@ -118,12 +170,23 @@ result = call("/v1/payout", {
 
 ### Вариант Б. Спросить статус
 
-```python
+<CodeGroup>
+
+```python Python
 # Узнать, что с выплатой по вашему order_id
 info = call("/v1/payout/info", {"order_id": "payout-1"})
 # 404 payout.not_found → не создавалась, можно создавать
 # объект выплаты → уже существует, действуйте по её статусу
 ```
+
+```js Node.js
+// Узнать, что с выплатой по вашему order_id
+const info = await call("/v1/payout/info", { order_id: "payout-1" });
+// 404 payout.not_found → не создавалась, можно создавать
+// объект выплаты → уже существует, действуйте по её статусу
+```
+
+</CodeGroup>
 
 Для платежей — [`/v1/payment/info`](/reference/payment-info), для выплат —
 [`/v1/payout/info`](/reference/payout-info).
@@ -180,14 +243,14 @@ info = call("/v1/payout/info", {"order_id": "payout-1"})
 
 Для `5xx`/`503`/rate limit повторяйте с растущей задержкой, а не в цикле без пауз.
 
-### Python
-
 Ключевая идея: повторять надо по **HTTP‑статусу** (`429`/`5xx`) и по **сетевым сбоям**, а не только по
-`error.code`. Здесь `signed_post(path, payload)` — ваш POST с подписью, возвращающий **сырой**
-`requests.Response` (в отличие от `call()`, который отдаёт уже разобранное тело), чтобы был виден
-статус и заголовок `Retry-After`.
+`error.code`. Здесь `signed_post` / `signedPost` — ваш POST с подписью, возвращающий **сырой** ответ
+(`requests.Response` в Python, `Response` из fetch в Node.js — в отличие от `call()`, который отдаёт
+уже разобранное тело), чтобы был виден статус и заголовок `Retry-After`.
 
-```python
+<CodeGroup>
+
+```python Python
 import time, random, requests, uuid
 
 RETRIABLE_HTTP = {429, 500, 502, 503, 504}   # временные статусы
@@ -226,9 +289,7 @@ def call_resilient(path, payload, max_attempts=6):
     return last.json() if last is not None else None
 ```
 
-### Node.js
-
-```js
+```js Node.js
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RETRIABLE_HTTP = new Set([429, 500, 502, 503, 504]);
 // ретраибельные бизнес-коды, приходящие с 4xx (в основном 409)
@@ -276,6 +337,8 @@ async function callResilient(path, payload, maxAttempts = 6) {
 }
 ```
 
+</CodeGroup>
+
 <Note>
   **Почему по HTTP-статусу, а не по `error.code`?** Ответ `429` приходит в особом виде
   `{"state":1,"message":"rate limit exceeded"}` — **без** `error.code`, поэтому ветвиться на код
@@ -318,6 +381,11 @@ async function callResilient(path, payload, maxAttempts = 6) {
 
 ## Связанные страницы
 
-- [Идемпотентность](/reference/basics-idempotency) · [Формат ответа и коды ошибок](/reference/basics-errors)
-- [Справочник кодов ошибок](/reference/errors-catalog) · [Модель баланса](/guides/balance-and-funds)
-- [Настройка вебхуков](/guides/webhooks-setup) · [Чек‑лист перед запуском](/guides/production-checklist)
+<CardGroup cols={2}>
+  <Card title="Идемпотентность" href="/reference/basics-idempotency" icon="arrow-right" horizontal />
+  <Card title="Формат ответа и коды ошибок" href="/reference/basics-errors" icon="arrow-right" horizontal />
+  <Card title="Справочник кодов ошибок" href="/reference/errors-catalog" icon="arrow-right" horizontal />
+  <Card title="Модель баланса" href="/guides/balance-and-funds" icon="arrow-right" horizontal />
+  <Card title="Настройка вебхуков" href="/guides/webhooks-setup" icon="arrow-right" horizontal />
+  <Card title="Чек‑лист перед запуском" href="/guides/production-checklist" icon="arrow-right" horizontal />
+</CardGroup>

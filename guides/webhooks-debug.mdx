@@ -13,7 +13,9 @@ Oblodai даёт инструменты, чтобы отправить проб�
 
 Пробный вебхук синхронно шлёт тело на ваш URL и возвращает HTTP‑код, которым ответил ваш эндпоинт.
 
-```python
+<CodeGroup>
+
+```python Python
 resp = call("/v1/test-webhook/payment", {
     "url_callback": "https://shop.example/oblodai/callback",
     "status": "paid",
@@ -22,6 +24,18 @@ resp = call("/v1/test-webhook/payment", {
 })
 print(resp["result"])   # {"result": true, "status_code": 200}
 ```
+
+```js Node.js
+const resp = await call("/v1/test-webhook/payment", {
+  url_callback: "https://shop.example/oblodai/callback",
+  status: "paid",
+  currency: "USDT",
+  network: "tron",
+});
+console.log(resp.result);   // {"result": true, "status_code": 200}
+```
+
+</CodeGroup>
 
 `status_code` — то, что вернул ваш обработчик. Если это не `200`/`2xx`, значит приёмник не принял
 событие: смотрите свои логи.
@@ -39,7 +53,9 @@ print(resp["result"])   # {"result": true, "status_code": 200}
 
 ## Пример: обработчик, дружелюбный к тестам
 
-```python
+<CodeGroup>
+
+```python Python
 @app.post("/oblodai/callback")
 def callback():
     raw = request.get_data()
@@ -60,17 +76,54 @@ def callback():
     return "ok", 200
 ```
 
+```js Node.js
+app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
+  const raw = req.body.toString("utf8");
+  let event = {};
+  try { event = JSON.parse(raw); } catch {}
+
+  if (event.is_test) {
+    // пробное тело — не подписано; просто подтверждаем приём
+    return res.send("ok");
+  }
+
+  // боевое тело — проверяем подпись
+  const ts  = req.get("X-Webhook-Timestamp") || "";
+  const sig = req.get("X-Webhook-Signature") || "";
+  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(`${ts}.${raw}`).digest("hex");
+  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) {
+    return res.status(403).send("bad signature");
+  }
+
+  handleEvent(event);
+  res.send("ok");
+});
+```
+
+</CodeGroup>
+
 ---
 
 ## Посмотреть журнал доставок
 
 Последние доставки (до 50) с их статусом и последней ошибкой:
 
-```python
+<CodeGroup>
+
+```python Python
 d = call("/v1/webhooks/deliveries", {})["result"]["deliveries"]
 for x in d:
     print(x["event_type"], x["status"], x["attempts"], x["last_error"])
 ```
+
+```js Node.js
+const d = (await call("/v1/webhooks/deliveries", {})).result.deliveries;
+for (const x of d) {
+  console.log(x.event_type, x.status, x.attempts, x.last_error);
+}
+```
+
+</CodeGroup>
 
 Статусы доставки:
 
@@ -89,9 +142,17 @@ for x in d:
 Если доставка ушла в `dead` (например, ваш сервер лежал), поставьте текущий вебхук платежа в очередь
 заново:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/resend", {"order_id": "order-1001"})
 ```
+
+```js Node.js
+await call("/v1/payment/resend", { order_id: "order-1001" });
+```
+
+</CodeGroup>
 
 Событие соответствует **текущему** статусу платежа. Помните: переотправка создаёт **ещё одну**
 доставку — обработчик должен быть идемпотентен (дедуп по `uuid` + `status`). См.
@@ -113,6 +174,10 @@ call("/v1/payment/resend", {"order_id": "order-1001"})
 
 ## Связанные страницы
 
-- [Тестовые вебхуки](/reference/webhooks-test) · [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries)
-- [`POST /v1/payment/resend`](/reference/payment-resend) · [Настройка вебхуков](/guides/webhooks-setup)
-- [Объект вебхука](/reference/webhook-object)
+<CardGroup cols={2}>
+  <Card title="Тестовые вебхуки" href="/reference/webhooks-test" icon="arrow-right" horizontal />
+  <Card title="POST /v1/webhooks/deliveries" href="/reference/webhooks-deliveries" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/resend" href="/reference/payment-resend" icon="arrow-right" horizontal />
+  <Card title="Настройка вебхуков" href="/guides/webhooks-setup" icon="arrow-right" horizontal />
+  <Card title="Объект вебхука" href="/reference/webhook-object" icon="arrow-right" horizontal />
+</CardGroup>

@@ -257,6 +257,13 @@ await call("/v1/split/rule/delete", { rule_id: "e2a91c47-3f80-4b6d-a512-7c0d9e8f
 
 ## Связанные страницы
 
-- [`POST /v1/split/config/get · /set`](/reference/split-config) — окно удержания `refund_hold_hours` и **почему** оно нужно.
-- [`POST /v1/payment/refund`](/reference/payment-refund) — как возврат взаимодействует со сплитами.
-- [`POST /v1/balance`](/reference/balance) · [`POST /v1/auto-withdraw/*`](/reference/auto-withdraw)
+<CardGroup cols={2}>
+  <Card title="POST /v1/split/config/get · /set" href="/reference/split-config" icon="arrow-right" horizontal>
+    окно удержания `refund_hold_hours` и **почему** оно нужно.
+  </Card>
+  <Card title="POST /v1/payment/refund" href="/reference/payment-refund" icon="arrow-right" horizontal>
+    как возврат взаимодействует со сплитами.
+  </Card>
+  <Card title="POST /v1/balance" href="/reference/balance" icon="arrow-right" horizontal />
+  <Card title="POST /v1/auto-withdraw/*" href="/reference/auto-withdraw" icon="arrow-right" horizontal />
+</CardGroup>

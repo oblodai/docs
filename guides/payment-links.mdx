@@ -35,7 +35,9 @@ icon: "link"
 
 ## Шаг 1. Создать ссылку
 
-```python
+<CodeGroup>
+
+```python Python
 link = call("/v1/payment/link", {
     "title": "Подписка Pro",
     "description": "Доступ на 30 дней",
@@ -48,6 +50,22 @@ link = call("/v1/payment/link", {
 print(link["link_id"])            # для управления ссылкой
 print(link["url"])                # ЭТО и даёте покупателю
 ```
+
+```js Node.js
+const link = (await call("/v1/payment/link", {
+  title: "Подписка Pro",
+  description: "Доступ на 30 дней",
+  amount_mode: "fixed",
+  currency: "USD",            // валюта ЦЕНЫ
+  amount_fixed: "10.00",
+  expires_in: 0,              // 0 = бессрочная
+})).result;
+
+console.log(link.link_id);    // для управления ссылкой
+console.log(link.url);        // ЭТО и даёте покупателю
+```
+
+</CodeGroup>
 
 Всё. `url` можно вешать на кнопку, отправлять в чат, печатать в QR‑коде.
 
@@ -65,7 +83,9 @@ print(link["url"])                # ЭТО и даёте покупателю
 
 ### `fixed` — сумма зафиксирована
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/link", {
     "title": "Курс по Python",
     "amount_mode": "fixed",
@@ -75,11 +95,25 @@ call("/v1/payment/link", {
 })
 ```
 
+```js Node.js
+await call("/v1/payment/link", {
+  title: "Курс по Python",
+  amount_mode: "fixed",
+  currency: "USD",
+  amount_fixed: "49.00",
+  expires_in: 0,
+});
+```
+
+</CodeGroup>
+
 Покупатель сумму не вводит и не меняет — он видит 49 USD и платит их.
 
 ### `open` — сумму вводит покупатель (донаты)
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/link", {
     "title": "Поддержать проект",
     "amount_mode": "open",
@@ -89,13 +123,27 @@ call("/v1/payment/link", {
 })
 ```
 
+```js Node.js
+await call("/v1/payment/link", {
+  title: "Поддержать проект",
+  amount_mode: "open",
+  currency: "USD",
+  amount_min: "1.00",     // необязательный ПОЛ: меньше $1 не примем
+  expires_in: 0,
+});
+```
+
+</CodeGroup>
+
 Поле ввода суммы на странице оплаты пустое — сколько напишет плательщик, столько и заплатит. Верхней
 границы нет. `amount_min` — не обязателен, но полезен: он отсекает копеечные платежи, которые целиком
 съест комиссия сети.
 
 ### `range` — сумма в диапазоне
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/link", {
     "title": "Пополнение баланса",
     "amount_mode": "range",
@@ -106,6 +154,19 @@ call("/v1/payment/link", {
 })
 ```
 
+```js Node.js
+await call("/v1/payment/link", {
+  title: "Пополнение баланса",
+  amount_mode: "range",
+  currency: "USD",
+  amount_min: "5.00",
+  amount_max: "1000.00",
+  expires_in: 0,
+});
+```
+
+</CodeGroup>
+
 Покупатель вводит сумму, но шлюз проверит её по границам: меньше `amount_min` → `paylink.below_min`,
 больше `amount_max` → `paylink.above_max`.
 
@@ -115,7 +176,9 @@ call("/v1/payment/link", {
 фиатов (EUR, GBP, RUB, UAH, PLN, CZK, TRY…) или монета (`USDT`, `BTC`). Не путайте с валютой
 **расчёта** — тем, чем реально платят.
 
-```python
+<CodeGroup>
+
+```python Python
 # Донат «от €5», бессрочный
 call("/v1/payment/link", {"title": "Поддержать проект", "amount_mode": "open",
                           "currency": "EUR", "amount_min": "5", "expires_in": 0})
@@ -124,6 +187,18 @@ call("/v1/payment/link", {"title": "Поддержать проект", "amount_
 call("/v1/payment/link", {"title": "Консультация", "amount_mode": "fixed",
                           "currency": "RUB", "amount_fixed": "5000", "expires_in": 0})
 ```
+
+```js Node.js
+// Донат «от €5», бессрочный
+await call("/v1/payment/link", { title: "Поддержать проект", amount_mode: "open",
+                                 currency: "EUR", amount_min: "5", expires_in: 0 });
+
+// Фиксированные 5000 ₽
+await call("/v1/payment/link", { title: "Консультация", amount_mode: "fixed",
+                                 currency: "RUB", amount_fixed: "5000", expires_in: 0 });
+```
+
+</CodeGroup>
 
 **Тенге, сом и сум не поддерживаются** — попытка вернёт `400 paylink.unknown_currency`. Полный список и
 причина — [Три режима создания счёта](/guides/payment-modes#цену-можно-назначать-не-только-в-долларах).
@@ -141,7 +216,9 @@ call("/v1/payment/link", {"title": "Консультация", "amount_mode": "f
 
 Второе решение: **закреплять ли валюту расчёта**.
 
-```python
+<CodeGroup>
+
+```python Python
 # Вариант А. Покупатель выбирает сам (pinned_* не заданы)
 call("/v1/payment/link", {
     "title": "Донат", "amount_mode": "open", "currency": "USD", "expires_in": 0,
@@ -159,6 +236,26 @@ call("/v1/payment/link", {
 # → выбора нет: платят USDT в сети Tron
 ```
 
+```js Node.js
+// Вариант А. Покупатель выбирает сам (pinned_* не заданы)
+await call("/v1/payment/link", {
+  title: "Донат", amount_mode: "open", currency: "USD", expires_in: 0,
+});
+// → на странице оплаты покупатель сам выбирает: USDT/tron, BTC/bitcoin, TRX/tron…
+
+// Вариант Б. Вы закрепили монету и сеть
+await call("/v1/payment/link", {
+  title: "Подписка Pro", amount_mode: "fixed",
+  currency: "USD", amount_fixed: "10.00",
+  pinned_currency: "USDT",     // валюта расчёта
+  pinned_network: "tron",      // сеть
+  expires_in: 0,
+});
+// → выбора нет: платят USDT в сети Tron
+```
+
+</CodeGroup>
+
 Не закрепляйте без нужды — чем шире выбор, тем выше конверсия. Закрепление имеет смысл, если вы
 сознательно принимаете только один актив (например, только USDT в дешёвой сети, чтобы не разбирать
 зоопарк монет на балансе).
@@ -167,10 +264,19 @@ call("/v1/payment/link", {
 
 ## Шаг 4. Срок жизни
 
-```python
+<CodeGroup>
+
+```python Python
 "expires_in": 0        # БЕССРОЧНАЯ — работает, пока вы её не выключите
 "expires_in": 86400    # живёт сутки с момента создания (секунды)
 ```
+
+```js Node.js
+expires_in: 0        // БЕССРОЧНАЯ — работает, пока вы её не выключите
+expires_in: 86400    // живёт сутки с момента создания (секунды)
+```
+
+</CodeGroup>
 
 - **Бессрочная (`0`)** — для донатов, кнопки «Оплатить» на сайте, ссылки в профиле. Такая ссылка
   принимает платежи многократно, от разных людей.
@@ -211,13 +317,25 @@ call("/v1/payment/link", {
 
 **Нет бэкенда** — смотрите платежи по ссылке в кабинете или запрашивайте их:
 
-```python
+<CodeGroup>
+
+```python Python
 info = call("/v1/payment/link/info", {
     "link_id": "lnk_…",
     "limit": 50, "offset": 0,
 })["result"]
 # в ответе — сама ссылка и список платежей, созданных по ней
 ```
+
+```js Node.js
+const info = (await call("/v1/payment/link/info", {
+  link_id: "lnk_…",
+  limit: 50, offset: 0,
+})).result;
+// в ответе — сама ссылка и список платежей, созданных по ней
+```
+
+</CodeGroup>
 
 Хотите **чек покупателю на почту** — на странице оплаты есть поле email, и `checkout` принимает
 `payer_email`. Чек уйдёт автоматически после оплаты. → [Счёт и чек на почту](/guides/email-invoices)
@@ -226,7 +344,9 @@ info = call("/v1/payment/link/info", {
 
 ## Управление ссылками
 
-```python
+<CodeGroup>
+
+```python Python
 # Список всех ссылок
 call("/v1/payment/link/list", {"limit": 50, "offset": 0})
 
@@ -236,6 +356,19 @@ call("/v1/payment/link/toggle", {"link_id": "lnk_…", "active": False})
 # Включить обратно
 call("/v1/payment/link/toggle", {"link_id": "lnk_…", "active": True})
 ```
+
+```js Node.js
+// Список всех ссылок
+await call("/v1/payment/link/list", { limit: 50, offset: 0 });
+
+// Выключить ссылку (перестанет принимать платежи)
+await call("/v1/payment/link/toggle", { link_id: "lnk_…", active: false });
+
+// Включить обратно
+await call("/v1/payment/link/toggle", { link_id: "lnk_…", active: true });
+```
+
+</CodeGroup>
 
 Выключение **обратимо** и не трогает уже созданные по ссылке платежи — они живут своей жизнью. Это
 основной способ «закрыть» бессрочную ссылку: удалять её не нужно.
@@ -269,9 +402,21 @@ call("/v1/payment/link/toggle", {"link_id": "lnk_…", "active": True})
 
 ## Связанные страницы
 
-- [`POST /v1/payment/link` · `/list` · `/info` · `/toggle`](/reference/payment-link)
-- [`GET /v1/link/{id}` · `POST /v1/link/{id}/checkout`](/reference/link-public) — публичные методы.
-- [Регистрация и ключи](/guides/get-keys) — что делать, если сервера нет.
-- [Счёт и чек на почту](/guides/email-invoices) — автоматический чек плательщику.
-- [Три режима создания счёта](/guides/payment-modes) — цена vs валюта расчёта.
-- [Приём первого платежа](/guides/accept-first-payment) — обычный счёт, когда бэкенд есть.
+<CardGroup cols={2}>
+  <Card title="POST /v1/payment/link · /list · /info · /toggle" href="/reference/payment-link" icon="arrow-right" horizontal />
+  <Card title="GET /v1/link/{id} · POST /v1/link/{id}/checkout" href="/reference/link-public" icon="arrow-right" horizontal>
+    публичные методы.
+  </Card>
+  <Card title="Регистрация и ключи" href="/guides/get-keys" icon="arrow-right" horizontal>
+    что делать, если сервера нет.
+  </Card>
+  <Card title="Счёт и чек на почту" href="/guides/email-invoices" icon="arrow-right" horizontal>
+    автоматический чек плательщику.
+  </Card>
+  <Card title="Три режима создания счёта" href="/guides/payment-modes" icon="arrow-right" horizontal>
+    цена vs валюта расчёта.
+  </Card>
+  <Card title="Приём первого платежа" href="/guides/accept-first-payment" icon="arrow-right" horizontal>
+    обычный счёт, когда бэкенд есть.
+  </Card>
+</CardGroup>

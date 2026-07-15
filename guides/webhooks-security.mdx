@@ -84,7 +84,9 @@ function verifyFresh(secret, tsHeader, rawBody, sigHeader) {
 [`/v1/payment/resend`](/reference/payment-resend) или ретраев). Дедуплицируйте по паре
 `uuid` + `status` и обрабатывайте повтор как no-op.
 
-```python
+<CodeGroup>
+
+```python Python
 def handle(event):
     key = (event["uuid"], event["status"])
     if seen(key):            # ваша БД/кэш
@@ -92,6 +94,19 @@ def handle(event):
     process(event)
     mark_seen(key)
 ```
+
+```js Node.js
+function handle(event) {
+  const key = `${event.uuid}:${event.status}`;
+  if (seen(key)) {           // ваша БД/кэш
+    return;                  // уже обработано — идемпотентный no-op
+  }
+  processEvent(event);
+  markSeen(key);
+}
+```
+
+</CodeGroup>
 
 Ключ должен жить в **надёжном** хранилище (БД), а не в памяти процесса — иначе после рестарта дедуп
 сбросится. Порядок доставок не гарантирован: опирайтесь на `status`/`is_final`, а не на очерёдность.
@@ -104,7 +119,9 @@ def handle(event):
 разблокировка услуги) — не единственный источник правды. Перед необратимой выдачей **перепроверьте
 состояние авторитетным запросом**:
 
-```python
+<CodeGroup>
+
+```python Python
 def on_paid_webhook(event):
     # не доверяем телу вебхука на 100% для дорогой операции —
     # спрашиваем актуальный статус у API
@@ -112,6 +129,19 @@ def on_paid_webhook(event):
     if info["payment_status"] in ("paid", "paid_over"):
         fulfil_order(info["order_id"])   # идемпотентно
 ```
+
+```js Node.js
+async function onPaidWebhook(event) {
+  // не доверяем телу вебхука на 100% для дорогой операции —
+  // спрашиваем актуальный статус у API
+  const info = (await call("/v1/payment/info", { uuid: event.uuid })).result;
+  if (["paid", "paid_over"].includes(info.payment_status)) {
+    await fulfilOrder(info.order_id);   // идемпотентно
+  }
+}
+```
+
+</CodeGroup>
 
 Это закрывает случаи, когда состояние изменилось между отправкой вебхука и его обработкой у вас, и
 добавляет второй независимый барьер к проверке подписи. Для мелких/некритичных событий такой шаг можно
@@ -152,6 +182,10 @@ def on_paid_webhook(event):
 
 ## Связанные страницы
 
-- [Настройка вебхуков](/guides/webhooks-setup) · [Объект вебхука](/reference/webhook-object)
-- [Отладка вебхуков](/guides/webhooks-debug) · [Рецепт устойчивого клиента](/guides/resilient-client)
-- [Безопасность в проде](/guides/production-security)
+<CardGroup cols={2}>
+  <Card title="Настройка вебхуков" href="/guides/webhooks-setup" icon="arrow-right" horizontal />
+  <Card title="Объект вебхука" href="/reference/webhook-object" icon="arrow-right" horizontal />
+  <Card title="Отладка вебхуков" href="/guides/webhooks-debug" icon="arrow-right" horizontal />
+  <Card title="Рецепт устойчивого клиента" href="/guides/resilient-client" icon="arrow-right" horizontal />
+  <Card title="Безопасность в проде" href="/guides/production-security" icon="arrow-right" horizontal />
+</CardGroup>

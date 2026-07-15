@@ -18,9 +18,17 @@ icon: "rotate-left"
 
 Поэтому минимальный полный возврат выглядит так:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/refund", {"order_id": "order-1"})   # и всё
 ```
+
+```js Node.js
+await call("/v1/payment/refund", { order_id: "order-1" });   // и всё
+```
+
+</CodeGroup>
 
 Ни `address`, ни `amount` не нужны: вернётся вся полученная сумма на адрес плательщика.
 
@@ -49,20 +57,41 @@ call("/v1/payment/refund", {"order_id": "order-1"})   # и всё
 
 Не указывайте `amount` — вернётся вся полученная сумма:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/refund", {
     "order_id": "order-1",       # или uuid платежа
 })
 ```
 
+```js Node.js
+await call("/v1/payment/refund", {
+  order_id: "order-1",           // или uuid платежа
+});
+```
+
+</CodeGroup>
+
 Для Bitcoin/UTXO — с адресом:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/refund", {
     "order_id": "order-btc-1",
     "address": "bc1q...",        # для UTXO-сетей обязателен
 })
 ```
+
+```js Node.js
+await call("/v1/payment/refund", {
+  order_id: "order-btc-1",
+  address: "bc1q...",            // для UTXO-сетей обязателен
+});
+```
+
+</CodeGroup>
 
 ---
 
@@ -70,12 +99,23 @@ call("/v1/payment/refund", {
 
 Укажите `amount` — вернётся только эта часть:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/refund", {
     "order_id": "order-1",
     "amount": "10",              # частичная сумма
 })
 ```
+
+```js Node.js
+await call("/v1/payment/refund", {
+  order_id: "order-1",
+  amount: "10",                  // частичная сумма
+});
+```
+
+</CodeGroup>
 
 Суммарно по платежу **нельзя вернуть больше оплаченного**. Несколько частичных возвратов складываются.
 
@@ -120,13 +160,26 @@ call("/v1/payment/refund", {
 [`POST /v1/payment/info`](/reference/payment-info) возвращает состояние возвратов прямо в объекте
 платежа:
 
-```python
+<CodeGroup>
+
+```python Python
 p = call("/v1/payment/info", {"order_id": "order-1"})["result"]
 
 print(p["refund_status"])   # none | partial | full
 for r in p["refunds"]:      # список всех возвратов по этому платежу
     print(r)
 ```
+
+```js Node.js
+const p = (await call("/v1/payment/info", { order_id: "order-1" })).result;
+
+console.log(p.refund_status);   // none | partial | full
+for (const r of p.refunds) {    // список всех возвратов по этому платежу
+  console.log(r);
+}
+```
+
+</CodeGroup>
 
 | `refund_status` | Значение |
 |---|---|
@@ -184,8 +237,16 @@ for r in p["refunds"]:      # список всех возвратов по эт
 
 ## Связанные страницы
 
-- [`POST /v1/payment/refund`](/reference/payment-refund) · [Объект платежа](/reference/payment-object) — `payer_address`, `refunds[]`, `refund_status`.
-- [Кто платит комиссию возврата](/reference/payout-refund-fee-config)
-- [Массовые операции](/guides/batch-operations) — `POST /v1/refund/batch`, до 5000 возвратов.
-- [Сплит‑платежи](/guides/split-payments) — почему возврат влияет на расчёты с партнёрами.
-- [Недоплата, переплата и автовозврат](/guides/under-overpayment) · [Первая выплата](/guides/first-payout)
+<CardGroup cols={2}>
+  <Card title="POST /v1/payment/refund" href="/reference/payment-refund" icon="arrow-right" horizontal />
+  <Card title="Объект платежа" href="/reference/payment-object" icon="arrow-right" horizontal />
+  <Card title="Кто платит комиссию возврата" href="/reference/payout-refund-fee-config" icon="arrow-right" horizontal />
+  <Card title="Массовые операции" href="/guides/batch-operations" icon="arrow-right" horizontal>
+    `POST /v1/refund/batch`, до 5000 возвратов.
+  </Card>
+  <Card title="Сплит‑платежи" href="/guides/split-payments" icon="arrow-right" horizontal>
+    почему возврат влияет на расчёты с партнёрами.
+  </Card>
+  <Card title="Недоплата, переплата и автовозврат" href="/guides/under-overpayment" icon="arrow-right" horizontal />
+  <Card title="Первая выплата" href="/guides/first-payout" icon="arrow-right" horizontal />
+</CardGroup>

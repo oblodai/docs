@@ -28,7 +28,9 @@ icon: "circle-dollar-to-slot"
 
 ## Шаг 1. Создать счёт
 
-```python
+<CodeGroup>
+
+```python Python
 payment = call("/v1/payment", {
     "amount": "10",
     "currency": "USD",         # валюта ЦЕНЫ: USD, EUR, RUB… или монета
@@ -39,6 +41,21 @@ payment = call("/v1/payment", {
     "payer_email": "buyer@example.com",   # необязательно: включает АВТОЧЕК после оплаты
 }, idempotency_key=str(uuid.uuid4()))     # заголовок Idempotency-Key — один на действие
 ```
+
+```js Node.js
+const payment = await call("/v1/payment", {
+  amount: "10",
+  currency: "USD",         // валюта ЦЕНЫ: USD, EUR, RUB… или монета
+  order_id: "order-1",     // ваш бизнес-ключ — задавайте всегда, он дедуплицирует
+  to_currency: "USDT",
+  network: "tron",
+  lifetime: 3600,
+  payer_email: "buyer@example.com",  // необязательно: включает АВТОЧЕК после оплаты
+  // заголовок Idempotency-Key — один на действие
+}, { idempotencyKey: crypto.randomUUID() });
+```
+
+</CodeGroup>
 
 Про два механизма защиты от дублей (`Idempotency-Key` + `order_id`) — [Устойчивый
 клиент](/guides/resilient-client#главный-принцип). Про авточек на `payer_email` — [Счёт и чек на

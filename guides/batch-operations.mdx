@@ -50,7 +50,9 @@ icon: "boxes-stacked"
 | `POST /v1/refund/batch` | `refunds` | [`POST /v1/payment/refund`](/reference/payment-refund) |
 | `POST /v1/payout/batch` | `payouts` | [`POST /v1/payout`](/reference/payout-create) |
 
-```python
+<CodeGroup>
+
+```python Python
 resp = call("/v1/payout/batch", {
     "payouts": [
         {"amount": "25", "currency": "USDT", "network": "tron", "address": "TXY...", "order_id": "p-1"},
@@ -65,17 +67,45 @@ print(resp)
 # {"batch_id": "b3f1…", "kind": "payout", "count": 2, "status": "pending"}
 ```
 
+```js Node.js
+const resp = (await call("/v1/payout/batch", {
+  payouts: [
+    { amount: "25", currency: "USDT", network: "tron", address: "TXY...", order_id: "p-1" },
+    { amount: "10", currency: "USDT", network: "tron", address: "TZZ...", order_id: "p-2" },
+    // … до 5000 элементов
+  ],
+  on_error: "continue",
+})).result;
+
+const batchId = resp.batch_id;
+console.log(resp);
+// {"batch_id": "b3f1…", "kind": "payout", "count": 2, "status": "pending"}
+```
+
+</CodeGroup>
+
 Сохраните `batch_id` — без него результаты не забрать.
 
 Элементы батча платежей поддерживают **всё то же**, что и одиночный `POST /v1/payment`, — включая цену
 в фиате, причём в разных валютах внутри одного батча:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/batch", {"payments": [
     {"amount": "5000", "currency": "RUB", "order_id": "o-1", "to_currency": "USDT", "network": "tron"},
     {"amount": "100",  "currency": "EUR", "order_id": "o-2", "to_currency": "USDT", "network": "tron"},
 ]})
 ```
+
+```js Node.js
+await call("/v1/payment/batch", { payments: [
+  { amount: "5000", currency: "RUB", order_id: "o-1", to_currency: "USDT", network: "tron" },
+  { amount: "100",  currency: "EUR", order_id: "o-2", to_currency: "USDT", network: "tron" },
+]});
+```
+
+</CodeGroup>
 
 → [Три режима создания счёта](/guides/payment-modes#цену-можно-назначать-не-только-в-долларах)
 
@@ -132,7 +162,9 @@ call("/v1/payment/batch", {"payments": [
 
 ## Шаг 2. Опрашивать статус
 
-```python
+<CodeGroup>
+
+```python Python
 import time
 
 while True:
@@ -141,6 +173,17 @@ while True:
         break
     time.sleep(5)        # не долбите чаще, чем нужно, — это тоже запросы
 ```
+
+```js Node.js
+let info;
+while (true) {
+  info = (await call("/v1/batch/info", { batch_id: batchId, limit: 100, offset: 0 })).result;
+  if (info.status === "completed") break;
+  await new Promise((r) => setTimeout(r, 5000));  // не долбите чаще, чем нужно, — это тоже запросы
+}
+```
+
+</CodeGroup>
 
 Статусы батча: `pending` (принят, ещё не начали) → `processing` (идёт обработка) → `completed`
 (обработаны все элементы, которые должны были обработаться).
@@ -188,9 +231,17 @@ while True:
 получает `error` — с текстом `"skipped: batch stopped after an earlier failure"`. Отличить его от
 настоящего отказа можно только по этому тексту:
 
-```python
+<CodeGroup>
+
+```python Python
 SKIPPED = "skipped: batch stopped after an earlier failure"
 ```
+
+```js Node.js
+const SKIPPED = "skipped: batch stopped after an earlier failure";
+```
+
+</CodeGroup>
 
 <Note>
   **Ветвитесь по `status`, а не по тексту `error`.** Текст — это `message`, а не код ошибки: он
@@ -200,7 +251,9 @@ SKIPPED = "skipped: batch stopped after an earlier failure"
 
 `items` **постраничные** — их может быть 5000. Листайте через `limit`/`offset`:
 
-```python
+<CodeGroup>
+
+```python Python
 def batch_items(batch_id, page=100):
     offset, out = 0, []
     while True:
@@ -224,6 +277,37 @@ for item in items:
     else:
         mark_failed(item["order_id"], item["error"])                 # ваш код
 ```
+
+```js Node.js
+async function batchItems(batchId, page = 100) {
+  let offset = 0;
+  const out = [];
+  while (true) {
+    const info = (await call("/v1/batch/info",
+      { batch_id: batchId, limit: page, offset })).result;
+    out.push(...info.items);
+    offset += page;
+    if (offset >= info.total) return [info, out];
+  }
+}
+
+const [info, items] = await batchItems(batchId);
+console.log(`${info.succeeded} ок, ${info.failed} с ошибкой`);
+
+const SKIPPED = "skipped: batch stopped after an earlier failure";
+
+for (const item of items) {
+  if (item.status === "done") {
+    await savePayoutUuid(item.order_id, item.result.uuid);   // ваш код
+  } else if (item.error === SKIPPED) {   // до элемента не дошли (on_error: "stop")
+    await requeue(item.order_id);        // ваш код: отправить в следующем батче
+  } else {
+    await markFailed(item.order_id, item.error);             // ваш код
+  }
+}
+```
+
+</CodeGroup>
 
 ### Node.js: полный цикл
 
@@ -329,9 +413,17 @@ for (const item of items) {
 
 ## Связанные страницы
 
-- [`POST /v1/payment/batch` · `/v1/refund/batch` · `/v1/payout/batch`](/reference/payment-batch) ·
-  [`POST /v1/batch/info`](/reference/batch-info)
-- [Массовые выплаты](/guides/mass-payouts) — легаси `/v1/payout/mass` и когда он ещё уместен.
-- [Ограничение частоты](/reference/basics-ratelimit) — почему батч решает проблему `429`.
-- [Идемпотентность](/reference/basics-idempotency) · [Рецепт устойчивого клиента](/guides/resilient-client)
-- [Первая выплата](/guides/first-payout) · [Возвраты платежей](/guides/refunds)
+<CardGroup cols={2}>
+  <Card title="Батч: платежи, возвраты, выплаты" href="/reference/payment-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/batch/info" href="/reference/batch-info" icon="arrow-right" horizontal />
+  <Card title="Массовые выплаты (легаси)" href="/guides/mass-payouts" icon="arrow-right" horizontal>
+    `/v1/payout/mass` и когда он ещё уместен.
+  </Card>
+  <Card title="Ограничение частоты" href="/reference/basics-ratelimit" icon="arrow-right" horizontal>
+    Почему батч решает проблему `429`.
+  </Card>
+  <Card title="Идемпотентность" href="/reference/basics-idempotency" icon="arrow-right" horizontal />
+  <Card title="Рецепт устойчивого клиента" href="/guides/resilient-client" icon="arrow-right" horizontal />
+  <Card title="Первая выплата" href="/guides/first-payout" icon="arrow-right" horizontal />
+  <Card title="Возвраты платежей" href="/guides/refunds" icon="arrow-right" horizontal />
+</CardGroup>

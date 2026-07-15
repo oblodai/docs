@@ -244,7 +244,17 @@ sidebarTitle: "Объект Payment"
 
 ## Связанные страницы
 
-- [`POST /v1/payment`](/reference/payment-create) — создание счёта.
-- [`POST /v1/payment/info`](/reference/payment-info) — получить актуальный объект (с `refunds[]`).
-- [`POST /v1/payment/refund`](/reference/payment-refund) — возврат; по умолчанию идёт на `payer_address`.
-- [Жизненный цикл платежа](/guides/accept-first-payment) — как это выглядит в потоке приёма.
+<CardGroup cols={2}>
+  <Card title="POST /v1/payment" href="/reference/payment-create" icon="arrow-right" horizontal>
+    создание счёта.
+  </Card>
+  <Card title="POST /v1/payment/info" href="/reference/payment-info" icon="arrow-right" horizontal>
+    получить актуальный объект (с `refunds[]`).
+  </Card>
+  <Card title="POST /v1/payment/refund" href="/reference/payment-refund" icon="arrow-right" horizontal>
+    возврат; по умолчанию идёт на `payer_address`.
+  </Card>
+  <Card title="Жизненный цикл платежа" href="/guides/accept-first-payment" icon="arrow-right" horizontal>
+    как это выглядит в потоке приёма.
+  </Card>
+</CardGroup>

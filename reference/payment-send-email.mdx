@@ -144,6 +144,13 @@ await call("/v1/payment/send-email", { uuid: "8b1d7d2e-…", email: "buyer@examp
 
 ## Связанные страницы
 
-- [`POST /v1/payment`](/reference/payment-create) — где задаётся `payer_email` (он же включает автоматический чек).
-- [`POST /v1/payment/info`](/reference/payment-info) · [`GET /v1/pay/{id}`](/reference/pay-get)
-- [`POST /v1/link/{id}/checkout`](/reference/link-public) — покупатель вводит email сам.
+<CardGroup cols={2}>
+  <Card title="POST /v1/payment" href="/reference/payment-create" icon="arrow-right" horizontal>
+    где задаётся `payer_email` (он же включает автоматический чек).
+  </Card>
+  <Card title="POST /v1/payment/info" href="/reference/payment-info" icon="arrow-right" horizontal />
+  <Card title="GET /v1/pay/{id}" href="/reference/pay-get" icon="arrow-right" horizontal />
+  <Card title="POST /v1/link/{id}/checkout" href="/reference/link-public" icon="arrow-right" horizontal>
+    покупатель вводит email сам.
+  </Card>
+</CardGroup>

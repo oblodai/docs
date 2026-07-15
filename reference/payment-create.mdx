@@ -268,11 +268,22 @@ await call("/v1/payment", {
 
 ## Связанные страницы
 
-- [Объект платежа](/reference/payment-object) · [`POST /v1/payment/info`](/reference/payment-info)
-- [Три режима создания счёта](/guides/payment-modes)
-- [Недоплата, переплата и автовозврат](/guides/under-overpayment)
-- [Допуск недоплаты](/reference/payment-accuracy) · [Автовозврат](/reference/payment-autorefund)
-- [`POST /v1/payment/batch`](/reference/payment-batch) — много счетов одним запросом.
-- [`POST /v1/payment/link`](/reference/payment-link) — многоразовая ссылка оплаты (в т. ч. без бэкенда).
-- [`POST /v1/payment/send-email`](/reference/payment-send-email) — отправить счёт письмом.
-- [Идемпотентность](/reference/basics-idempotency) · [Форматы сумм и денег](/reference/basics-money)
+<CardGroup cols={2}>
+  <Card title="Объект платежа" href="/reference/payment-object" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/info" href="/reference/payment-info" icon="arrow-right" horizontal />
+  <Card title="Три режима создания счёта" href="/guides/payment-modes" icon="arrow-right" horizontal />
+  <Card title="Недоплата, переплата и автовозврат" href="/guides/under-overpayment" icon="arrow-right" horizontal />
+  <Card title="Допуск недоплаты" href="/reference/payment-accuracy" icon="arrow-right" horizontal />
+  <Card title="Автовозврат" href="/reference/payment-autorefund" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/batch" href="/reference/payment-batch" icon="arrow-right" horizontal>
+    много счетов одним запросом.
+  </Card>
+  <Card title="POST /v1/payment/link" href="/reference/payment-link" icon="arrow-right" horizontal>
+    многоразовая ссылка оплаты (в т. ч. без бэкенда).
+  </Card>
+  <Card title="POST /v1/payment/send-email" href="/reference/payment-send-email" icon="arrow-right" horizontal>
+    отправить счёт письмом.
+  </Card>
+  <Card title="Идемпотентность" href="/reference/basics-idempotency" icon="arrow-right" horizontal />
+  <Card title="Форматы сумм и денег" href="/reference/basics-money" icon="arrow-right" horizontal />
+</CardGroup>

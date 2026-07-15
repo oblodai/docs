@@ -129,6 +129,11 @@ await call("/v1/payment/info", { order_id: "order-1" });
 
 ## Связанные страницы
 
-- [Объект платежа](/reference/payment-object) · [`POST /v1/payment`](/reference/payment-create)
-- [`POST /v1/payment/refund`](/reference/payment-refund) — возврат (адрес по умолчанию — `payer_address`).
-- [Вебхуки](/reference/webhook-object)
+<CardGroup cols={2}>
+  <Card title="Объект платежа" href="/reference/payment-object" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment" href="/reference/payment-create" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/refund" href="/reference/payment-refund" icon="arrow-right" horizontal>
+    возврат (адрес по умолчанию — `payer_address`).
+  </Card>
+  <Card title="Вебхуки" href="/reference/webhook-object" icon="arrow-right" horizontal />
+</CardGroup>

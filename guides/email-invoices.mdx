@@ -17,13 +17,25 @@ icon: "envelope"
 
 Это самое дешёвое улучшение вашей интеграции: **одно поле**.
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {
     "amount": "10", "currency": "USD", "order_id": "order-1",
     "to_currency": "USDT", "network": "tron",
     "payer_email": "buyer@example.com",   # ← этого достаточно
 })
 ```
+
+```js Node.js
+await call("/v1/payment", {
+  amount: "10", currency: "USD", order_id: "order-1",
+  to_currency: "USDT", network: "tron",
+  payer_email: "buyer@example.com",   // ← этого достаточно
+});
+```
+
+</CodeGroup>
 
 Когда платёж перейдёт в оплаченный статус, на этот адрес **автоматически** уйдёт чек. Ничего больше
 вызывать не нужно.
@@ -48,7 +60,9 @@ call("/v1/payment", {
 
 Платёж при этом должен уже существовать: письмо отправляется **по** платежу, а не вместо него.
 
-```python
+<CodeGroup>
+
+```python Python
 # 1. Создаём счёт как обычно
 inv = call("/v1/payment", {
     "amount": "250", "currency": "USD", "order_id": "invoice-42",
@@ -59,24 +73,57 @@ inv = call("/v1/payment", {
 call("/v1/payment/send-email", {"order_id": "invoice-42"})
 ```
 
+```js Node.js
+// 1. Создаём счёт как обычно
+const inv = (await call("/v1/payment", {
+  amount: "250", currency: "USD", order_id: "invoice-42",
+  payer_email: "client@example.com",
+})).result;
+
+// 2. Отправляем его клиенту письмом
+await call("/v1/payment/send-email", { order_id: "invoice-42" });
+```
+
+</CodeGroup>
+
 Идентифицировать платёж можно двумя способами — что удобнее:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/send-email", {"uuid": inv["uuid"]})        # по uuid платежа
 call("/v1/payment/send-email", {"order_id": "invoice-42"})   # по вашему order_id
 ```
+
+```js Node.js
+await call("/v1/payment/send-email", { uuid: inv.uuid });          // по uuid платежа
+await call("/v1/payment/send-email", { order_id: "invoice-42" });  // по вашему order_id
+```
+
+</CodeGroup>
 
 ### Отправить на другой адрес
 
 По умолчанию письмо уходит на `payer_email`, записанный в платеже. Чтобы отправить на другой адрес —
 передайте `email` явно:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/send-email", {
     "order_id": "invoice-42",
     "email": "accounting@client.example",   # например, в бухгалтерию клиента
 })
 ```
+
+```js Node.js
+await call("/v1/payment/send-email", {
+  order_id: "invoice-42",
+  email: "accounting@client.example",   // например, в бухгалтерию клиента
+});
+```
+
+</CodeGroup>
 
 Это же — способ **переслать счёт повторно**, если клиент говорит «письмо не пришло»: просто вызовите
 метод ещё раз.
@@ -126,7 +173,14 @@ call("/v1/payment/send-email", {
 
 ## Связанные страницы
 
-- [`POST /v1/payment/send-email`](/reference/payment-send-email)
-- [`POST /v1/payment`](/reference/payment-create) — поле `payer_email`.
-- [Приём первого платежа](/guides/accept-first-payment) · [Платёжные ссылки](/guides/payment-links)
-- [Настройка вебхуков](/guides/webhooks-setup) — как узнать об оплате достоверно.
+<CardGroup cols={2}>
+  <Card title="POST /v1/payment/send-email" href="/reference/payment-send-email" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment" href="/reference/payment-create" icon="arrow-right" horizontal>
+    поле `payer_email`.
+  </Card>
+  <Card title="Приём первого платежа" href="/guides/accept-first-payment" icon="arrow-right" horizontal />
+  <Card title="Платёжные ссылки" href="/guides/payment-links" icon="arrow-right" horizontal />
+  <Card title="Настройка вебхуков" href="/guides/webhooks-setup" icon="arrow-right" horizontal>
+    как узнать об оплате достоверно.
+  </Card>
+</CardGroup>

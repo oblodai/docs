@@ -42,10 +42,19 @@ icon: "bolt"
 подписанная обёртка запроса (её определение — в [Как подписать запрос](/guides/signing-requests); проще
 взять [SDK](/sdk/overview)):
 
-```python
+<CodeGroup>
+
+```python Python
 resp = call("/v1/webhooks", {"url": "https://shop.example/oblodai/callback"})
 webhook_secret = resp["secret"]   # ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните в секрет-хранилище
 ```
+
+```js Node.js
+const resp = await call("/v1/webhooks", { url: "https://shop.example/oblodai/callback" });
+const webhookSecret = resp.secret;   // ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните в секрет-хранилище
+```
+
+</CodeGroup>
 
 <Note>
   Этот эндпоинт — единственный, кто отвечает `201 Created` **без** конверта `state`/`result`.
@@ -153,7 +162,9 @@ echo 'ok';
 - **Не полагайтесь на порядок доставок.** Опирайтесь на `status`/`is_final`, а не на очерёдность.
 - **Отвечайте `2xx` только после успешной обработки.** Любой не‑2xx — сигнал повторить доставку.
 
-```python
+<CodeGroup>
+
+```python Python
 def handle_event(event):
     key = (event["uuid"], event["status"])
     if already_processed(key):        # ваша дедупликация (БД/кэш)
@@ -166,6 +177,25 @@ def handle_event(event):
         update_payout(event["uuid"], event["status"])
     mark_processed(key)
 ```
+
+```js Node.js
+function handleEvent(event) {
+  const key = `${event.uuid}:${event.status}`;
+  if (alreadyProcessed(key)) {      // ваша дедупликация (БД/кэш)
+    return;
+  }
+  if (event.type === "payment" && event.status === "paid") {
+    markOrderPaid(event.order_id);
+  } else if (event.type === "wallet" && event.status === "paid") {
+    creditClient(event.order_id, event.payment_amount);
+  } else if (event.type === "payout") {
+    updatePayout(event.uuid, event.status);
+  }
+  markProcessed(key);
+}
+```
+
+</CodeGroup>
 
 ---
 
@@ -199,7 +229,12 @@ def handle_event(event):
 
 ## Связанные страницы
 
-- [Объект вебхука и проверка подписи](/reference/webhook-object)
-- [Безопасность вебхуков за пределами подписи](/guides/webhooks-security) — replay‑защита, перепроверка статуса.
-- [`POST /v1/webhooks`](/reference/webhooks-register) · [Отладка вебхуков](/guides/webhooks-debug)
-- [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries)
+<CardGroup cols={2}>
+  <Card title="Объект вебхука и проверка подписи" href="/reference/webhook-object" icon="arrow-right" horizontal />
+  <Card title="Безопасность вебхуков за пределами подписи" href="/guides/webhooks-security" icon="arrow-right" horizontal>
+    replay‑защита, перепроверка статуса.
+  </Card>
+  <Card title="POST /v1/webhooks" href="/reference/webhooks-register" icon="arrow-right" horizontal />
+  <Card title="Отладка вебхуков" href="/guides/webhooks-debug" icon="arrow-right" horizontal />
+  <Card title="POST /v1/webhooks/deliveries" href="/reference/webhooks-deliveries" icon="arrow-right" horizontal />
+</CardGroup>

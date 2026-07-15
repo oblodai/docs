@@ -131,13 +131,27 @@ SDK — это готовая библиотека, которая берёт н
 Всегда возвращается `uuid` платежа — по нему платёж ищется через `payments.info`. Но удобнее искать
 по **своему** `order_id`, поэтому задавайте его сами и **сохраняйте до вызова**:
 
-```python
+<CodeGroup>
+
+```python Python
 import uuid
 order_id = "ord-" + uuid.uuid4().hex
 db.save(order_id=order_id, status="pending")            # сохранили ПЕРЕД отправкой
 payment = client.payments.create(amount="10", currency="USDT", order_id=order_id, network="tron")
 db.update(order_id, payment_uuid=payment.uuid)
 ```
+
+```ts TypeScript
+import { randomUUID } from "node:crypto";
+const orderId = "ord-" + randomUUID();
+await db.save({ orderId, status: "pending" });          // сохранили ПЕРЕД отправкой
+const payment = await client.payments.create({
+  amount: "10", currency: "USDT", order_id: orderId, network: "tron",
+});
+await db.update(orderId, { paymentUuid: payment.uuid });
+```
+
+</CodeGroup>
 
 <Note>
   **Почему «до вызова».** Если `create()` бросит исключение (сеть отвалилась после того, как SDK

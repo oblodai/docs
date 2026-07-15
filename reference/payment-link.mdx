@@ -360,7 +360,14 @@ await call("/v1/payment/link/toggle", { link_id: "5d3f2a71-…", active: false }
 
 ## Связанные страницы
 
-- [`GET /v1/link/{id}` · `POST /v1/link/{id}/checkout`](/reference/link-public) — публичная страница оплаты.
-- [`POST /v1/payment`](/reference/payment-create) · [Объект платежа](/reference/payment-object)
-- [`GET /v1/currencies`](/reference/currencies) — какие валюты цены и какие монеты доступны.
-- [Форматы сумм и денег](/reference/basics-money)
+<CardGroup cols={2}>
+  <Card title="GET /v1/link/{id} · POST /v1/link/{id}/checkout" href="/reference/link-public" icon="arrow-right" horizontal>
+    публичная страница оплаты.
+  </Card>
+  <Card title="POST /v1/payment" href="/reference/payment-create" icon="arrow-right" horizontal />
+  <Card title="Объект платежа" href="/reference/payment-object" icon="arrow-right" horizontal />
+  <Card title="GET /v1/currencies" href="/reference/currencies" icon="arrow-right" horizontal>
+    какие валюты цены и какие монеты доступны.
+  </Card>
+  <Card title="Форматы сумм и денег" href="/reference/basics-money" icon="arrow-right" horizontal />
+</CardGroup>

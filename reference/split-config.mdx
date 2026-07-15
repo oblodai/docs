@@ -164,6 +164,13 @@ await call("/v1/split/config/set", { refund_hold_hours: 48 });
 
 ## Связанные страницы
 
-- [`POST /v1/split/rule` · /rule/list · /rule/delete](/reference/split-rule) — сами правила распределения.
-- [`POST /v1/payment/refund`](/reference/payment-refund) — возврат и его влияние на доли.
-- [`POST /v1/auto-withdraw/*`](/reference/auto-withdraw) · [`POST /v1/vrcs`](/reference/vrcs)
+<CardGroup cols={2}>
+  <Card title="POST /v1/split/rule · /rule/list · /rule/delete" href="/reference/split-rule" icon="arrow-right" horizontal>
+    сами правила распределения.
+  </Card>
+  <Card title="POST /v1/payment/refund" href="/reference/payment-refund" icon="arrow-right" horizontal>
+    возврат и его влияние на доли.
+  </Card>
+  <Card title="POST /v1/auto-withdraw/*" href="/reference/auto-withdraw" icon="arrow-right" horizontal />
+  <Card title="POST /v1/vrcs" href="/reference/vrcs" icon="arrow-right" horizontal />
+</CardGroup>

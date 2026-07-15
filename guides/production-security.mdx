@@ -43,12 +43,23 @@ Oblodai построен на модели «один API‑ключ на вес
 Ограничьте, с каких IP принимаются подписанные запросы. Когда список включён, запрос с чужого IP
 получает `401 auth.ip_not_allowed`, даже если подпись верна.
 
-```python
+<CodeGroup>
+
+```python Python
 # 1) Сначала добавьте IP вашего backend
 call("/v1/api-allowlist/add", {"cidr": "203.0.113.10"})
 # 2) Только потом включайте контроль
 call("/v1/api-allowlist/enable", {"enabled": True})
 ```
+
+```js Node.js
+// 1) Сначала добавьте IP вашего backend
+await call("/v1/api-allowlist/add", { cidr: "203.0.113.10" });
+// 2) Только потом включайте контроль
+await call("/v1/api-allowlist/enable", { enabled: true });
+```
+
+</CodeGroup>
 
 <Note>
   **Порядок важен.** Нельзя включить контроль с пустым списком (`apiallow.empty`) — иначе рискуете
@@ -107,6 +118,9 @@ call("/v1/api-allowlist/enable", {"enabled": True})
 
 ## Связанные страницы
 
-- [IP‑allowlist](/reference/api-allowlist) · [Идемпотентность](/reference/basics-idempotency)
-- [`POST /v1/transfer/to-personal`](/reference/transfer-to-personal)
-- [Чек‑лист перед запуском](/guides/production-checklist)
+<CardGroup cols={2}>
+  <Card title="IP‑allowlist" href="/reference/api-allowlist" icon="arrow-right" horizontal />
+  <Card title="Идемпотентность" href="/reference/basics-idempotency" icon="arrow-right" horizontal />
+  <Card title="POST /v1/transfer/to-personal" href="/reference/transfer-to-personal" icon="arrow-right" horizontal />
+  <Card title="Чек‑лист перед запуском" href="/guides/production-checklist" icon="arrow-right" horizontal />
+</CardGroup>

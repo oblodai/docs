@@ -13,8 +13,8 @@ icon: "rocket"
   реальных переводов — см. [Тестирование](/guides/testing).
 </Warning>
 
-Весь код здесь — на Python, но подпись и вызовы идентичны на любом языке (см.
-[Как подписать запрос](/guides/signing-requests) для cURL / Node.js / PHP).
+Примеры кода даны на Python и Node.js (переключайтесь вкладками), но подпись и вызовы идентичны
+на любом языке (см. [Как подписать запрос](/guides/signing-requests) для cURL / PHP).
 
 ---
 
@@ -47,7 +47,9 @@ icon: "rocket"
     Каждый запрос подписывается HMAC‑SHA256 по канонической строке из четырёх частей. Вот минимальная
     функция‑обёртка, которую мы будем переиспользовать:
 
-    ```python
+    <CodeGroup>
+
+    ```python Python
     import hmac, hashlib, time, json, os, requests
 
     # В реальном коде читайте ключи из ОКРУЖЕНИЯ, не хардкодьте (см. правило ниже).
@@ -69,6 +71,35 @@ icon: "rocket"
         return r.json()
     ```
 
+    ```js Node.js
+    import crypto from "node:crypto";
+
+    // В реальном коде читайте ключи из ОКРУЖЕНИЯ, не хардкодьте (см. правило ниже).
+    const SECRET = process.env.OBLODAI_SECRET;        // для наглядности здесь — как выглядят ключи
+    const PUBLIC_ID = process.env.OBLODAI_PUBLIC_ID;  // oblodai_… / oblodai_live_…
+    const BASE = "https://api.oblodai.com";
+
+    async function call(path, payload) {
+      const body = JSON.stringify(payload);           // подписываем ровно эту строку
+      const ts = Math.floor(Date.now() / 1000).toString();
+      const signing = `${ts}\nPOST\n${path}\n${body}`;
+      const sig = crypto.createHmac("sha256", SECRET).update(signing).digest("hex");
+      const res = await fetch(BASE + path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Public-Id": PUBLIC_ID,
+          "X-Timestamp": ts,
+          "X-Signature": sig,
+        },
+        body,
+      });
+      return res.json();
+    }
+    ```
+
+    </CodeGroup>
+
     Детальный разбор и типичные ошибки — [Как подписать запрос](/guides/signing-requests).
 
   </Step>
@@ -77,18 +108,30 @@ icon: "rocket"
     Один раз на проект зарегистрируйте endpoint и **сохраните `secret`** — им проверяется подпись входящих
     вебхуков (это **другой** секрет, чем ключ API):
 
-    ```python
+    <CodeGroup>
+
+    ```python Python
     # Внимание: этот эндпоинт возвращает "голый" объект без конверта state/result
     resp = call("/v1/webhooks", {"url": "https://shop.example/oblodai/callback"})
     webhook_secret = resp["secret"]   # ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните
     ```
+
+    ```js Node.js
+    // Внимание: этот эндпоинт возвращает "голый" объект без конверта state/result
+    const resp = await call("/v1/webhooks", { url: "https://shop.example/oblodai/callback" });
+    const webhookSecret = resp.secret;   // ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните
+    ```
+
+    </CodeGroup>
 
     Подробнее — [`POST /v1/webhooks`](/reference/webhooks-register).
 
   </Step>
   <Step title="Создайте платёж">
 
-    ```python
+    <CodeGroup>
+
+    ```python Python
     payment = call("/v1/payment", {
         "amount": "10",
         "currency": "USD",
@@ -102,6 +145,22 @@ icon: "rocket"
     print(payment["url"])       # ссылка на hosted-страницу оплаты
     ```
 
+    ```js Node.js
+    const payment = (await call("/v1/payment", {
+      amount: "10",
+      currency: "USD",
+      order_id: "order-1",
+      to_currency: "USDT",
+      network: "tron",
+      lifetime: 3600,
+    })).result;
+
+    console.log(payment.address);   // адрес, на который платит покупатель
+    console.log(payment.url);       // ссылка на hosted-страницу оплаты
+    ```
+
+    </CodeGroup>
+
     Покажите покупателю `address` (или отправьте его на `url`). Полное описание полей ответа —
     [Объект платежа](/reference/payment-object).
 
@@ -114,7 +173,9 @@ icon: "rocket"
     2. Проверить подпись секретом из шага 3.
     3. Дедуплицировать по `uuid` + `status` и ответить `2xx` **только после** успешной обработки.
 
-    ```python
+    <CodeGroup>
+
+    ```python Python
     import hmac, hashlib
     from flask import Flask, request
 
@@ -136,6 +197,35 @@ icon: "rocket"
             pass
         return "ok", 200
     ```
+
+    ```js Node.js
+    import crypto from "node:crypto";
+    import express from "express";
+
+    const app = express();
+    const WEBHOOK_SECRET = "b7c1e9…";   // из шага 3
+
+    app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
+      const raw = req.body;             // сырое тело (Buffer) — ВАЖНО не пересериализовывать
+      const ts = req.get("X-Webhook-Timestamp") ?? "";
+      const sig = req.get("X-Webhook-Signature") ?? "";
+      const expected = crypto.createHmac("sha256", WEBHOOK_SECRET)
+        .update(ts + ".").update(raw).digest("hex");
+      const ok = sig.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+      if (!ok) {
+        return res.status(403).send("bad signature");
+      }
+
+      const event = JSON.parse(raw.toString("utf8"));
+      if (event.status === "paid") {
+        // ... пометить заказ event.order_id оплаченным (идемпотентно)
+      }
+      return res.status(200).send("ok");
+    });
+    ```
+
+    </CodeGroup>
 
     Подробно про формат, заголовки и идемпотентность — [Объект вебхука](/reference/webhook-object) и
     [Настройка вебхуков](/guides/webhooks-setup).

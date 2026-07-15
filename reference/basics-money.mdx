@@ -48,13 +48,28 @@ sidebarTitle: "Суммы и деньги"
   `"amount": "10000"`, а `"10000.00"` — ошибка формата.
 </Note>
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {"amount": "100",   "currency": "EUR", "order_id": "o-1",
                      "to_currency": "USDT", "network": "tron"})   # 100.00 EUR → USDT по курсу
 call("/v1/payment", {"amount": "5000",  "currency": "RUB", "order_id": "o-2"})   # цену выберет покупатель
 call("/v1/payment", {"amount": "10000", "currency": "JPY", "order_id": "o-3",
                      "to_currency": "USDT", "network": "tron"})   # без копеек!
 ```
+
+```js Node.js
+// 100.00 EUR → USDT по курсу
+await call("/v1/payment", { amount: "100", currency: "EUR", order_id: "o-1",
+                            to_currency: "USDT", network: "tron" });
+// цену выберет покупатель
+await call("/v1/payment", { amount: "5000", currency: "RUB", order_id: "o-2" });
+// без копеек!
+await call("/v1/payment", { amount: "10000", currency: "JPY", order_id: "o-3",
+                            to_currency: "USDT", network: "tron" });
+```
+
+</CodeGroup>
 
 **Тенге (`KZT`), сом (`KGS`) и сум (`UZS`) пока не поддерживаются** — источник курсов не котирует в
 них крипту напрямую. Счёт в такой валюте вернёт `400 payment.unknown_currency`.
@@ -111,5 +126,8 @@ call("/v1/payment", {"amount": "10000", "currency": "JPY", "order_id": "o-3",
 
 ## Связанные страницы
 
-- [Поддерживаемые сети и валюты](/reference/basics-networks) · [`GET /v1/currencies`](/reference/currencies)
-- [Курсы валют](/reference/exchange-rate-list)
+<CardGroup cols={2}>
+  <Card title="Поддерживаемые сети и валюты" href="/reference/basics-networks" icon="arrow-right" horizontal />
+  <Card title="GET /v1/currencies" href="/reference/currencies" icon="arrow-right" horizontal />
+  <Card title="Курсы валют" href="/reference/exchange-rate-list" icon="arrow-right" horizontal />
+</CardGroup>

@@ -33,7 +33,9 @@ icon: "chart-pie"
 
 ### Вариант А. На внешний адрес
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/split/rule", {
     "address": "TXY…",          # внешний блокчейн-адрес партнёра
     "network": "tron",          # обязательна вместе с address
@@ -42,17 +44,40 @@ call("/v1/split/rule", {
 })
 ```
 
+```js Node.js
+await call("/v1/split/rule", {
+  address: "TXY…",          // внешний блокчейн-адрес партнёра
+  network: "tron",          // обязательна вместе с address
+  percent: 20.0,            // 20 % с каждого входящего платежа
+  note: "Партнёр A",        // ваша пометка, чтобы не запутаться
+});
+```
+
+</CodeGroup>
+
 Деньги уходят из шлюза наружу, в блокчейн. Обратно их не вернуть.
 
 ### Вариант Б. На мерчанта внутри платформы
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/split/rule", {
     "merchant_id": "…",         # мерчант Oblodai
     "percent": 10.0,
     "note": "Партнёр B",
 })
 ```
+
+```js Node.js
+await call("/v1/split/rule", {
+  merchant_id: "…",         // мерчант Oblodai
+  percent: 10.0,
+  note: "Партнёр B",
+});
+```
+
+</CodeGroup>
 
 Деньги перекладываются **внутри платформы**, с баланса на баланс — движением по внутреннему учёту, без
 блокчейна. Главное преимущество: такой сплит **обратим**. Если платёж вернут покупателю, доля партнёра
@@ -81,10 +106,19 @@ call("/v1/split/rule", {
 Это **самая важная настройка сплитов**. Её нужно понять, а не просто выставить: цена ошибки здесь —
 ваши собственные деньги.
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/split/config/set", {"refund_hold_hours": 72})   # держим 72 часа
 call("/v1/split/config/get", {})                          # посмотреть текущее
 ```
+
+```js Node.js
+await call("/v1/split/config/set", { refund_hold_hours: 72 });   // держим 72 часа
+await call("/v1/split/config/get", {});                          // посмотреть текущее
+```
+
+</CodeGroup>
 
 **Доли уходят партнёрам не сразу.** Сначала платёж «отлёживается» `refund_hold_hours` часов, и только
 потом происходит расчёт по сплитам.
@@ -170,13 +204,25 @@ call("/v1/split/config/get", {})                          # посмотреть
 
 ## Шаг 3. Проверить, что получилось
 
-```python
+<CodeGroup>
+
+```python Python
 rules = call("/v1/split/rule/list", {})["result"]
 # по каждому правилу видно: назначение, percent, note, rule_id
 
 # удалить правило (новые платежи по нему делиться не будут)
 call("/v1/split/rule/delete", {"rule_id": "…"})
 ```
+
+```js Node.js
+const rules = (await call("/v1/split/rule/list", {})).result;
+// по каждому правилу видно: назначение, percent, note, rule_id
+
+// удалить правило (новые платежи по нему делиться не будут)
+await call("/v1/split/rule/delete", { rule_id: "…" });
+```
+
+</CodeGroup>
 
 Удаление правила **не** отменяет уже отложенные расчёты по платежам, которые пришли, пока правило
 действовало. Оно влияет только на **новые** платежи.
@@ -223,8 +269,18 @@ call("/v1/split/rule/delete", {"rule_id": "…"})
 
 ## Связанные страницы
 
-- [`POST /v1/split/rule` · `/list` · `/delete`](/reference/split-rule)
-- [`POST /v1/split/config/get · /set`](/reference/split-config) — окно удержания.
-- [Модель баланса и движение средств](/guides/balance-and-funds) — сплит как путь ухода средств.
-- [Возвраты платежей](/guides/refunds) — почему возврат списывает всю сумму.
-- [Первая выплата](/guides/first-payout) — ручной вывод, если сплит не подходит.
+<CardGroup cols={2}>
+  <Card title="POST /v1/split/rule · /list · /delete" href="/reference/split-rule" icon="arrow-right" horizontal />
+  <Card title="POST /v1/split/config/get · /set" href="/reference/split-config" icon="arrow-right" horizontal>
+    окно удержания.
+  </Card>
+  <Card title="Модель баланса и движение средств" href="/guides/balance-and-funds" icon="arrow-right" horizontal>
+    сплит как путь ухода средств.
+  </Card>
+  <Card title="Возвраты платежей" href="/guides/refunds" icon="arrow-right" horizontal>
+    почему возврат списывает всю сумму.
+  </Card>
+  <Card title="Первая выплата" href="/guides/first-payout" icon="arrow-right" horizontal>
+    ручной вывод, если сплит не подходит.
+  </Card>
+</CardGroup>

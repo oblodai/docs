@@ -195,7 +195,16 @@ Backoff экспоненциальный: от 10 секунд с удвоени
 
 ## Связанные страницы
 
-- [`POST /v1/webhooks`](/reference/webhooks-register) — регистрация URL и получение `secret`.
-- [`POST /v1/webhooks/deliveries`](/reference/webhooks-deliveries) — журнал доставок.
-- [Тестовые вебхуки](/reference/webhooks-test) · [`POST /v1/payment/resend`](/reference/payment-resend)
-- [Настройка и приём вебхуков](/guides/webhooks-setup) — пошагово.
+<CardGroup cols={2}>
+  <Card title="POST /v1/webhooks" href="/reference/webhooks-register" icon="arrow-right" horizontal>
+    регистрация URL и получение `secret`.
+  </Card>
+  <Card title="POST /v1/webhooks/deliveries" href="/reference/webhooks-deliveries" icon="arrow-right" horizontal>
+    журнал доставок.
+  </Card>
+  <Card title="Тестовые вебхуки" href="/reference/webhooks-test" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/resend" href="/reference/payment-resend" icon="arrow-right" horizontal />
+  <Card title="Настройка и приём вебхуков" href="/guides/webhooks-setup" icon="arrow-right" horizontal>
+    пошагово.
+  </Card>
+</CardGroup>

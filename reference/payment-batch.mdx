@@ -171,7 +171,15 @@ await call("/v1/payment/batch", {
 
 ## Связанные страницы
 
-- [`POST /v1/batch/info`](/reference/batch-info) — поллинг статуса и результатов.
-- [`POST /v1/payment`](/reference/payment-create) — поля элемента.
-- [`POST /v1/refund/batch`](/reference/refund-batch) · [`POST /v1/payout/batch`](/reference/payout-batch)
-- [Ограничение частоты](/reference/basics-ratelimit) · [Идемпотентность](/reference/basics-idempotency)
+<CardGroup cols={2}>
+  <Card title="POST /v1/batch/info" href="/reference/batch-info" icon="arrow-right" horizontal>
+    поллинг статуса и результатов.
+  </Card>
+  <Card title="POST /v1/payment" href="/reference/payment-create" icon="arrow-right" horizontal>
+    поля элемента.
+  </Card>
+  <Card title="POST /v1/refund/batch" href="/reference/refund-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payout/batch" href="/reference/payout-batch" icon="arrow-right" horizontal />
+  <Card title="Ограничение частоты" href="/reference/basics-ratelimit" icon="arrow-right" horizontal />
+  <Card title="Идемпотентность" href="/reference/basics-idempotency" icon="arrow-right" horizontal />
+</CardGroup>

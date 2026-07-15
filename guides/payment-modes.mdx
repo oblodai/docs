@@ -29,11 +29,21 @@ icon: "sliders"
 
 Шлюз сам пересчитает фиатную цену в крипту по курсу (округляя **вверх**, в пользу счёта):
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {"amount": "10", "currency": "USD", "order_id": "order-1",
                      "to_currency": "TRX", "network": "tron"})
 # → amount: "10.00" USD, payer_amount: "83.333334" TRX
 ```
+
+```js Node.js
+await call("/v1/payment", { amount: "10", currency: "USD", order_id: "order-1",
+                            to_currency: "TRX", network: "tron" });
+// → amount: "10.00" USD, payer_amount: "83.333334" TRX
+```
+
+</CodeGroup>
 
 Баланс, выплаты и возвраты при этом **всегда в крипте** — фиат шлюз не хранит. См.
 [Форматы сумм и денег](/reference/basics-money).
@@ -54,7 +64,9 @@ call("/v1/payment", {"amount": "10", "currency": "USD", "order_id": "order-1",
 
 Работают ровно так же, как `USD`, — во всех трёх режимах:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {"amount": "100", "currency": "EUR", "order_id": "order-1",
                      "to_currency": "USDT", "network": "tron"})
 # → 100.00 EUR ≈ 108.695653 USDT
@@ -67,6 +79,21 @@ call("/v1/payment", {"amount": "2000", "currency": "UAH", "order_id": "order-3"}
 # → валюто-агностичный счёт (is_multi: true), цена в гривне, монету выберет покупатель
 ```
 
+```js Node.js
+await call("/v1/payment", { amount: "100", currency: "EUR", order_id: "order-1",
+                            to_currency: "USDT", network: "tron" });
+// → 100.00 EUR ≈ 108.695653 USDT
+
+await call("/v1/payment", { amount: "5000", currency: "RUB", order_id: "order-2",
+                            to_currency: "USDT", network: "tron" });
+// → 5000.00 RUB ≈ 54.347827 USDT
+
+await call("/v1/payment", { amount: "2000", currency: "UAH", order_id: "order-3" });
+// → валюто-агностичный счёт (is_multi: true), цена в гривне, монету выберет покупатель
+```
+
+</CodeGroup>
+
 **Цена в евро так же надёжна, как в долларах.** Источник курсов отдаёт цену монеты **сразу в нужной
 валюте**, одной таблицей — ничего не перемножается через доллар и второго провайдера в цепочке нет.
 Так что выбирать `USD` «для надёжности» смысла не имеет: берите валюту, в которой у вас реальный ценник.
@@ -75,11 +102,21 @@ call("/v1/payment", {"amount": "2000", "currency": "UAH", "order_id": "order-3"}
 
 Иена и вона не имеют дробной части. Сумма передаётся **целым числом**:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {"amount": "10000", "currency": "JPY", "order_id": "order-4",
                      "to_currency": "USDT", "network": "tron"})
 # → 10000 JPY ≈ 66.666667 USDT      ✅ "10000", а НЕ "10000.00"
 ```
+
+```js Node.js
+await call("/v1/payment", { amount: "10000", currency: "JPY", order_id: "order-4",
+                            to_currency: "USDT", network: "tron" });
+// → 10000 JPY ≈ 66.666667 USDT      ✅ "10000", а НЕ "10000.00"
+```
+
+</CodeGroup>
 
 У остальных 21 фиатной валюты — 2 знака (`"10.00"`).
 
@@ -88,10 +125,19 @@ call("/v1/payment", {"amount": "10000", "currency": "JPY", "order_id": "order-4"
 **Тенге (`KZT`), сом (`KGS`) и сум (`UZS`) — не поддерживаются.** Попытка вернёт
 `400 payment.unknown_currency`:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {"amount": "5000", "currency": "KZT", ...})
 # → 400 payment.unknown_currency
 ```
+
+```js Node.js
+await call("/v1/payment", { amount: "5000", currency: "KZT", /* … */ });
+// → 400 payment.unknown_currency
+```
+
+</CodeGroup>
 
 Причина: источник курсов не котирует крипту в этих валютах напрямую, а считать через доллар (два курса
 подряд) мы не будем — это вторая точка отказа и второй источник расхождений в цене. Обходной путь:
@@ -107,12 +153,23 @@ call("/v1/payment", {"amount": "5000", "currency": "KZT", ...})
 
 Вы точно знаете, чем и в какой сети платит покупатель. Задаёте `to_currency` **и** `network`.
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {
     "amount": "10", "currency": "USD", "order_id": "order-1",
     "to_currency": "USDT", "network": "tron",
 })
 ```
+
+```js Node.js
+await call("/v1/payment", {
+  amount: "10", currency: "USD", order_id: "order-1",
+  to_currency: "USDT", network: "tron",
+});
+```
+
+</CodeGroup>
 
 Результат: обычный одновалютный счёт с готовым адресом сразу.
 
@@ -125,12 +182,23 @@ call("/v1/payment", {
 
 Вы задаёте валюту (`to_currency`/`currency`), но **не** задаёте `network`.
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {
     "amount": "10", "currency": "USD", "order_id": "order-1",
     "to_currency": "BTC",   # network не указан
 })
 ```
+
+```js Node.js
+await call("/v1/payment", {
+  amount: "10", currency: "USD", order_id: "order-1",
+  to_currency: "BTC",   // network не указан
+});
+```
+
+</CodeGroup>
 
 - Если у валюты **ровно одна** сеть (как у `BTC` → `bitcoin`), она подставится автоматически.
 - Если у валюты **несколько** сетей (как у `USDT`), вернётся ошибка `payment.network_required` — сеть
@@ -150,7 +218,9 @@ call("/v1/payment", {
 Вы **не** задаёте ни `to_currency`, ни `network` — оба пустые. Валюту и сеть выбирает **покупатель** на
 hosted‑странице (страница оплаты на стороне Oblodai, куда вы редиректите покупателя по ссылке `url`).
 
-```python
+<CodeGroup>
+
+```python Python
 inv = call("/v1/payment", {
     "amount": "10", "currency": "USD", "order_id": "order-1",
     # to_currency и network НЕ переданы
@@ -162,6 +232,21 @@ assert inv["payment_status"] == "select"   # статус «монета ещё 
 # пока покупатель не выбрал монету (валюты расчёта у счёта ещё нет).
 # А amount/currency — уже есть: "10" USD.
 ```
+
+```js Node.js
+const inv = (await call("/v1/payment", {
+  amount: "10", currency: "USD", order_id: "order-1",
+  // to_currency и network НЕ переданы
+})).result;
+
+console.assert(inv.is_multi === true);             // признак агностичного счёта
+console.assert(inv.payment_status === "select");   // статус «монета ещё не выбрана»
+// payer_currency — ПУСТАЯ строка; address, payer_amount, address_qr_code тоже пусты,
+// пока покупатель не выбрал монету (валюты расчёта у счёта ещё нет).
+// А amount/currency — уже есть: "10" USD.
+```
+
+</CodeGroup>
 
 <Note>
   **Пустой `address` и пустой `payer_currency` — это не баг.** Пока счёт в статусе `select`, валюты
@@ -184,12 +269,23 @@ assert inv["payment_status"] == "select"   # статус «монета ещё 
 По умолчанию покупателю доступен весь каталог. Чтобы сузить список принимаемых валют, задайте набор
 через [`POST /v1/payment/accepted/set`](/reference/payment-accepted):
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment/accepted/set", {"accepted": [
     {"currency": "USDT", "network": "tron"},
     {"currency": "USDC", "network": "polygon"},
 ]})
 ```
+
+```js Node.js
+await call("/v1/payment/accepted/set", { accepted: [
+  { currency: "USDT", network: "tron" },
+  { currency: "USDC", network: "polygon" },
+]});
+```
+
+</CodeGroup>
 
 Выбор покупателя валидируется против этого набора (или полного каталога, если набор пуст).
 
@@ -215,13 +311,25 @@ call("/v1/payment/accepted/set", {"accepted": [
 Если цена задана **в фиате** (`USD`, `EUR`, `RUB` — любом), и вы задали `network`, но **не** задали
 `to_currency`, шлюз вернёт `400 payment.to_currency_required`:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/payment", {"amount": "10", "currency": "USD", "network": "tron"})
 # → 400 payment.to_currency_required
 
 call("/v1/payment", {"amount": "100", "currency": "EUR", "network": "tron"})
 # → 400 payment.to_currency_required  — правило то же для ЛЮБОГО фиата
 ```
+
+```js Node.js
+await call("/v1/payment", { amount: "10", currency: "USD", network: "tron" });
+// → 400 payment.to_currency_required
+
+await call("/v1/payment", { amount: "100", currency: "EUR", network: "tron" });
+// → 400 payment.to_currency_required  — правило то же для ЛЮБОГО фиата
+```
+
+</CodeGroup>
 
 Из фиатной цены монету расчёта вывести нельзя: в сети `tron` это может быть и USDT, и TRX, и USDC.
 Два выхода:
@@ -246,9 +354,17 @@ call("/v1/payment", {"amount": "100", "currency": "EUR", "network": "tron"})
 
 ## Связанные страницы
 
-- [`POST /v1/payment`](/reference/payment-create) · [`POST /v1/pay/{id}/select`](/reference/pay-select)
-- [`POST /v1/payment/accepted/list · /set`](/reference/payment-accepted)
-- [Форматы сумм и денег](/reference/basics-money) — цена vs расчёт · [`GET /v1/currencies`](/reference/currencies) — `pricing_currencies`
-- [Приём первого платежа](/guides/accept-first-payment)
-- [Платёжные ссылки](/guides/payment-links) — те же режимы суммы и валюты, но без бэкенда.
-- [Массовые операции](/guides/batch-operations) — до 5000 счетов одним запросом.
+<CardGroup cols={2}>
+  <Card title="POST /v1/payment" href="/reference/payment-create" icon="arrow-right" horizontal />
+  <Card title="POST /v1/pay/{id}/select" href="/reference/pay-select" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/accepted/list · /set" href="/reference/payment-accepted" icon="arrow-right" horizontal />
+  <Card title="Форматы сумм и денег" href="/reference/basics-money" icon="arrow-right" horizontal />
+  <Card title="GET /v1/currencies" href="/reference/currencies" icon="arrow-right" horizontal />
+  <Card title="Приём первого платежа" href="/guides/accept-first-payment" icon="arrow-right" horizontal />
+  <Card title="Платёжные ссылки" href="/guides/payment-links" icon="arrow-right" horizontal>
+    те же режимы суммы и валюты, но без бэкенда.
+  </Card>
+  <Card title="Массовые операции" href="/guides/batch-operations" icon="arrow-right" horizontal>
+    до 5000 счетов одним запросом.
+  </Card>
+</CardGroup>

@@ -25,10 +25,19 @@ icon: "scale-unbalanced"
 
 Если включить допуск, счёт, недоплаченный **не более чем на N %**, всё равно станет `paid`.
 
-```python
+<CodeGroup>
+
+```python Python
 # Разрешить недоплату до 2%
 call("/v1/payment/accuracy/set", {"enabled": True, "accuracy_percent": 2})
 ```
+
+```js Node.js
+// Разрешить недоплату до 2%
+await call("/v1/payment/accuracy/set", { enabled: true, accuracy_percent: 2 });
+```
+
+</CodeGroup>
 
 - Диапазон `accuracy_percent` — 1–5, кэп 5 %.
 - **По умолчанию допуск ~1 %, а не выключен.** Если вы ничего не настраивали, счёт с недоплатой/переплатой
@@ -47,10 +56,19 @@ call("/v1/payment/accuracy/set", {"enabled": True, "accuracy_percent": 2})
 
 Что делать с расхождением, которое **не** попало в допуск:
 
-```python
+<CodeGroup>
+
+```python Python
 # Возвращать и переплату, и истёкшую недоплату
 call("/v1/payment/autorefund/set", {"overpay": True, "underpay": True})
 ```
+
+```js Node.js
+// Возвращать и переплату, и истёкшую недоплату
+await call("/v1/payment/autorefund/set", { overpay: true, underpay: true });
+```
+
+</CodeGroup>
 
 - `overpay: true` — при переплате (`paid_over`) вернуть **излишек**.
 - `underpay: true` — при истёкшей недоплате (`wrong_amount`) вернуть **полученное**.
@@ -88,6 +106,10 @@ call("/v1/payment/autorefund/set", {"overpay": True, "underpay": True})
 
 ## Связанные страницы
 
-- [Допуск недоплаты](/reference/payment-accuracy) · [Автовозврат](/reference/payment-autorefund)
-- [`POST /v1/payment/refund`](/reference/payment-refund) · [Возвраты платежей](/guides/refunds)
-- [Объект платежа — статусы](/reference/payment-object#статусы-payment_status)
+<CardGroup cols={2}>
+  <Card title="Допуск недоплаты" href="/reference/payment-accuracy" icon="arrow-right" horizontal />
+  <Card title="Автовозврат" href="/reference/payment-autorefund" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/refund" href="/reference/payment-refund" icon="arrow-right" horizontal />
+  <Card title="Возвраты платежей" href="/guides/refunds" icon="arrow-right" horizontal />
+  <Card title="Объект платежа — статусы" href="/reference/payment-object#статусы-payment_status" icon="arrow-right" horizontal />
+</CardGroup>

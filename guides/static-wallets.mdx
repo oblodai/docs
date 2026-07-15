@@ -41,7 +41,9 @@ icon: "wallet"
 Тройка `(currency, network, order_id)` идемпотентна. Передайте `order_id` = идентификатор клиента —
 и получите его **персональный постоянный адрес**. Повторный вызов с той же тройкой вернёт тот же адрес.
 
-```python
+<CodeGroup>
+
+```python Python
 def deposit_address(client_id: str) -> str:
     w = call("/v1/wallet", {
         "currency": "USDT",
@@ -53,6 +55,22 @@ def deposit_address(client_id: str) -> str:
 # Один и тот же клиент всегда получит один и тот же адрес
 addr = deposit_address("client-42")
 ```
+
+```js Node.js
+async function depositAddress(clientId) {
+  const w = (await call("/v1/wallet", {
+    currency: "USDT",
+    network: "tron",
+    order_id: clientId,   // закрепляет адрес за клиентом
+  })).result;
+  return w.address;
+}
+
+// Один и тот же клиент всегда получит один и тот же адрес
+const addr = await depositAddress("client-42");
+```
+
+</CodeGroup>
 
 ---
 
@@ -91,10 +109,19 @@ addr = deposit_address("client-42")
 
 Если нужно перестать принимать на адрес — заблокируйте его:
 
-```python
+<CodeGroup>
+
+```python Python
 call("/v1/wallet/block", {"address": "TXk9...c3Fd"})            # заблокировать
 call("/v1/wallet/block", {"address": "TXk9...c3Fd", "is_force_block": False})  # разблокировать
 ```
+
+```js Node.js
+await call("/v1/wallet/block", { address: "TXk9...c3Fd" });            // заблокировать
+await call("/v1/wallet/block", { address: "TXk9...c3Fd", is_force_block: false });  // разблокировать
+```
+
+</CodeGroup>
 
 <Note>
   `is_force_block` по умолчанию `true`. Чтобы **снять** блокировку, явно передайте `false`.
@@ -120,9 +147,16 @@ call("/v1/wallet/block", {"address": "TXk9...c3Fd", "is_force_block": False})  #
 
 ## Связанные страницы
 
-- [`POST /v1/wallet`](/reference/wallet-create) · [Объект кошелька](/reference/wallet-object)
-- [`POST /v1/wallet/block`](/reference/wallet-block)
-- [`POST /v1/wallet/blocked-address-refund`](/reference/wallet-blocked-refund)
-- [`POST /v1/balance`](/reference/balance)
-- [Платёжные ссылки](/guides/payment-links) — третий способ принять оплату, без бэкенда.
-- [Приём первого платежа](/guides/accept-first-payment) — инвойс.
+<CardGroup cols={2}>
+  <Card title="POST /v1/wallet" href="/reference/wallet-create" icon="arrow-right" horizontal />
+  <Card title="Объект кошелька" href="/reference/wallet-object" icon="arrow-right" horizontal />
+  <Card title="POST /v1/wallet/block" href="/reference/wallet-block" icon="arrow-right" horizontal />
+  <Card title="POST /v1/wallet/blocked-address-refund" href="/reference/wallet-blocked-refund" icon="arrow-right" horizontal />
+  <Card title="POST /v1/balance" href="/reference/balance" icon="arrow-right" horizontal />
+  <Card title="Платёжные ссылки" href="/guides/payment-links" icon="arrow-right" horizontal>
+    третий способ принять оплату, без бэкенда.
+  </Card>
+  <Card title="Приём первого платежа" href="/guides/accept-first-payment" icon="arrow-right" horizontal>
+    инвойс.
+  </Card>
+</CardGroup>

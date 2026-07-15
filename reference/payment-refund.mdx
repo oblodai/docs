@@ -157,7 +157,14 @@ await call("/v1/payment/refund", { order_id: "order-1", address: "TZZ...", netwo
 
 ## Связанные страницы
 
-- [`POST /v1/payment/autorefund/get · /set`](/reference/payment-autorefund)
-- [`POST /v1/refund/batch`](/reference/refund-batch) — массовые возвраты.
-- [Кто платит комиссию возврата](/reference/payout-refund-fee-config) · [Возвраты платежей](/guides/refunds)
-- [Объект платежа](/reference/payment-object) — `payer_address`, `refunds[]`, `refund_status`.
+<CardGroup cols={2}>
+  <Card title="POST /v1/payment/autorefund/get · /set" href="/reference/payment-autorefund" icon="arrow-right" horizontal />
+  <Card title="POST /v1/refund/batch" href="/reference/refund-batch" icon="arrow-right" horizontal>
+    массовые возвраты.
+  </Card>
+  <Card title="Кто платит комиссию возврата" href="/reference/payout-refund-fee-config" icon="arrow-right" horizontal />
+  <Card title="Возвраты платежей" href="/guides/refunds" icon="arrow-right" horizontal />
+  <Card title="Объект платежа" href="/reference/payment-object" icon="arrow-right" horizontal>
+    `payer_address`, `refunds[]`, `refund_status`.
+  </Card>
+</CardGroup>

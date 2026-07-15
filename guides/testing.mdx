@@ -35,11 +35,21 @@ icon: "flask"
 
 Самый первый тест — убедиться, что подпись собирается правильно. Достаточно любого чтения:
 
-```python
+<CodeGroup>
+
+```python Python
 print(call("/v1/balance", {}))
 # Успех → {"state": 0, "result": {...}}  — подпись верна
 # 401   → разбираемся: см. «Как подписать запрос»
 ```
+
+```js Node.js
+console.log(await call("/v1/balance", {}));
+// Успех → {"state": 0, "result": {...}}  — подпись верна
+// 401   → разбираемся: см. «Как подписать запрос»
+```
+
+</CodeGroup>
 
 Если тут `401` — не идите дальше, чините подпись. → [Как подписать запрос](/guides/signing-requests)
 
@@ -49,7 +59,9 @@ print(call("/v1/balance", {}))
 
 Не дожидаясь реальной оплаты, отправьте пробное событие на свой URL:
 
-```python
+<CodeGroup>
+
+```python Python
 resp = call("/v1/test-webhook/payment", {
     "url_callback": "https://shop.example/oblodai/callback",
     "status": "paid",
@@ -58,6 +70,18 @@ resp = call("/v1/test-webhook/payment", {
 })
 print(resp["result"])   # {"result": true, "status_code": 200}
 ```
+
+```js Node.js
+const resp = await call("/v1/test-webhook/payment", {
+  url_callback: "https://shop.example/oblodai/callback",
+  status: "paid",
+  currency: "USDT",
+  network: "tron",
+});
+console.log(resp.result);   // {"result": true, "status_code": 200}
+```
+
+</CodeGroup>
 
 `status_code` — то, чем ответил ваш обработчик. Нужен `200`.
 
@@ -76,7 +100,9 @@ print(resp["result"])   # {"result": true, "status_code": 200}
 
 Создайте счёт и убедитесь, что разбираете ответ:
 
-```python
+<CodeGroup>
+
+```python Python
 inv = call("/v1/payment", {
     "amount": "1", "currency": "USD", "order_id": "test-001",
     "to_currency": "USDT", "network": "tron",
@@ -86,6 +112,21 @@ assert inv["address"]         # адрес выделен
 assert inv["payment_status"] == "check"
 print(inv["url"])             # ссылка на страницу оплаты — можно открыть глазами
 ```
+
+```js Node.js
+import assert from "node:assert";
+
+const inv = (await call("/v1/payment", {
+  amount: "1", currency: "USD", order_id: "test-001",
+  to_currency: "USDT", network: "tron",
+})).result;
+
+assert(inv.address);                     // адрес выделен
+assert(inv.payment_status === "check");
+console.log(inv.url);                    // ссылка на страницу оплаты — можно открыть глазами
+```
+
+</CodeGroup>
 
 Проверьте **оба** механизма идемпотентности — они независимы, и сломаться может любой:
 
@@ -161,6 +202,10 @@ print(inv["url"])             # ссылка на страницу оплаты 
 
 ## Связанные страницы
 
-- [Тестовые вебхуки](/reference/webhooks-test) · [Отладка вебхуков](/guides/webhooks-debug)
-- [Сквозной пример приложения](/guides/end-to-end-example) · [Чек‑лист перед запуском](/guides/production-checklist)
-- [FAQ и устранение неполадок](/guides/faq-troubleshooting)
+<CardGroup cols={2}>
+  <Card title="Тестовые вебхуки" href="/reference/webhooks-test" icon="arrow-right" horizontal />
+  <Card title="Отладка вебхуков" href="/guides/webhooks-debug" icon="arrow-right" horizontal />
+  <Card title="Сквозной пример приложения" href="/guides/end-to-end-example" icon="arrow-right" horizontal />
+  <Card title="Чек‑лист перед запуском" href="/guides/production-checklist" icon="arrow-right" horizontal />
+  <Card title="FAQ и устранение неполадок" href="/guides/faq-troubleshooting" icon="arrow-right" horizontal />
+</CardGroup>
