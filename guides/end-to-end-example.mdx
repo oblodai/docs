@@ -168,21 +168,22 @@ GET  /order/<id> → показывает статус заказа (для на
   const SEEN = new Set();     // "uuid:status" — дедуп (замените на БД)
 
   // Подписанный вызов API
-  async function call(path, payload) {
+  async function call(path, payload, idempotencyKey = null) {
     const body = JSON.stringify(payload);
     const ts = Math.floor(Date.now() / 1000).toString();
     const signing = `${ts}\nPOST\n${path}\n${body}`;
     const sig = crypto.createHmac("sha256", SECRET).update(signing).digest("hex");
-    const res = await fetch(BASE + path, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Public-Id": PUBLIC_ID,
-        "X-Timestamp": ts,
-        "X-Signature": sig,
-      },
-      body,
-    });
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Public-Id": PUBLIC_ID,
+      "X-Timestamp": ts,
+      "X-Signature": sig,
+    };
+    if (idempotencyKey) {
+      // Защита от дублей при ретраях. В подпись НЕ входит.
+      headers["Idempotency-Key"] = idempotencyKey;
+    }
+    const res = await fetch(BASE + path, { method: "POST", headers, body });
     return res.json();
   }
 
@@ -192,7 +193,7 @@ GET  /order/<id> → показывает статус заказа (для на
     const resp = await call("/v1/payment", {
       amount, currency: "USD", order_id,
       to_currency: "USDT", network: "tron", lifetime: 3600,
-    });
+    }, `checkout-${order_id}`);   // один ключ на действие, стабилен при ретраях
     if (resp.error) return res.status(400).json({ error: resp.error });
 
     const inv = resp.result;
@@ -236,12 +237,16 @@ GET  /order/<id> → показывает статус заказа (для на
 
   #### Запуск
 
+  Пример написан на ESM (`import`) — в `package.json` нужен `"type": "module"`
+  (либо назовите файл `app.mjs`):
+
   ```bash
+  npm init -y && npm pkg set type=module
   npm install express
   export OBLODAI_PUBLIC_ID='oblodai_…'
   export OBLODAI_SECRET='oblodai_live_…'
   export OBLODAI_WEBHOOK_SECRET='b7c1e9…'
-  node app.js
+  node app.js   # Node.js ≥ 20 — используется глобальный fetch
   ```
 
   ---

@@ -4,8 +4,8 @@ description: "От ключей до первого вебхука за пять
 icon: "rocket"
 ---
 
-За пять шагов вы примете первый платёж: получите ключи, подпишете запрос, создадите счёт,
-покажете покупателю адрес и поймаете вебхук об оплате.
+За пять шагов вы примете первый платёж: получите ключи, подпишете запрос, зарегистрируете URL
+для вебхуков, создадите счёт и поймаете вебхук об оплате.
 
 <Warning>
   **Песочницы нет — платежи настоящие.** У Oblodai нет тестового режима: «первый платёж» ниже — это
@@ -18,20 +18,23 @@ icon: "rocket"
 
 ---
 
+## Подготовка
+
+### Что понадобится
+
+- **Аккаунт и ключи** — зарегистрируйтесь в кабинете и получите `public_id` + `secret`. Подробно —
+  [Регистрация и ключи](/guides/get-keys).
+- **Сервер/бэкенд**, где будет считаться подпись (секрет не должен попадать в браузер).
+- **Публично доступный HTTPS‑URL для вебхуков.** На своём ноутбуке (`localhost`) вебхуки **не дойдут**.
+  На время разработки поднимите **туннель**: программу, которая даёт вашему локальному серверу
+  временный публичный HTTPS‑адрес. Самый простой — [ngrok](https://ngrok.com/download): установили,
+  запустили `ngrok http 8000` — получили адрес вида `https://xxxx.ngrok-free.app`, его и указывайте
+  при регистрации вебхука в шаге 3 (поле `url`). Альтернативы: Cloudflare Tunnel, localtunnel.
+
+## Пять шагов
+
 <Steps>
-  <Step title="Что понадобится">
-
-    - **Аккаунт и ключи** — зарегистрируйтесь в кабинете и получите `public_id` + `secret`. Подробно —
-      [Регистрация и ключи](/guides/get-keys).
-    - **Сервер/бэкенд**, где будет считаться подпись (секрет не должен попадать в браузер).
-    - **Публично доступный HTTPS‑URL для вебхуков.** На своём ноутбуке (`localhost`) вебхуки **не дойдут**.
-      На время разработки поднимите **туннель**: программу, которая даёт вашему локальному серверу
-      временный публичный HTTPS‑адрес. Самый простой — [ngrok](https://ngrok.com/download): установили,
-      запустили `ngrok http 8000` — получили адрес вида `https://xxxx.ngrok-free.app`, его и указывайте как
-      `url_callback`. Альтернативы: Cloudflare Tunnel, localtunnel.
-
-  </Step>
-  <Step title="Получите ключи">
+  <Step title="Получите ключи" titleSize="h3">
 
     Зарегистрируйтесь в кабинете [my.oblodai.com](https://my.oblodai.com) и создайте API‑ключ (пошагово —
     [Регистрация и ключи](/guides/get-keys)). Вы получите:
@@ -42,7 +45,7 @@ icon: "rocket"
     Один ключ работает и для приёма, и для выплат. Подробнее — [Аутентификация](/reference/basics-auth).
 
   </Step>
-  <Step title="Научитесь подписывать запрос">
+  <Step title="Научитесь подписывать запрос" titleSize="h3">
 
     Каждый запрос подписывается HMAC‑SHA256 по канонической строке из четырёх частей. Вот минимальная
     функция‑обёртка, которую мы будем переиспользовать:
@@ -57,17 +60,20 @@ icon: "rocket"
     PUBLIC_ID = os.environ["OBLODAI_PUBLIC_ID"]       # oblodai_… / oblodai_live_…
     BASE = "https://api.oblodai.com"
 
-    def call(path: str, payload: dict) -> dict:
+    def call(path: str, payload: dict, idempotency_key: str | None = None) -> dict:
         body = json.dumps(payload, separators=(",", ":"))  # подписываем ровно эту строку
         ts = str(int(time.time()))
         signing = f"{ts}\nPOST\n{path}\n{body}"
         sig = hmac.new(SECRET, signing.encode(), hashlib.sha256).hexdigest()
-        r = requests.post(BASE + path, data=body, headers={
+        headers = {
             "Content-Type": "application/json",
             "X-Public-Id": PUBLIC_ID,
             "X-Timestamp": ts,
             "X-Signature": sig,
-        })
+        }
+        if idempotency_key:
+            headers["Idempotency-Key"] = idempotency_key   # защита от дублей; в подпись НЕ входит
+        r = requests.post(BASE + path, data=body, headers=headers)
         return r.json()
     ```
 
@@ -79,21 +85,21 @@ icon: "rocket"
     const PUBLIC_ID = process.env.OBLODAI_PUBLIC_ID;  // oblodai_… / oblodai_live_…
     const BASE = "https://api.oblodai.com";
 
-    async function call(path, payload) {
+    async function call(path, payload, idempotencyKey = null) {
       const body = JSON.stringify(payload);           // подписываем ровно эту строку
       const ts = Math.floor(Date.now() / 1000).toString();
       const signing = `${ts}\nPOST\n${path}\n${body}`;
       const sig = crypto.createHmac("sha256", SECRET).update(signing).digest("hex");
-      const res = await fetch(BASE + path, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Public-Id": PUBLIC_ID,
-          "X-Timestamp": ts,
-          "X-Signature": sig,
-        },
-        body,
-      });
+      const headers = {
+        "Content-Type": "application/json",
+        "X-Public-Id": PUBLIC_ID,
+        "X-Timestamp": ts,
+        "X-Signature": sig,
+      };
+      if (idempotencyKey) {
+        headers["Idempotency-Key"] = idempotencyKey;  // защита от дублей; в подпись НЕ входит
+      }
+      const res = await fetch(BASE + path, { method: "POST", headers, body });
       return res.json();
     }
     ```
@@ -103,7 +109,7 @@ icon: "rocket"
     Детальный разбор и типичные ошибки — [Как подписать запрос](/guides/signing-requests).
 
   </Step>
-  <Step title="Зарегистрируйте URL для вебхуков">
+  <Step title="Зарегистрируйте URL для вебхуков" titleSize="h3">
 
     Один раз на проект зарегистрируйте endpoint и **сохраните `secret`** — им проверяется подпись входящих
     вебхуков (это **другой** секрет, чем ключ API):
@@ -112,12 +118,16 @@ icon: "rocket"
 
     ```python Python
     # Внимание: этот эндпоинт возвращает "голый" объект без конверта state/result
+    # "url" — ваш ПУБЛИЧНЫЙ HTTPS-адрес из «Что понадобится» (напр.
+    # https://xxxx.ngrok-free.app/oblodai/callback), не localhost
     resp = call("/v1/webhooks", {"url": "https://shop.example/oblodai/callback"})
     webhook_secret = resp["secret"]   # ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните
     ```
 
     ```js Node.js
     // Внимание: этот эндпоинт возвращает "голый" объект без конверта state/result
+    // "url" — ваш ПУБЛИЧНЫЙ HTTPS-адрес из «Что понадобится» (напр.
+    // https://xxxx.ngrok-free.app/oblodai/callback), не localhost
     const resp = await call("/v1/webhooks", { url: "https://shop.example/oblodai/callback" });
     const webhookSecret = resp.secret;   // ПОКАЗЫВАЕТСЯ ОДИН РАЗ — сохраните
     ```
@@ -127,7 +137,7 @@ icon: "rocket"
     Подробнее — [`POST /v1/webhooks`](/reference/webhooks-register).
 
   </Step>
-  <Step title="Создайте платёж">
+  <Step title="Создайте платёж" titleSize="h3">
 
     <CodeGroup>
 
@@ -165,12 +175,12 @@ icon: "rocket"
     [Объект платежа](/reference/payment-object).
 
   </Step>
-  <Step title="Поймайте вебхук об оплате">
+  <Step title="Поймайте вебхук об оплате" titleSize="h3">
 
     Когда покупатель оплатит, на ваш URL придёт вебхук `invoice.paid`. Обработчик должен:
 
     1. Взять **сырое тело** запроса и заголовки `X-Webhook-Timestamp`, `X-Webhook-Signature`.
-    2. Проверить подпись секретом из шага 3.
+    2. Проверить подпись секретом из шага 3 (из ответа `POST /v1/webhooks`, **не** API-secret).
     3. Дедуплицировать по `uuid` + `status` и ответить `2xx` **только после** успешной обработки.
 
     <CodeGroup>
@@ -180,18 +190,24 @@ icon: "rocket"
     from flask import Flask, request
 
     app = Flask(__name__)
-    WEBHOOK_SECRET = b"b7c1e9…"   # из шага 3
+    WEBHOOK_SECRET = b"b7c1e9…"   # секрет из ответа POST /v1/webhooks (шаг 3), НЕ API-secret
 
     @app.post("/oblodai/callback")
     def callback():
         raw = request.get_data()  # сырое тело — ВАЖНО не пересериализовывать
+        event = request.get_json(silent=True) or {}
+
+        # Пробный вебхук из /guides/testing приходит с "is_test": true и БЕЗ подписи —
+        # пропускаем его ДО проверки подписи, иначе ответим 403
+        if event.get("is_test"):
+            return "ok", 200
+
         ts = request.headers.get("X-Webhook-Timestamp", "")
         sig = request.headers.get("X-Webhook-Signature", "")
         expected = hmac.new(WEBHOOK_SECRET, ts.encode() + b"." + raw, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, sig):
             return "bad signature", 403
 
-        event = request.get_json()
         if event.get("status") == "paid":
             # ... пометить заказ event["order_id"] оплаченным (идемпотентно)
             pass
@@ -203,10 +219,17 @@ icon: "rocket"
     import express from "express";
 
     const app = express();
-    const WEBHOOK_SECRET = "b7c1e9…";   // из шага 3
+    const WEBHOOK_SECRET = "b7c1e9…";   // секрет из ответа POST /v1/webhooks (шаг 3), НЕ API-secret
 
     app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
       const raw = req.body;             // сырое тело (Buffer) — ВАЖНО не пересериализовывать
+      let event = {};
+      try { event = JSON.parse(raw.toString("utf8")); } catch { /* ignore */ }
+
+      // Пробный вебхук из /guides/testing приходит с "is_test": true и БЕЗ подписи —
+      // пропускаем его ДО проверки подписи, иначе ответим 403
+      if (event.is_test) return res.send("ok");
+
       const ts = req.get("X-Webhook-Timestamp") ?? "";
       const sig = req.get("X-Webhook-Signature") ?? "";
       const expected = crypto.createHmac("sha256", WEBHOOK_SECRET)
@@ -217,7 +240,6 @@ icon: "rocket"
         return res.status(403).send("bad signature");
       }
 
-      const event = JSON.parse(raw.toString("utf8"));
       if (event.status === "paid") {
         // ... пометить заказ event.order_id оплаченным (идемпотентно)
       }
@@ -232,9 +254,11 @@ icon: "rocket"
 
   </Step>
 </Steps>
+
 ## Что дальше
 
 - [Приём первого платежа](/guides/accept-first-payment) — тот же поток, но с разбором каждого статуса.
 - [Три режима создания счёта](/guides/payment-modes) — фиксированная валюта, авто‑сеть, агностичный счёт.
 - [Первая выплата](/guides/first-payout) — вывести средства с баланса.
 - [Чек‑лист перед запуском](/guides/production-checklist) — перед боевым трафиком.
+- [Что делать, если не работает](/guides/troubleshooting) — диагностика типичных проблем на старте.

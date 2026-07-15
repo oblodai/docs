@@ -6,7 +6,7 @@ icon: "people-group"
 Когда нужно выплатить многим получателям сразу, есть два пути. Выбор между ними — не вопрос вкуса:
 неправильный упирается в лимит частоты запросов.
 
-| | [`POST /v1/payout/batch`](/reference/payment-batch) | [`POST /v1/payout/mass`](/reference/payout-mass) |
+| | [`POST /v1/payout/batch`](/reference/payout-batch) | [`POST /v1/payout/mass`](/reference/payout-mass) |
 |---|---|---|
 | Максимум за раз | **5000** | 100 |
 | Обработка | Асинхронная (`batch_id` + поллинг) | Синхронная (результат сразу в ответе) |
@@ -24,7 +24,7 @@ icon: "people-group"
 
 ## Большие списки: батч
 
-Для любого сколько‑нибудь серьёзного объёма используйте [`POST /v1/payout/batch`](/reference/payment-batch):
+Для любого сколько‑нибудь серьёзного объёма используйте [`POST /v1/payout/batch`](/reference/payout-batch):
 
 <CodeGroup>
 
@@ -166,7 +166,8 @@ for (const item of resp.result.items) {
   <Card title="Массовые операции" href="/guides/batch-operations" icon="arrow-right" horizontal>
     ** — батчи платежей, возвратов и выплат (до 5000).
   </Card>
-  <Card title="POST /v1/payout/batch и /v1/batch/info" href="/reference/payment-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payout/batch" href="/reference/payout-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/batch/info" href="/reference/batch-info" icon="arrow-right" horizontal />
   <Card title="POST /v1/payout/mass" href="/reference/payout-mass" icon="arrow-right" horizontal />
   <Card title="POST /v1/payout" href="/reference/payout-create" icon="arrow-right" horizontal />
   <Card title="Объект выплаты" href="/reference/payout-object" icon="arrow-right" horizontal />

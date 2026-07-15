@@ -31,6 +31,8 @@ icon: "circle-dollar-to-slot"
 <CodeGroup>
 
 ```python Python
+import uuid
+
 payment = call("/v1/payment", {
     "amount": "10",
     "currency": "USD",         # валюта ЦЕНЫ: USD, EUR, RUB… или монета
@@ -39,11 +41,11 @@ payment = call("/v1/payment", {
     "network": "tron",
     "lifetime": 3600,
     "payer_email": "buyer@example.com",   # необязательно: включает АВТОЧЕК после оплаты
-}, idempotency_key=str(uuid.uuid4()))     # заголовок Idempotency-Key — один на действие
+}, idempotency_key=str(uuid.uuid4()))["result"]   # заголовок Idempotency-Key — один на действие
 ```
 
 ```js Node.js
-const payment = await call("/v1/payment", {
+const payment = (await call("/v1/payment", {
   amount: "10",
   currency: "USD",         // валюта ЦЕНЫ: USD, EUR, RUB… или монета
   order_id: "order-1",     // ваш бизнес-ключ — задавайте всегда, он дедуплицирует
@@ -51,8 +53,8 @@ const payment = await call("/v1/payment", {
   network: "tron",
   lifetime: 3600,
   payer_email: "buyer@example.com",  // необязательно: включает АВТОЧЕК после оплаты
-  // заголовок Idempotency-Key — один на действие
-}, { idempotencyKey: crypto.randomUUID() });
+  // заголовок Idempotency-Key — один на действие, передаём третьим аргументом
+}, crypto.randomUUID())).result;
 ```
 
 </CodeGroup>

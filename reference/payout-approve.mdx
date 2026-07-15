@@ -14,7 +14,9 @@ sidebarTitle: "Подтверждение выплаты"
 **URL:** `https://api.oblodai.com/v1/payout/approve` · **Аутентификация:** обязательна.
 
 <Note>
-  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в
+  [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять
+  [SDK](/sdk/overview).
 </Note>
 
 ---
@@ -55,12 +57,33 @@ await call("/v1/payout/approve", { uuid: "0c1f...e9" });
 
 ---
 
-## Ответ
+## Пример ответа
 
 Возвращается **обновлённый объект выплаты** — тот же формат, что у
 [`POST /v1/payout/info`](/reference/payout-info). После успешного подтверждения внутренний статус
-становится `approved` (укрупнённый `process`), и выплата уходит в обработку. Полное описание полей —
-[Объект выплаты](/reference/payout-object).
+становится `approved` (укрупнённый `process`), `approval_required` сбрасывается в `false`, и выплата
+уходит в обработку. Полное описание полей — [Объект выплаты](/reference/payout-object).
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "0c1f...e9",
+    "order_id": "payout-1",
+    "amount": "25",
+    "currency": "USDT",
+    "network": "tron",
+    "address": "TXY...",
+    "txid": "",
+    "status": "process",
+    "is_final": false,
+    "approval_required": false,
+    "source": "manual",
+    "created_at": "2026-07-10T12:00:00Z",
+    "updated_at": "2026-07-10T12:02:00Z"
+  }
+}
+```
 
 ## Коды ошибок
 

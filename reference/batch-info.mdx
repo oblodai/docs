@@ -7,10 +7,18 @@ sidebarTitle: "Статус батча"
 ([платежей](/reference/payment-batch), [возвратов](/reference/refund-batch), [выплат](/reference/payout-batch))
 обрабатываются асинхронно, и `/v1/batch/info` — единственный способ узнать, что с ними стало.
 
+<Info>
+  **Ещё не в проде.** Эта функциональность станет доступна после деплоя обновлённого шлюза
+  (одновременно с выходом SDK v1.1.0). До этого соответствующие эндпоинты недоступны.
+  Статус — в [обзоре SDK](/sdk/overview#что-нового-в-v1-1-0).
+</Info>
+
 **URL:** `https://api.oblodai.com/v1/batch/info` · **Аутентификация:** обязательна.
 
 <Note>
-  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в
+  [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять
+  [SDK](/sdk/overview).
 </Note>
 
 ---
@@ -232,7 +240,7 @@ await call("/v1/batch/info", {
 ## Связанные страницы
 
 <CardGroup cols={2}>
-  <Card title="POST /v1/payment/batch" href="/reference/payout-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/batch" href="/reference/payment-batch" icon="arrow-right" horizontal />
   <Card title="POST /v1/refund/batch" href="/reference/refund-batch" icon="arrow-right" horizontal />
   <Card title="POST /v1/payout/batch" href="/reference/payout-batch" icon="arrow-right" horizontal />
   <Card title="Ограничение частоты" href="/reference/basics-ratelimit" icon="arrow-right" horizontal />

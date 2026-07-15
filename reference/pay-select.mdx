@@ -61,9 +61,44 @@ console.log(await res.json());
 
 ---
 
-## Ответ
+## Пример ответа
 
-Обновлённый публичный объект платежа — с реальным `address`, `payer_amount`, `address_qr_code`.
+Обновлённый публичный объект платежа — с реальным `address`, `payer_amount`, `address_qr_code`
+(тот же формат, что у [`GET /v1/pay/{id}`](/reference/pay-get), без приватных `additional_data`,
+`payer_email` и `payer_address`). Счёт переходит в `payment_status: "check"`, `is_multi` остаётся `false`.
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+    "order_id": "order-1",
+    "amount": "10.00",
+    "payment_amount": null,
+    "amount_paid": "0",
+    "amount_remaining": "10.150000",
+    "payer_amount": "10.150000",
+    "payer_currency": "USDT",
+    "currency": "USD",
+    "network": "tron",
+    "address": "TJ4b1...C9xk",
+    "address_qr_code": "data:image/png;base64,iVBORw0KGgo...",
+    "payment_status": "check",
+    "is_multi": false,
+    "url": "https://pay.oblodai.com/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
+    "expired_at": 1752192000,
+    "is_final": false,
+    "created_at": "2026-07-10T12:00:00Z",
+    "updated_at": "2026-07-10T12:05:00Z",
+    "url_return": "",
+    "url_success": "",
+    "rate_expires_at": 1752189000,
+    "confirmations": 0,
+    "required_confirmations": 20,
+    "txid": ""
+  }
+}
+```
 
 ---
 

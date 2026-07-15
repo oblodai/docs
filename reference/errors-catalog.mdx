@@ -340,6 +340,10 @@ sidebarTitle: "Каталог ошибок"
   Не передан ни `uuid`, ни `order_id`. **Повтор:** Нет.
 </ResponseField>
 
+<ResponseField name="payout.not_found" type="404">
+  Выплата не найдена (или скрыта как чужая). **Повтор:** Нет — проверьте `uuid`/`order_id`.
+</ResponseField>
+
 <ResponseField name="payout.empty_batch" type="400">
   Пустой массив `payouts` (mass). **Повтор:** Нет.
 </ResponseField>
@@ -369,7 +373,7 @@ sidebarTitle: "Каталог ошибок"
 </ResponseField>
 
 Методы: [`/v1/payout`](/reference/payout-create), [`/v1/payout/mass`](/reference/payout-mass),
-[`/v1/payout/approve`](/reference/payout-approve).
+[`/v1/payout/info`](/reference/payout-info), [`/v1/payout/approve`](/reference/payout-approve).
 
 ---
 

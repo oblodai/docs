@@ -95,13 +95,19 @@
             ]
           },
           {
-            "group": "Выплаты и массовые операции",
+            "group": "Выплаты и возвраты",
             "icon": "money-bill-transfer",
             "pages": [
               "guides/first-payout",
-              "guides/batch-operations",
-              "guides/mass-payouts",
               "guides/refunds",
+              "guides/mass-payouts"
+            ]
+          },
+          {
+            "group": "Масштаб и автоматизация",
+            "icon": "boxes-stacked",
+            "pages": [
+              "guides/batch-operations",
               "guides/split-payments"
             ]
           },
@@ -239,7 +245,13 @@
               "reference/webhooks-register",
               "reference/webhooks-deliveries",
               "reference/webhooks-test",
-              "reference/payment-resend",
+              "reference/payment-resend"
+            ]
+          },
+          {
+            "group": "Настройки аккаунта",
+            "icon": "gear",
+            "pages": [
               "reference/auto-withdraw",
               "reference/api-allowlist"
             ]

@@ -8,7 +8,9 @@ sidebarTitle: "Информация о выплате"
 **URL:** `https://api.oblodai.com/v1/payout/info` · **Аутентификация:** обязательна.
 
 <Note>
-  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в
+  [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять
+  [SDK](/sdk/overview).
 </Note>
 
 ---
@@ -56,9 +58,30 @@ await call("/v1/payout/info", { order_id: "payout-1" });
 
 ---
 
-## Ответ
+## Пример ответа
 
 Объект выплаты с актуальным `status` и `txid`. Полное описание — [Объект выплаты](/reference/payout-object).
+
+```json
+{
+  "state": 0,
+  "result": {
+    "uuid": "0c1f...e9",
+    "order_id": "payout-1",
+    "amount": "25",
+    "currency": "USDT",
+    "network": "tron",
+    "address": "TXY...",
+    "txid": "d0a1...b7",
+    "status": "paid",
+    "is_final": true,
+    "approval_required": false,
+    "source": "api",
+    "created_at": "2026-07-10T12:00:00Z",
+    "updated_at": "2026-07-10T12:04:00Z"
+  }
+}
+```
 
 ---
 

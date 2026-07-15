@@ -7,7 +7,9 @@ sidebarTitle: "Методы выплат"
 
 **URL:** `https://api.oblodai.com/v1/payout/services` · **Аутентификация:** обязательна.
 <Note>
-  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в
+  [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять
+  [SDK](/sdk/overview).
 </Note>
 **Тело:** пустой объект `{}` — параметров нет.
 
@@ -41,10 +43,24 @@ await call("/v1/payout/services", {});
 
 ---
 
-## Ответ
+## Пример ответа
 
 Форма — как у [`POST /v1/payment/services`](/reference/payment-services): массив объектов с `network`,
 `currency`, `is_available`, `limit`, `commission`.
+
+```json
+{
+  "state": 0,
+  "result": [
+    { "network": "tron", "currency": "USDT", "is_available": true,
+      "limit": { "min_amount": "0", "max_amount": "" },
+      "commission": { "fee_amount": "0", "percent": "0" } },
+    { "network": "ethereum", "currency": "ETH", "is_available": true,
+      "limit": { "min_amount": "0", "max_amount": "" },
+      "commission": { "fee_amount": "0", "percent": "0" } }
+  ]
+}
+```
 
 <Note>
   **`commission`** здесь — **сетевая** комиссия (газ сети), а **НЕ** комиссия платформы Oblodai.

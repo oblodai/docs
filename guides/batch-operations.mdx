@@ -6,6 +6,12 @@ icon: "boxes-stacked"
 Батч — это способ отправить **до 5000 операций одним подписанным запросом**. Работает для трёх видов
 операций: создание платежей, возвраты и выплаты.
 
+<Info>
+  **Ещё не в проде.** Эта функциональность станет доступна после деплоя обновлённого шлюза
+  (одновременно с выходом SDK v1.1.0). До этого соответствующие эндпоинты недоступны.
+  Статус — в [обзоре SDK](/sdk/overview#что-нового-в-v1-1-0).
+</Info>
+
 Главное, что нужно понять сразу: **батч — это штатный способ не упираться в rate limit.** Лимит
 частоты считается по HTTP‑запросам (по умолчанию 120 запросов/мин на IP). Если вы отправляете 5000
 выплат циклом — это 5000 запросов, и вы гарантированно упрётесь в `429` и растянете работу на часы.
@@ -339,11 +345,38 @@ for (let offset = 0; offset < info.total; offset += 100) {
 const SKIPPED = "skipped: batch stopped after an earlier failure";
 
 for (const item of items) {
+  // done = выплата создана (status: "process"); финал придёт вебхуком payout.confirmed/payout.failed
   if (item.status === "done") await savePayoutUuid(item.order_id, item.result.uuid);
   else if (item.error === SKIPPED) await requeue(item.order_id); // не дошли (on_error: "stop")
   else await markFailed(item.order_id, item.error);
 }
 ```
+
+---
+
+## Шаг 4 (для выплат). `done` ≠ выплачено
+
+Для батча выплат `items[].status: "done"` означает лишь, что выплата **создана**: в `result` она
+приходит со `status: "process"` (это видно в примере ответа выше). Финальные статусы — `paid`, `fail`
+или `cancel` — наступают позже, когда шлюз отправляет транзакцию в сеть, и выплата на этом этапе всё
+ещё может упасть.
+
+<Warning>
+  Батч результат **не переоценивает**: выплата, упавшая после создания, в `/v1/batch/info` навсегда
+  останется `done`. Смотреть на батч как на источник финального статуса нельзя.
+</Warning>
+
+Дождаться финала можно двумя способами:
+
+- **Вебхуки** `payout.confirmed` (успех) / `payout.failed` — см.
+  [Настройка вебхуков](/guides/webhooks-setup).
+- **Поллинг** [`POST /v1/payout/info`](/reference/payout-info) по сохранённому `result.uuid` — до
+  `is_final: true` (статусы и признак финальности — в
+  [объекте выплаты](/reference/payout-object)).
+
+Именно поэтому в примерах выше мы сохраняем `uuid` каждого `done`-элемента: это ваш ключ для сверки
+финального статуса. Для батча **платежей** аналогично: `done` = счёт создан, об оплате сообщат
+`invoice.*`‑вебхуки.
 
 ---
 
@@ -414,7 +447,9 @@ for (const item of items) {
 ## Связанные страницы
 
 <CardGroup cols={2}>
-  <Card title="Батч: платежи, возвраты, выплаты" href="/reference/payment-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/batch" href="/reference/payment-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payout/batch" href="/reference/payout-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/refund/batch" href="/reference/refund-batch" icon="arrow-right" horizontal />
   <Card title="POST /v1/batch/info" href="/reference/batch-info" icon="arrow-right" horizontal />
   <Card title="Массовые выплаты (легаси)" href="/guides/mass-payouts" icon="arrow-right" horizontal>
     `/v1/payout/mass` и когда он ещё уместен.

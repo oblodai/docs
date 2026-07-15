@@ -86,7 +86,8 @@ X-Webhook-Signature = hex( HMAC_SHA256( secret, "{X-Webhook-Timestamp}." + сы�
 
 <CodeGroup>
 
-```python Python (Flask)
+```python Python
+# пример на Flask
 import hmac, hashlib
 from flask import Flask, request
 
@@ -108,7 +109,8 @@ def callback():
     return "ok", 200
 ```
 
-```js Node.js (Express)
+```js Node.js
+// пример на Express
 import express from "express";
 import crypto from "node:crypto";
 
@@ -122,7 +124,9 @@ app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
   const sig = req.get("X-Webhook-Signature") || "";
 
   const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(`${ts}.${raw}`).digest("hex");
-  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) {
+  const ok = sig.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+  if (!ok) {
     return res.status(403).send("bad signature");
   }
 

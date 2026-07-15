@@ -9,7 +9,9 @@ sidebarTitle: "Создание выплаты"
 **URL:** `https://api.oblodai.com/v1/payout` · **Аутентификация:** обязательна · **Идемпотентность:** заголовок `Idempotency-Key` и/или `order_id` (для выплат `order_id` обязателен).
 
 <Note>
-  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять [SDK](/sdk/overview).
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в
+  [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять
+  [SDK](/sdk/overview).
 </Note>
 
 <Note>
@@ -180,6 +182,7 @@ await call("/v1/payout", {
   [`/approve`](/reference/payout-approve) не нужен.
 - Перед созданием можно оценить комиссию и итоговые суммы через
   [`POST /v1/payout/calculate`](/reference/payout-calculate).
+- **Много выплат?** → [`POST /v1/payout/batch`](/reference/payout-batch) — до 5000 одним запросом.
 
 ---
 
@@ -188,7 +191,10 @@ await call("/v1/payout", {
 <CardGroup cols={2}>
   <Card title="Объект выплаты" href="/reference/payout-object" icon="arrow-right" horizontal />
   <Card title="POST /v1/payout/calculate" href="/reference/payout-calculate" icon="arrow-right" horizontal />
-  <Card title="POST /v1/payout/mass" href="/reference/payout-mass" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payout/batch" href="/reference/payout-batch" icon="arrow-right" horizontal>
+    Много выплат сразу — до 5000 одним запросом.
+  </Card>
+  <Card title="POST /v1/payout/mass (легаси, до 100)" href="/reference/payout-mass" icon="arrow-right" horizontal />
   <Card title="Кто платит сетевую комиссию" href="/reference/payout-fee-config" icon="arrow-right" horizontal />
   <Card title="Первая выплата" href="/guides/first-payout" icon="arrow-right" horizontal />
 </CardGroup>

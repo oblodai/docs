@@ -73,6 +73,8 @@ BODY='{"order_id":"order-1001","currency":"USDT","network":"tron","amount":"25.0
 SIGSTR=$(printf '%s\n%s\n%s\n%s' "$TS" "$METHOD" "$PATHQ" "$BODY")
 SIG=$(printf '%s' "$SIGSTR" | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
 
+# Опционально: защита от дублей при ретраях. Заголовок в подпись НЕ входит —
+# просто добавьте к curl:  -H "Idempotency-Key: $KEY"  (KEY=$(uuidgen))
 curl -s https://api.oblodai.com$PATHQ \
   -X POST \
   -H 'Content-Type: application/json' \
@@ -89,17 +91,20 @@ SECRET = b"oblodai_live_…"
 PUBLIC_ID = "oblodai_…"
 BASE = "https://api.oblodai.com"
 
-def call(path: str, payload: dict) -> dict:
+def call(path: str, payload: dict, idempotency_key: str | None = None) -> dict:
     body = json.dumps(payload, separators=(",", ":"))  # компактный JSON — подписываем ровно его
     ts = str(int(time.time()))
     signing = f"{ts}\nPOST\n{path}\n{body}"
     sig = hmac.new(SECRET, signing.encode(), hashlib.sha256).hexdigest()
-    r = requests.post(BASE + path, data=body, headers={
+    headers = {
         "Content-Type": "application/json",
         "X-Public-Id": PUBLIC_ID,
         "X-Timestamp": ts,
         "X-Signature": sig,
-    })
+    }
+    if idempotency_key:
+        headers["Idempotency-Key"] = idempotency_key   # защита от дублей; в подпись НЕ входит
+    r = requests.post(BASE + path, data=body, headers=headers)
     return r.json()
 ```
 
@@ -110,21 +115,21 @@ const SECRET = "oblodai_live_…";
 const PUBLIC_ID = "oblodai_…";
 const BASE = "https://api.oblodai.com";
 
-async function call(path, payload) {
+async function call(path, payload, idempotencyKey = null) {
   const body = JSON.stringify(payload);          // подписываем ровно эту строку
   const ts = Math.floor(Date.now() / 1000).toString();
   const signing = `${ts}\nPOST\n${path}\n${body}`;
   const sig = crypto.createHmac("sha256", SECRET).update(signing).digest("hex");
-  const res = await fetch(BASE + path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Public-Id": PUBLIC_ID,
-      "X-Timestamp": ts,
-      "X-Signature": sig,
-    },
-    body,
-  });
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Public-Id": PUBLIC_ID,
+    "X-Timestamp": ts,
+    "X-Signature": sig,
+  };
+  if (idempotencyKey) {
+    headers["Idempotency-Key"] = idempotencyKey; // защита от дублей; в подпись НЕ входит
+  }
+  const res = await fetch(BASE + path, { method: "POST", headers, body });
   return res.json();
 }
 ```
@@ -135,23 +140,27 @@ $secret = 'oblodai_live_…';
 $publicId = 'oblodai_…';
 $base = 'https://api.oblodai.com';
 
-function call(string $path, array $payload): array {
+function call(string $path, array $payload, ?string $idempotencyKey = null): array {
     global $secret, $publicId, $base;
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
     $ts = (string) time();
     $signing = "$ts\nPOST\n$path\n$body";
     $sig = hash_hmac('sha256', $signing, $secret);
+    $headers = [
+        'Content-Type: application/json',
+        "X-Public-Id: $publicId",
+        "X-Timestamp: $ts",
+        "X-Signature: $sig",
+    ];
+    if ($idempotencyKey !== null) {
+        $headers[] = "Idempotency-Key: $idempotencyKey";   // защита от дублей; в подпись НЕ входит
+    }
     $ch = curl_init($base . $path);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $body,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            "X-Public-Id: $publicId",
-            "X-Timestamp: $ts",
-            "X-Signature: $sig",
-        ],
+        CURLOPT_HTTPHEADER => $headers,
     ]);
     return json_decode(curl_exec($ch), true);
 }

@@ -48,12 +48,9 @@ Oblodai — платёжный шлюз для приёма и отправки 
   <Card title="Тестирование интеграции" icon="flask" href="/guides/testing">
     Как всё проверить без песочницы.
   </Card>
-  <Card title="FAQ и диагностика" icon="circle-question" href="/guides/faq-troubleshooting">
-    Частые вопросы — короткие ответы. Пошаговая диагностика — в [Что делать, если не работает](/guides/troubleshooting).
-  </Card>
 </CardGroup>
 
-## Приём платежей в крипте
+## Приём платежей
 
 <CardGroup cols={2}>
   <Card title="Приём первого платежа" icon="circle-dollar-to-slot" href="/guides/accept-first-payment">
@@ -79,18 +76,7 @@ Oblodai — платёжный шлюз для приёма и отправки 
   </Card>
 </CardGroup>
 
-## Масштаб и автоматизация
-
-<CardGroup cols={2}>
-  <Card title="Массовые операции (батчи)" icon="boxes-stacked" href="/guides/batch-operations">
-    До **5000** платежей, возвратов или выплат **одним** запросом — штатный способ не упираться в rate limit.
-  </Card>
-  <Card title="Сплит‑платежи" icon="chart-pie" href="/guides/split-payments">
-    Доля каждого платежа автоматически уходит партнёрам. Для партнёрок и маркетплейсов.
-  </Card>
-</CardGroup>
-
-## Выплаты
+## Выплаты и возвраты
 
 <CardGroup cols={2}>
   <Card title="Первая выплата" icon="money-bill-wave" href="/guides/first-payout">
@@ -99,8 +85,19 @@ Oblodai — платёжный шлюз для приёма и отправки 
   <Card title="Возвраты платежей" icon="rotate-left" href="/guides/refunds">
     Полный и частичный; адрес указывать **не обязательно**.
   </Card>
-  <Card title="Массовые выплаты (легаси)" icon="people-group" href="/guides/mass-payouts">
+  <Card title="Массовые выплаты: батч vs легаси /mass" icon="people-group" href="/guides/mass-payouts">
     `/v1/payout/mass` (до 100) — когда он ещё уместен; основной путь — [батчи](/guides/batch-operations).
+  </Card>
+</CardGroup>
+
+## Масштаб и автоматизация
+
+<CardGroup cols={2}>
+  <Card title="Массовые операции (батчи)" icon="boxes-stacked" href="/guides/batch-operations">
+    До **5000** платежей, возвратов или выплат **одним** запросом — штатный способ не упираться в rate limit.
+  </Card>
+  <Card title="Сплит‑платежи" icon="chart-pie" href="/guides/split-payments">
+    Доля каждого платежа автоматически уходит партнёрам. Для партнёрок и маркетплейсов.
   </Card>
 </CardGroup>
 
@@ -113,22 +110,28 @@ Oblodai — платёжный шлюз для приёма и отправки 
   <Card title="Отладка вебхуков" icon="bug" href="/guides/webhooks-debug">
     Тестовые события, журнал доставок, переотправка.
   </Card>
+  <Card title="Безопасность вебхуков" icon="shield-halved" href="/guides/webhooks-security">
+    Replay‑защита и перепроверка статуса — за пределами подписи.
+  </Card>
 </CardGroup>
 
-## Надёжность и прод
+## Прод и надёжность
 
 <CardGroup cols={2}>
   <Card title="Рецепт устойчивого клиента" icon="heart-pulse" href="/guides/resilient-client">
     Таймауты, идемпотентность, ретраи, backoff. **Какие `409` надо повторять, а какие нет.**
-  </Card>
-  <Card title="Безопасность вебхуков" icon="shield-halved" href="/guides/webhooks-security">
-    Replay‑защита и перепроверка статуса — за пределами подписи.
   </Card>
   <Card title="Безопасность в проде" icon="lock" href="/guides/production-security">
     Хранение ключа, IP‑allowlist, ротация ключа.
   </Card>
   <Card title="Чек‑лист перед запуском" icon="list-check" href="/guides/production-checklist">
     Что проверить до боевого трафика.
+  </Card>
+  <Card title="FAQ и диагностика" icon="circle-question" href="/guides/faq-troubleshooting">
+    Частые вопросы — короткие ответы.
+  </Card>
+  <Card title="Что делать, если не работает" icon="wrench" href="/guides/troubleshooting">
+    Пошаговая диагностика по симптому.
   </Card>
 </CardGroup>
 
