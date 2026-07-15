@@ -16,14 +16,11 @@ icon: "golang"
 go get github.com/oblodai/oblodai-go
 ```
 
-<Warning>
-  **Сейчас в Go modules — v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого
-  шлюза). Команда выше поставит **v1.0.x**.
-
-  Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
-  повторы») и **нет** групп `Batches` / `Links` / `Splits` и методов `*Batch` / `SendEmail`.
-  Всё, помеченное «с v1.1.0», появится после публикации.
-</Warning>
+<Info>
+  **Новое в v1.1.0** (текущая версия в Go modules): группы `Batches` / `Links` / `Splits` /
+  `PayoutLinks`, методы `*Batch` / `SendEmail` / `Resolve` — и **ломающее изменение**
+  идемпотентности: вместо авто-`order_id` теперь заголовок `Idempotency-Key` (см. «Ошибки и повторы»).
+</Info>
 
 ---
 
@@ -85,11 +82,12 @@ http.Redirect(w, r, payment.URL, http.StatusFound) // на страницу оп
 
 | Группа | Методы |
 |---|---|
-| `client.Payments` | `Create`, `Info`, `History`, `Services`, `QR`, `Resend`, `Refund`, `ListAccepted`, `SetAccepted`, `GetAccuracy`, `SetAccuracy`, `GetAutorefund`, `SetAutorefund`, `SetDiscount`, `ListDiscounts` · **с v1.1.0:** `CreateBatch`, `RefundBatch`, `SendEmail` |
+| `client.Payments` | `Create`, `Info`, `History`, `Services`, `QR`, `Resend`, `Refund`, `ListAccepted`, `SetAccepted`, `GetAccuracy`, `SetAccuracy`, `GetAutorefund`, `SetAutorefund`, `SetDiscount`, `ListDiscounts` · **с v1.1.0:** `CreateBatch`, `RefundBatch`, `SendEmail`, `Resolve` |
 | `client.Payouts` | `Create`, `CreateMass`, `Info`, `History`, `Services`, `Calculate`, `Approve`, `GetFeeConfig`, `SetFeeConfig`, `GetRefundFeeConfig`, `SetRefundFeeConfig`, `Refund` · **с v1.1.0:** `CreateBatch` |
 | `client.Batches` **(v1.1.0)** | `Info` |
 | `client.Links` **(v1.1.0)** | `Create`, `List`, `Info`, `Toggle`, `PublicGet`, `Checkout` |
-| `client.Splits` **(v1.1.0)** | `SplitToAddress`, `SplitToMerchant`, `ListRules`, `DeleteRule`, `GetConfig`, `SetConfig` |
+| `client.PayoutLinks` **(v1.1.0)** | `Create`, `CreateBatch` (до 500), `List`, `Info`, `Cancel` + публичные без подписи: `ClaimInfo(ctx, token)`, `Claim(ctx, token, address)`, `ClaimWithMemo(ctx, token, address, memo)` |
+| `client.Splits` **(v1.1.0)** | `CreateRule`, `SplitToAddress`, `SplitToMerchant`, `ListRules`, `DeleteRule`, `GetConfig`, `SetConfig` |
 | `client.Wallets` | `Create`, `Block`, `BlockedAddressRefund`, `QR` |
 | `client.Account` | `Balance`, `Referral`, `TransferToPersonal`, `VRCS` |
 | `client.Webhooks` | `Register`, `Deliveries`, `TestPayment`, `TestWallet`, `TestPayout` |
@@ -99,8 +97,9 @@ http.Redirect(w, r, payment.URL, http.StatusFound) // на страницу оп
 Все методы принимают `context.Context` первым аргументом. Точные поля — в [Справочнике](/reference/overview).
 
 <Info>
-  Группы `Batches` / `Links` / `Splits` и методы `CreateBatch` / `RefundBatch` / `SendEmail`
-  появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
+  Всё, что помечено «с v1.1.0», доступно начиная с версии **1.1.0** — если у вас стоит v1.0.x,
+  обновите модуль (`go get -u github.com/oblodai/oblodai-go`). Свой ключ идемпотентности в методах
+  создания — `params["idempotency_key"]` (уйдёт в заголовок).
 </Info>
 
 ```go
@@ -120,11 +119,29 @@ rule, err := client.Splits.SplitToAddress(ctx, "T...", "tron", 10.0, "партн
 
 // Счёт на e-mail (письмо с кнопкой «Оплатить»).
 _, err = client.Payments.SendEmail(ctx, payment.UUID, "" /* orderID */, "buyer@example.com")
+
+// Резолв недоплаты: принять частичную оплату (глушит авто-возврат) или вернуть плательщику.
+res, err := client.Payments.Resolve(ctx, payment.UUID, "" /* orderID */, "accept", nil) // или "refund"
 ```
+
+**Крипто-чек за 4 строки** — выплата без адреса получателя (заберёт сам по ссылке):
+
+```go
+check, err := client.PayoutLinks.Create(ctx, oblodai.PayoutLinkParams{
+    Amount: "25", Currency: "USDT", Network: "tron",
+    Reference: "bonus-42", ExpiresInHours: 72, Email: "winner@example.com",
+})
+fmt.Println(check.ClaimURL) // отдайте получателю — он введёт свой адрес сам
+```
+
+- Задавайте `ExpiresInHours` **явно**: без него чек живёт всего **1 час**.
+- `ClaimURL` / `ClaimToken` возвращаются **только из `Create`, один раз** — сохраните сразу.
+- Дедупликация — поле `Reference` (заголовок `Idempotency-Key` на этих эндпоинтах не действует).
 
 Подробности — [Массовые операции](/guides/batch-operations),
 [Платёжные ссылки](/guides/payment-links), [Сплит-платежи](/guides/split-payments),
-[Счета на e-mail](/guides/email-invoices).
+[Счета на e-mail](/guides/email-invoices), [Крипто-чеки](/guides/payout-links),
+[Резолв платежа](/reference/payment-resolve).
 
 ---
 
@@ -224,7 +241,7 @@ client, err := oblodai.New(oblodai.Config{
 
 **Повтор безопасен, но механизм зависит от версии:**
 
-| | **v1.0.x** (сейчас в реестрах) | **v1.1.0** (не опубликована) |
+| | **v1.0.x** (предыдущая) | **v1.1.0** (текущая, в Go modules) |
 |---|---|---|
 | Защита от дублей | `order_id`: не задали — **SDK подставит свой** | заголовок `Idempotency-Key`, одинаковый во всех внутренних повторах |
 | Ваш `order_id` | если не задан — в платеже будет сгенерированный SDK | уходит **как есть**, SDK не подставляет и не переписывает |

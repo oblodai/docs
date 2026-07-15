@@ -377,6 +377,72 @@ sidebarTitle: "Каталог ошибок"
 
 ---
 
+## payoutlink — выплатные ссылки (крипто-чеки)
+
+<ResponseField name="payoutlink.unknown_currency" type="400">
+  Неизвестный крипто-актив. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.bad_amount" type="400">
+  Некорректная сумма. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.insufficient_funds" type="409">
+  Недостаточно доступного баланса для резерва. **Повтор:** Да, после пополнения.
+</ResponseField>
+<ResponseField name="payoutlink.funds_maturing" type="409">
+  Средства ещё дозревают. **Повтор:** Да, позже с backoff.
+</ResponseField>
+<ResponseField name="payoutlink.empty_batch" type="400">
+  Пустой массив `links`. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.batch_too_large" type="400">
+  Больше 500 элементов в батче ссылок. **Повтор:** Нет — разбейте на страницы.
+</ResponseField>
+<ResponseField name="payoutlink.bad_id" type="400">
+  Некорректный `link_id`. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.not_found" type="404">
+  Ссылка не найдена (или чужая), для claim — битый токен. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.not_funded" type="409">
+  Отменить можно только невостребованную ссылку. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.no_address" type="400">
+  Claim без адреса. **Повтор:** Нет — передайте `address`.
+</ResponseField>
+<ResponseField name="payoutlink.destination_internal" type="400">
+  Claim на внутренний адрес шлюза запрещён. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.expired" type="409">
+  Срок ссылки вышел, резерв возвращён. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.cancelled" type="409">
+  Ссылка отменена мерчантом. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.claim_in_progress" type="409">
+  Получение уже идёт с другим адресом. **Повтор:** Только с первым адресом.
+</ResponseField>
+<ResponseField name="payoutlink.disabled" type="503">
+  Функция выключена на шлюзе. **Повтор:** Нет.
+</ResponseField>
+
+## resolution — резолв недоплаты
+
+<ResponseField name="resolution.bad_action" type="400">
+  `action` не `accept`/`refund`. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="resolution.not_underpaid" type="409">
+  Платёж не в статусе `wrong_amount`. **Повтор:** Нет — сверьтесь с `/v1/payment/info`.
+</ResponseField>
+<ResponseField name="resolution.already_resolved" type="409">
+  Решение по счёту уже принято. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="resolution.already_refunded" type="409">
+  По счёту уже был возврат — accept невозможен. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="resolution.disabled" type="503">
+  Функция выключена на шлюзе. **Повтор:** Нет.
+</ResponseField>
+
 ## refund — возвраты
 
 <ResponseField name="refund.no_address" type="400">

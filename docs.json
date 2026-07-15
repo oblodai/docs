@@ -55,10 +55,6 @@
           {
             "label": "SDK",
             "href": "/sdk/overview"
-          },
-          {
-            "label": "Модули для CMS",
-            "href": "/modules/overview"
           }
         ]
       },
@@ -173,6 +169,7 @@
                 "pages": [
                   "guides/first-payout",
                   "guides/refunds",
+                  "guides/payout-links",
                   "guides/mass-payouts"
                 ]
               },
@@ -236,7 +233,8 @@
                 "icon": "globe",
                 "pages": [
                   "reference/currencies",
-                  "reference/exchange-rate-list"
+                  "reference/exchange-rate-list",
+                  "reference/claim-public"
                 ]
               },
               {
@@ -315,6 +313,8 @@
                   "reference/payout-calculate",
                   "reference/payout-approve",
                   "reference/payment-refund",
+                  "reference/payment-resolve",
+                  "reference/payout-link",
                   "reference/transfer-to-personal",
                   {
                     "group": "Комиссии",
@@ -351,25 +351,6 @@
                   "reference/errors-catalog",
                   "reference/glossary",
                   "reference/diagrams"
-                ]
-              }
-            ]
-          },
-          {
-            "tab": "Модули CMS",
-            "icon": "cart-shopping",
-            "groups": [
-              {
-                "group": "Готовые модули",
-                "icon": "puzzle-piece",
-                "pages": [
-                  "modules/overview",
-                  "modules/woocommerce",
-                  "modules/opencart",
-                  "modules/prestashop",
-                  "modules/whmcs",
-                  "modules/ips",
-                  "modules/xenforo"
                 ]
               }
             ]

@@ -1,0 +1,245 @@
+---
+title: "Выплатные ссылки (крипто-чеки)"
+sidebarTitle: "Выплатные ссылки (чеки)"
+description: "Зарезервируйте выплату без адреса получателя — он сам заберёт средства по ссылке."
+---
+
+**Методы:** `/v1/payout/link` · `/batch` · `/list` · `/info` · `/cancel`
+
+Выплатная ссылка (крипто-чек) — способ отправить средства, **не зная адреса получателя**. Вы
+резервируете сумму (`available → payout_held` на балансе), получаете одноразовую ссылку
+`claim_url` и передаёте её получателю (можно письмом — поле `email`). Получатель открывает
+страницу, вводит свой адрес — и из резерва рождается обычная [выплата](/reference/payout-create).
+Невостребованная ссылка возвращает резерв при истечении срока или отмене.
+
+**URL:** `https://api.oblodai.com/v1/payout/link` · **Аутентификация:** обязательна, **payout-ключ** · **Идемпотентность:** заголовок `Idempotency-Key` здесь **не действует** — дедупликация через поле `reference` (уникально на мерчанта).
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в
+  [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять
+  [SDK](/sdk/overview).
+</Note>
+
+## Статусы ссылки
+
+| Статус | Значение |
+|---|---|
+| `funded` | Создана, резерв удержан, ждёт получателя |
+| `claiming` | Получатель ввёл адрес, выплата порождается (транзиентный) |
+| `claimed` | Выплата порождена (`payout_id` заполнен) — терминальный |
+| `expired` | Срок вышел без claim; резерв возвращён — терминальный |
+| `cancelled` | Отменена мерчантом до claim; резерв возвращён — терминальный |
+
+## POST /v1/payout/link
+
+Создаёт одну ссылку. Под row-lock проверяется достаточность **зрелого** баланса
+(действует [maturity-гейт](/guides/balance-and-funds), как у обычной выплаты).
+
+### Параметры запроса
+
+<ParamField body="currency" type="string" required>
+  Крипто-актив выплаты (`USDT`, `BTC`, …). Фиат невозможен.
+</ParamField>
+
+<ParamField body="network" type="string" required>
+  Сеть выплаты получателю (`tron`, `bitcoin`, …).
+</ParamField>
+
+<ParamField body="amount" type="string" required>
+  Сумма в `currency`, строкой. Больше нуля.
+</ParamField>
+
+<ParamField body="reference" type="string">
+  Ваш ключ дедупликации, уникальный на мерчанта. Настоятельно рекомендуется: заголовок
+  `Idempotency-Key` на этом эндпоинте не действует. См. предупреждение ниже.
+</ParamField>
+
+<ParamField body="title" type="string">
+  Заголовок — виден получателю на странице получения.
+</ParamField>
+
+<ParamField body="note" type="string">
+  Сообщение получателю (видно на странице и в письме).
+</ParamField>
+
+<ParamField body="email" type="string">
+  Если задан — получателю уходит письмо с кнопкой «Получить средства» (best-effort: ошибка
+  доставки не отменяет создание ссылки).
+</ParamField>
+
+<ParamField body="expires_in_hours" type="int64">
+  Срок жизни ссылки в часах, клампится в диапазон **1–720** (30 дней).
+</ParamField>
+
+<Warning>
+  **Задавайте `expires_in_hours` явно.** Если поле не передано (или передан `0`), ссылка живёт
+  всего **1 час** — значение приводится к нижней границе диапазона, а не к максимуму.
+</Warning>
+
+<Warning>
+  **Повтор с тем же `reference` сейчас возвращает `500`**, а не повтор ответа: уникальный индекс
+  срабатывает без graceful-реплея. Не ретрайте создание вслепую — сначала проверьте
+  `/v1/payout/link/list`, появилась ли ссылка. В батче дубликат фейлит только свой элемент.
+</Warning>
+
+### Пример запроса
+
+<CodeGroup>
+
+```bash cURL wrap
+BODY='{"currency":"USDT","network":"tron","amount":"25","reference":"bonus-42","title":"Бонус","note":"Спасибо за участие","email":"user@example.com","expires_in_hours":168}'
+TS=$(date +%s)
+SIGSTR=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout/link' "$BODY")
+SIG=$(printf '%s' "$SIGSTR" | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
+
+curl -s https://api.oblodai.com/v1/payout/link \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H "X-Public-Id: $PUBLIC_ID" \
+  -H "X-Timestamp: $TS" \
+  -H "X-Signature: $SIG" \
+  -d "$BODY"
+```
+
+```python Python
+call("/v1/payout/link", {
+    "currency": "USDT", "network": "tron", "amount": "25",
+    "reference": "bonus-42",              # ваш ключ дедупликации
+    "title": "Бонус", "note": "Спасибо за участие",
+    "email": "user@example.com",          # получателю уйдёт письмо со ссылкой
+    "expires_in_hours": 168,              # 7 дней; без поля будет ровно 1 час!
+})
+```
+
+```js Node.js
+await call("/v1/payout/link", {
+  currency: "USDT", network: "tron", amount: "25",
+  reference: "bonus-42",                // ваш ключ дедупликации
+  title: "Бонус", note: "Спасибо за участие",
+  email: "user@example.com",            // получателю уйдёт письмо со ссылкой
+  expires_in_hours: 168,                // 7 дней; без поля будет ровно 1 час!
+});
+```
+
+</CodeGroup>
+
+### Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "link_id": "7f0c9c2e-6c2a-4c1e-9f3a-1b2c3d4e5f60",
+    "status": "funded",
+    "amount": "25",
+    "currency": "USDT",
+    "network": "tron",
+    "title": "Бонус",
+    "note": "Спасибо за участие",
+    "reference": "bonus-42",
+    "email": "user@example.com",
+    "expires_at": "2026-07-22T17:00:00Z",
+    "created_at": "2026-07-15T17:00:00Z",
+    "claim_token": "Xk3v…43-символа…",
+    "claim_url": "https://pay.oblodai.com/claim/Xk3v…"
+  }
+}
+```
+
+<Warning>
+  **`claim_token` и `claim_url` возвращаются только здесь, один раз.** Токен хранится у нас лишь
+  хешем (SHA-256) — восстановить ссылку потом невозможно. Сохраните `claim_url` сразу.
+</Warning>
+
+## POST /v1/payout/link/batch
+
+До **500** ссылок одним запросом: `{"links": [<элементы как в create>, …]}`. Каждый элемент
+резервируется в своей транзакции — плохой элемент фейлит только себя. Все ссылки вызова получают
+общий `batch_id`.
+
+```json Ответ (index-aligned)
+{
+  "state": 0,
+  "result": {
+    "created": 2,
+    "total": 3,
+    "results": [
+      { "ok": true,  "link": { "link_id": "…", "claim_url": "…", "batch_id": "…" } },
+      { "ok": false, "error": "payoutlink.insufficient_funds", "message": "available balance is less than the link amount" },
+      { "ok": true,  "link": { "…": "…" } }
+    ]
+  }
+}
+```
+
+Ошибки уровня запроса: `payoutlink.empty_batch` (400), `payoutlink.batch_too_large` (400, больше 500).
+
+## POST /v1/payout/link/list
+
+Запрос: `{"limit": 50, "offset": 0}` (limit вне 1–200 → 50). Сортировка — новые первыми.
+Ответ: `{"links": [ … ]}` — **без** `claim_token`/`claim_url`.
+
+## POST /v1/payout/link/info
+
+Запрос: `{"link_id": "<uuid>"}`. После claim в ответе появляются `payout_id` и `claim_address`.
+
+## POST /v1/payout/link/cancel
+
+Запрос: `{"link_id": "<uuid>"}`. Отменяется только `funded`-ссылка: резерв возвращается
+(`payout_held → available`), статус — `cancelled`. Если получатель успел завершить claim
+конкурентно, вернётся ссылка со статусом `claimed` и `payout_id` — деньги уже ушли, двойного
+возврата не бывает.
+
+## Коды ошибок
+
+<ResponseField name="payoutlink.unknown_currency" type="400">
+  Неизвестный крипто-актив. **Повтор:** Нет — проверьте пару валюта/сеть.
+</ResponseField>
+<ResponseField name="payoutlink.bad_amount" type="400">
+  Некорректная сумма. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.insufficient_funds" type="409">
+  Недостаточно доступного баланса. **Повтор:** Да, после пополнения.
+</ResponseField>
+<ResponseField name="payoutlink.funds_maturing" type="409">
+  Средства ещё дозревают. **Повтор:** Да, позже с backoff — как у выплат.
+</ResponseField>
+<ResponseField name="payoutlink.empty_batch" type="400">
+  Пустой массив `links`. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.batch_too_large" type="400">
+  Больше 500 элементов — разбейте на страницы. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.bad_id" type="400">
+  Некорректный `link_id`. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.not_found" type="404">
+  Ссылка не найдена (или чужая). **Повтор:** Нет — сверьте `link_id`.
+</ResponseField>
+<ResponseField name="payoutlink.not_funded" type="409">
+  Отменить можно только невостребованную (`funded`) ссылку. **Повтор:** Нет — проверьте статус через `/info`.
+</ResponseField>
+<ResponseField name="payoutlink.disabled" type="503">
+  Функция выключена на шлюзе. **Повтор:** Нет — обратитесь в поддержку.
+</ResponseField>
+
+## Нюансы
+
+- **Письмо получателю** — брендовый шаблон с кнопкой «Получить средства», текст `note` включается
+  в письмо. Отправка best-effort: сбой почты не отменяет резерв.
+- **Поллеры**: истечение проверяется раз в 60 секунд; «зависший» claim (статус `claiming` дольше
+  15 минут) добирается рипером — либо финализируется в `claimed`, либо откатывается в `funded`.
+- **Вебхуки**: отдельных событий у ссылок нет. Когда получатель забирает средства, порождённая
+  выплата шлёт обычные [`payout.*`](/reference/webhook-object) события; её `order_id` =
+  `payoutlink:<link_id>` — так вы сопоставите событие со ссылкой.
+- **Баланс**: резерв виден как удержание `payout_held`; `available` уменьшается в момент создания
+  ссылки. См. [Модель баланса](/guides/balance-and-funds).
+
+## Связанные страницы
+
+<CardGroup cols={2}>
+  <Card title="Публичное получение по ссылке" href="/reference/claim-public" icon="arrow-right" horizontal />
+  <Card title="Гайд: крипто-чеки" href="/guides/payout-links" icon="arrow-right" horizontal />
+  <Card title="Создание выплаты" href="/reference/payout-create" icon="arrow-right" horizontal />
+  <Card title="Объект Payout" href="/reference/payout-object" icon="arrow-right" horizontal />
+</CardGroup>

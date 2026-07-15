@@ -16,14 +16,12 @@ icon: "php"
 composer require oblodai/sdk
 ```
 
-<Warning>
-  **В Packagist сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
-  Команда выше поставит **v1.0.x**.
-
-  Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
-  повторы») и **нет** групп `batches()` / `links()` / `splits()` и методов `createBatch` /
-  `refundBatch` / `sendEmail`.
-</Warning>
+<Info>
+  **Новое в v1.1.0** (текущая версия в Packagist): группы `batches()` / `links()` / `splits()` /
+  `payoutLinks()`, методы `createBatch` / `refundBatch` / `sendEmail` / `resolve` — и **ломающее
+  изменение** идемпотентности: вместо авто-`order_id` теперь заголовок `Idempotency-Key`
+  (см. «Ошибки и повторы»).
+</Info>
 
 ---
 
@@ -90,10 +88,11 @@ header('Location: ' . $payment['url']);
 
 | Группа | Методы |
 |---|---|
-| `payments()` | `create`, `info`, `history`, `services`, `qr`, `walletQr`, `resend`, `refund`, `listAccepted`, `setAccepted`, `getAccuracy`, `setAccuracy`, `getAutorefund`, `setAutorefund`, `listDiscounts`, `setDiscount` · **с v1.1.0:** `createBatch`, `refundBatch`, `sendEmail` |
+| `payments()` | `create`, `info`, `history`, `services`, `qr`, `walletQr`, `resend`, `refund`, `listAccepted`, `setAccepted`, `getAccuracy`, `setAccuracy`, `getAutorefund`, `setAutorefund`, `listDiscounts`, `setDiscount` · **с v1.1.0:** `createBatch`, `refundBatch`, `sendEmail`, `resolve` |
 | `payouts()` | `create`, `createMass`, `info`, `history`, `services`, `calculate`, `approve`, `getFeeConfig`, `setFeeConfig`, `getRefundFeeConfig`, `setRefundFeeConfig`, `refund` · **с v1.1.0:** `createBatch` |
 | `batches()` **(v1.1.0)** | `info` |
-| `links()` **(v1.1.0)** | `create`, `list`, `info`, `toggle`, `publicGet`, `checkout` |
+| `links()` **(v1.1.0)** | `create`, `list`, `info`, `toggle`, `publicGet`, `checkout` · `links()` = алиас `paymentLinks()` |
+| `payoutLinks()` **(v1.1.0)** | `create`, `createBatch` (до 500), `list`, `info`, `cancel` + публичные без подписи: `claimInfo($token)`, `claim($token, $address, $memo = null)` |
 | `splits()` **(v1.1.0)** | `splitToAddress`, `splitToMerchant`, `listRules`, `deleteRule`, `getConfig`, `setConfig` |
 | `wallets()` | `create`, `block`, `blockedAddressRefund`, `qr` |
 | `account()` | `balance`, `referral`, `transferToPersonal`, `vrcs` |
@@ -104,10 +103,11 @@ header('Location: ' . $payment['url']);
 Каждый метод возвращает уже развёрнутый `result` (массив). Точные поля запроса/ответа — в
 [Справочнике](/reference/overview).
 
-<Warning>
-  Группы `batches()` / `links()` / `splits()` и методы `createBatch` / `refundBatch` / `sendEmail`
-  появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
-</Warning>
+<Info>
+  Всё, что помечено «с v1.1.0», доступно начиная с версии **1.1.0** — если у вас стоит v1.0.x,
+  обновите пакет (`composer update oblodai/sdk`). Свой ключ идемпотентности в методах создания —
+  `'idempotency_key'` в массиве параметров (уйдёт в заголовок).
+</Info>
 
 ```php
 // Массовые операции: до 5000 элементов одним подписанным запросом (одна отметка rate-limit).
@@ -126,11 +126,29 @@ $client->splits()->splitToAddress('T...', 'tron', 10.0, 'партнёр А');
 
 // Счёт на e-mail (письмо с кнопкой «Оплатить»).
 $client->payments()->sendEmail($payment['uuid'], null, 'buyer@example.com');
+
+// Резолв недоплаты: принять частичную оплату (глушит авто-возврат) или вернуть плательщику.
+$client->payments()->resolve(['uuid' => $payment['uuid'], 'action' => 'accept']); // или 'refund'
 ```
+
+**Крипто-чек за 4 строки** — выплата без адреса получателя (заберёт сам по ссылке):
+
+```php
+$check = $client->payoutLinks()->create([
+    'amount' => '25', 'currency' => 'USDT', 'network' => 'tron',
+    'reference' => 'bonus-42', 'expires_in_hours' => 72, 'email' => 'winner@example.com',
+]);
+echo $check['claim_url']; // отдайте получателю — он введёт свой адрес сам
+```
+
+- Задавайте `expires_in_hours` **явно**: без него чек живёт всего **1 час**.
+- `claim_url` / `claim_token` возвращаются **только из `create`, один раз** — сохраните сразу.
+- Дедупликация — поле `reference` (заголовок `Idempotency-Key` на этих эндпоинтах не действует).
 
 Подробности — [Массовые операции](/guides/batch-operations),
 [Платёжные ссылки](/guides/payment-links), [Сплит-платежи](/guides/split-payments),
-[Счета на e-mail](/guides/email-invoices).
+[Счета на e-mail](/guides/email-invoices), [Крипто-чеки](/guides/payout-links),
+[Резолв платежа](/reference/payment-resolve).
 
 ---
 
@@ -232,7 +250,7 @@ try {
 
 **Повтор безопасен, но механизм зависит от версии:**
 
-| | **v1.0.x** (сейчас в Packagist) | **v1.1.0** (не опубликована) |
+| | **v1.0.x** (предыдущая) | **v1.1.0** (текущая, в Packagist) |
 |---|---|---|
 | Защита от дублей | `order_id`: не задали — **SDK подставит свой** | заголовок `Idempotency-Key`, одинаковый во всех внутренних повторах |
 | Ваш `order_id` | если не задан — в платеже будет сгенерированный SDK | уходит **как есть**, SDK не подставляет и не переписывает |

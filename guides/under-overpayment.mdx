@@ -93,6 +93,34 @@ await call("/v1/payment/autorefund/set", { overpay: true, underpay: true });
 
 ---
 
+## Ручное решение по недоплате: `/v1/payment/resolve`
+
+Автовозврат — политика «по умолчанию». Для конкретного недоплаченного счёта (`wrong_amount`)
+решение можно принять вручную — методом [`POST /v1/payment/resolve`](/reference/payment-resolve):
+
+- **`action: "accept"`** — принять частичную оплату: средства остаются у вас, автовозврат для
+  этого счёта отключается. Удобно, когда недоплата копеечная или вы договорились с покупателем.
+- **`action: "refund"`** — вернуть недоплату плательщику прямо сейчас, не дожидаясь поллера
+  (или когда автовозврат выключен).
+
+<CodeGroup>
+
+```python Python
+call("/v1/payment/resolve", {"order_id": "ord-1001", "action": "accept"})
+```
+
+```js Node.js
+await call("/v1/payment/resolve", { order_id: "ord-1001", action: "accept" });
+```
+
+</CodeGroup>
+
+Решение одно на счёт: повторный `accept` — no-op, противоположное действие вернёт
+`resolution.already_resolved`. Если покупатель успел доплатить и счёт стал `paid`, придёт
+`resolution.not_underpaid` — сверьтесь с `/v1/payment/info`.
+
+---
+
 ## Рекомендации
 
 - **Включите небольшой допуск** (1–2 %) — это резко снижает число «недоплат» из‑за комиссий и

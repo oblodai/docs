@@ -15,14 +15,11 @@ icon: "python"
 pip install oblodai
 ```
 
-<Warning>
-  **В PyPI сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
-  Команда выше поставит **v1.0.x**.
-
-  Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
-  повторы») и **нет** групп `batches` / `links` / `splits` и методов `create_batch` / `refund_batch` /
-  `send_email`.
-</Warning>
+<Info>
+  **Новое в v1.1.0** (текущая версия в PyPI): группы `batches` / `links` / `splits` / `payout_links`,
+  методы `create_batch` / `refund_batch` / `send_email` / `resolve` — и **ломающее изменение**
+  идемпотентности: вместо авто-`order_id` теперь заголовок `Idempotency-Key` (см. «Ошибки и повторы»).
+</Info>
 
 ---
 
@@ -88,10 +85,11 @@ async with AsyncOblodaiClient.from_env() as client:
 
 | Группа | Методы |
 |---|---|
-| `client.payments` | `create`, `info`, `history`, `services`, `qr`, `resend`, `refund`, `list_accepted`, `set_accepted`, `get_accuracy`, `set_accuracy`, `get_autorefund`, `set_autorefund`, `set_discount`, `list_discounts` · **с v1.1.0:** `create_batch`, `refund_batch`, `send_email` |
+| `client.payments` | `create`, `info`, `history`, `services`, `qr`, `resend`, `refund`, `list_accepted`, `set_accepted`, `get_accuracy`, `set_accuracy`, `get_autorefund`, `set_autorefund`, `set_discount`, `list_discounts` · **с v1.1.0:** `create_batch`, `refund_batch`, `send_email`, `resolve` |
 | `client.payouts` | `create`, `create_mass`, `info`, `history`, `services`, `calculate`, `approve`, `get_fee_config`, `set_fee_config`, `get_refund_fee_config`, `set_refund_fee_config`, `refund` · **с v1.1.0:** `create_batch` |
 | `client.batches` **(v1.1.0)** | `info` |
 | `client.links` **(v1.1.0)** | `create`, `list`, `info`, `toggle`, `public_get`, `checkout` |
+| `client.payout_links` **(v1.1.0)** | `create`, `create_batch` (до 500), `list`, `info`, `cancel` + публичные без подписи: `claim_info(token)`, `claim(token, address=…, memo=…)` |
 | `client.splits` **(v1.1.0)** | `split_to_address`, `split_to_merchant`, `list_rules`, `delete_rule`, `get_config`, `set_config` |
 | `client.wallets` | `create`, `block`, `blocked_address_refund`, `qr` |
 | `client.account` | `balance`, `referral`, `transfer_to_personal`, `vrcs` |
@@ -102,8 +100,9 @@ async with AsyncOblodaiClient.from_env() as client:
 Точные поля — в [Справочнике](/reference/overview). У синхронного и асинхронного клиента API одинаков.
 
 <Info>
-  Группы `batches` / `links` / `splits` и методы `create_batch` / `refund_batch` / `send_email`
-  появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
+  Всё, что помечено «с v1.1.0», доступно начиная с версии **1.1.0** — если у вас стоит v1.0.x,
+  обновите пакет (`pip install -U oblodai`). Свой ключ идемпотентности в методах создания —
+  kwarg `idempotency_key` (уйдёт в заголовок).
 </Info>
 
 ```python
@@ -125,11 +124,29 @@ client.splits.split_to_address(address="T...", network="tron", percent=10, note=
 
 # Счёт на e-mail (письмо с кнопкой «Оплатить»).
 client.payments.send_email(uuid=payment.uuid, email="buyer@example.com")
+
+# Резолв недоплаты: принять частичную оплату (глушит авто-возврат) или вернуть плательщику.
+client.payments.resolve(uuid=payment.uuid, action="accept")   # или action="refund"
 ```
+
+**Крипто-чек за 4 строки** — выплата без адреса получателя (заберёт сам по ссылке):
+
+```python
+check = client.payout_links.create(
+    amount="25", currency="USDT", network="tron",
+    reference="bonus-42", expires_in_hours=72, email="winner@example.com",
+)
+print(check.claim_url)  # отдайте получателю — он введёт свой адрес сам
+```
+
+- Задавайте `expires_in_hours` **явно**: без него чек живёт всего **1 час**.
+- `claim_url` / `claim_token` возвращаются **только из `create`, один раз** — сохраните сразу.
+- Дедупликация — поле `reference` (заголовок `Idempotency-Key` на этих эндпоинтах не действует).
 
 Подробности — [Массовые операции](/guides/batch-operations),
 [Платёжные ссылки](/guides/payment-links), [Сплит-платежи](/guides/split-payments),
-[Счета на e-mail](/guides/email-invoices).
+[Счета на e-mail](/guides/email-invoices), [Крипто-чеки](/guides/payout-links),
+[Резолв платежа](/reference/payment-resolve).
 
 ---
 
@@ -216,7 +233,7 @@ except OblodaiAPIError as e:
 
 **Повтор безопасен, но механизм зависит от версии:**
 
-| | **v1.0.x** (сейчас в PyPI) | **v1.1.0** (не опубликована) |
+| | **v1.0.x** (предыдущая) | **v1.1.0** (текущая, в PyPI) |
 |---|---|---|
 | Защита от дублей | `order_id`: не задали — **SDK подставит свой** | заголовок `Idempotency-Key`, одинаковый во всех внутренних повторах |
 | Ваш `order_id` | если не задан — в платеже будет сгенерированный SDK | уходит **как есть**, SDK не подставляет и не переписывает |
@@ -232,7 +249,7 @@ except OblodaiAPIError as e:
 Включите логи одной переменной окружения — увидите каждый запрос/ответ/ретрай:
 
 ```bash
-export OBLODAI_LOG=debug   # уровни: debug · info · warn · error
+export OBLODAI_LOG=debug   # уровни: debug · info · warning · error
 ```
 
 Строки идут в stderr с префиксом `oblodai:` (метод, путь, статус, номер попытки, задержка ретрая).

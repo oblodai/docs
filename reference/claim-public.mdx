@@ -1,0 +1,128 @@
+---
+title: "Получение по выплатной ссылке"
+sidebarTitle: "Получение по чеку (public)"
+description: "Публичные эндпоинты страницы получения: посмотреть чек и забрать средства на свой адрес."
+---
+
+**Методы:** `GET /v1/claim/{token}` · `POST /v1/claim/{token}`
+
+Эндпоинты страницы получения [выплатной ссылки](/reference/payout-link). **Публичные** — подпись
+и ключ не нужны: право доступа даёт сам одноразовый токен из `claim_url` (256 бит, хранится у нас
+только хешем). Эти запросы делает получатель средств (или ваша страница получения).
+
+## GET /v1/claim/{token}
+
+Данные чека для страницы получения. Ничего мерчант-приватного в ответе нет.
+
+```bash cURL
+curl -s https://api.oblodai.com/v1/claim/Xk3v…
+```
+
+```json Пример ответа
+{
+  "state": 0,
+  "result": {
+    "status": "funded",
+    "amount": "25",
+    "currency": "USDT",
+    "network": "tron",
+    "title": "Бонус",
+    "note": "Спасибо за участие",
+    "expires_at": "2026-07-22T17:00:00Z",
+    "claimable": true
+  }
+}
+```
+
+`claimable` = `true`, пока ссылка в статусе `funded` и срок не вышел.
+
+## POST /v1/claim/{token}
+
+Получатель указывает адрес — из резерва порождается обычная выплата.
+
+### Параметры запроса
+
+<ParamField body="address" type="string" required>
+  Адрес получателя в сети чека.
+</ParamField>
+
+<ParamField body="memo" type="string">
+  Destination tag / memo — для сетей, где он нужен (например, TON).
+</ParamField>
+
+<CodeGroup>
+
+```bash cURL
+curl -s https://api.oblodai.com/v1/claim/Xk3v… \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"address":"TXYZ…"}'
+```
+
+```js Node.js
+const res = await fetch(`https://api.oblodai.com/v1/claim/${token}`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ address: "TXYZ…" }),
+}).then(r => r.json());
+```
+
+</CodeGroup>
+
+### Пример ответа
+
+```json
+{
+  "state": 0,
+  "result": {
+    "status": "claimed",
+    "payout_id": "a1b2c3d4-…",
+    "amount": "25",
+    "currency": "USDT",
+    "network": "tron",
+    "address": "TXYZ…"
+  }
+}
+```
+
+<Note>
+  **Claim идемпотентен по адресу.** Повторный POST с тем же адресом на уже полученном чеке —
+  успех с тем же `payout_id`, вторая выплата не создаётся. Повтор с **другим** адресом отклоняется:
+  чек навсегда привязан к адресу первого получения.
+</Note>
+
+## Коды ошибок
+
+<ResponseField name="payoutlink.no_address" type="400">
+  Пустой адрес. **Повтор:** Нет — передайте `address`.
+</ResponseField>
+<ResponseField name="payout.bad_address" type="400">
+  Некорректный адрес для сети. **Повтор:** Нет — проверьте адрес.
+</ResponseField>
+<ResponseField name="payout.address_network_mismatch" type="400">
+  Адрес не соответствует сети чека. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.destination_internal" type="400">
+  Адрес принадлежит шлюзу — получение на внутренние адреса запрещено. **Повтор:** Нет — укажите внешний кошелёк.
+</ResponseField>
+<ResponseField name="compliance.blocked" type="403">
+  Адрес не прошёл проверку. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.not_found" type="404">
+  Чек не найден — битый токен. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.expired" type="409">
+  Срок чека вышел, резерв возвращён отправителю. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.cancelled" type="409">
+  Чек отменён отправителем. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="payoutlink.claim_in_progress" type="409">
+  Получение уже идёт с другим адресом. **Повтор:** Только с тем же адресом, что был первым.
+</ResponseField>
+
+## Связанные страницы
+
+<CardGroup cols={2}>
+  <Card title="Выплатные ссылки (чеки)" href="/reference/payout-link" icon="arrow-right" horizontal />
+  <Card title="Гайд: крипто-чеки" href="/guides/payout-links" icon="arrow-right" horizontal />
+</CardGroup>

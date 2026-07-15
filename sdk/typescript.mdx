@@ -17,16 +17,13 @@ npm install @oblodai-npm/sdk
 # или: pnpm add @oblodai-npm/sdk / yarn add @oblodai-npm/sdk
 ```
 
-<Warning>
+<Info>
   Пакет выходит в npm под scope **`@oblodai-npm`** — ставьте именно `@oblodai-npm/sdk`.
 
-  **В npm сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
-  Команда выше поставит **v1.0.x**.
-
-  Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
-  повторы») и **нет** групп `batches` / `links` / `splits` и методов `createBatch` / `refundBatch` /
-  `sendEmail`.
-</Warning>
+  **Новое в v1.1.0** (текущая версия в npm): группы `batches` / `links` / `splits` / `payoutLinks`,
+  методы `createBatch` / `refundBatch` / `sendEmail` / `resolve` — и **ломающее изменение**
+  идемпотентности: вместо авто-`order_id` теперь заголовок `Idempotency-Key` (см. «Ошибки и повторы»).
+</Info>
 
 ---
 
@@ -86,10 +83,11 @@ res.redirect(payment.url); // отправляем покупателя опла
 
 | Группа | Методы |
 |---|---|
-| `client.payments` | `create`, `info`, `history`, `services`, `qr`, `resend`, `refund`, `listAccepted`, `setAccepted`, `getAccuracy`, `setAccuracy`, `getAutorefund`, `setAutorefund`, `setDiscount`, `listDiscounts` · **с v1.1.0:** `createBatch`, `refundBatch`, `sendEmail` |
+| `client.payments` | `create`, `info`, `history`, `services`, `qr`, `resend`, `refund`, `listAccepted`, `setAccepted`, `getAccuracy`, `setAccuracy`, `getAutorefund`, `setAutorefund`, `setDiscount`, `listDiscounts` · **с v1.1.0:** `createBatch`, `refundBatch`, `sendEmail`, `resolve` |
 | `client.payouts` | `create`, `createMass`, `info`, `history`, `services`, `calculate`, `approve`, `getFeeConfig`, `setFeeConfig`, `getRefundFeeConfig`, `setRefundFeeConfig`, `refund` · **с v1.1.0:** `createBatch` |
 | `client.batches` **(v1.1.0)** | `info` |
-| `client.links` **(v1.1.0)** | `create`, `list`, `info`, `toggle`, `publicGet`, `checkout` |
+| `client.links` **(v1.1.0)** | `create`, `list`, `info`, `toggle`, `publicGet`, `checkout` · `client.links` = синоним `client.paymentLinks` |
+| `client.payoutLinks` **(v1.1.0)** | `create`, `createBatch` (до 500), `list`, `info`, `cancel` + публичные без подписи: `claimInfo(token)`, `claim(token, {address, memo?})` |
 | `client.splits` **(v1.1.0)** | `splitToAddress`, `splitToMerchant`, `listRules`, `deleteRule`, `getConfig`, `setConfig` |
 | `client.wallets` | `create`, `block`, `blockedAddressRefund`, `qr` |
 | `client.account` | `balance`, `referral`, `transferToPersonal`, `vrcs` |
@@ -100,8 +98,9 @@ res.redirect(payment.url); // отправляем покупателя опла
 Все методы возвращают `Promise` с уже развёрнутым `result`. Точные поля — в [Справочнике](/reference/overview).
 
 <Info>
-  Группы `batches` / `links` / `splits` и методы `createBatch` / `refundBatch` / `sendEmail`
-  появятся **в v1.1.0**, которая **ещё не опубликована**. В установленной сейчас v1.0.x их нет.
+  Всё, что помечено «с v1.1.0», доступно начиная с версии **1.1.0** — если у вас стоит v1.0.x,
+  обновите пакет (`npm update @oblodai-npm/sdk`). Свой ключ идемпотентности в методах создания —
+  параметр `idempotency_key` (уйдёт в заголовок).
 </Info>
 
 ```ts
@@ -117,18 +116,36 @@ const sub = await client.payments.createBatch(
 const info = await client.batches.info(sub.batch_id, { limit: 100 }); // прогресс и результат по элементам
 
 // Платёжная ссылка: платят многие, каждый платёж — свой инвойс. Работает без вашего бэкенда.
-const link = await client.links.create({ amountMode: 'open', currency: 'USD' });
+const link = await client.links.create({ amount_mode: 'open', currency: 'USD', title: 'Донат' });
 
 // Сплит: доля каждого входящего платежа автоматически уходит партнёру.
 await client.splits.splitToAddress('T...', 'tron', 10, 'партнёр А');
 
 // Счёт на e-mail (письмо с кнопкой «Оплатить»).
 await client.payments.sendEmail({ uuid: payment.uuid, email: 'buyer@example.com' });
+
+// Резолв недоплаты: принять частичную оплату (глушит авто-возврат) или вернуть плательщику.
+await client.payments.resolve({ uuid: payment.uuid, action: 'accept' }); // или action: 'refund'
 ```
+
+**Крипто-чек за 4 строки** — выплата без адреса получателя (заберёт сам по ссылке):
+
+```ts
+const check = await client.payoutLinks.create({
+  amount: '25', currency: 'USDT', network: 'tron',
+  reference: 'bonus-42', expires_in_hours: 72, email: 'winner@example.com',
+});
+console.log(check.claim_url); // отдайте получателю — он введёт свой адрес сам
+```
+
+- Задавайте `expires_in_hours` **явно**: без него чек живёт всего **1 час**.
+- `claim_url` / `claim_token` возвращаются **только из `create`, один раз** — сохраните сразу.
+- Дедупликация — поле `reference` (заголовок `Idempotency-Key` на этих эндпоинтах не действует).
 
 Подробности — [Массовые операции](/guides/batch-operations),
 [Платёжные ссылки](/guides/payment-links), [Сплит-платежи](/guides/split-payments),
-[Счета на e-mail](/guides/email-invoices).
+[Счета на e-mail](/guides/email-invoices), [Крипто-чеки](/guides/payout-links),
+[Резолв платежа](/reference/payment-resolve).
 
 ---
 
@@ -221,7 +238,7 @@ try {
 
 **Повтор безопасен, но механизм зависит от версии:**
 
-| | **v1.0.x** (сейчас в npm) | **v1.1.0** (не опубликована) |
+| | **v1.0.x** (предыдущая) | **v1.1.0** (текущая, в npm) |
 |---|---|---|
 | Защита от дублей | `order_id`: не задали — **SDK подставит свой** | заголовок `Idempotency-Key`, одинаковый во всех внутренних повторах |
 | Ваш `order_id` | если не задан — в платеже будет сгенерированный SDK | уходит **как есть**, SDK не подставляет и не переписывает |

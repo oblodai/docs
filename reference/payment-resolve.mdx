@@ -1,0 +1,151 @@
+---
+title: "POST /v1/payment/resolve"
+sidebarTitle: "Резолв недоплаты"
+description: "Решите судьбу недоплаченного счёта: принять частичную оплату или вернуть её плательщику."
+---
+
+Решение судьбы **недоплаченного** платежа (статус `wrong_amount`): `accept` — оставить частичную
+оплату себе (и отключить [автовозврат](/reference/payment-autorefund) для этого счёта) или
+`refund` — вернуть средства плательщику. Средства недоплаты к этому моменту уже зачислены на ваш
+баланс, вебхук `invoice.wrong_amount` уже отправлен.
+
+**URL:** `https://api.oblodai.com/v1/payment/resolve` · **Аутентификация:** обязательна, **payout-ключ** · **Идемпотентность:** заголовок `Idempotency-Key` поддержан; решение дополнительно идемпотентно на уровне счёта (одно на счёт).
+
+<Note>
+  Примеры используют хелпер `call()` и переменные `$SECRET`/`$PUBLIC_ID` — их определение см. в
+  [Как подписать запрос](/guides/signing-requests). Проще не писать подпись руками, а взять
+  [SDK](/sdk/overview).
+</Note>
+
+## Параметры запроса
+
+<ParamField body="uuid" type="string">
+  UUID платежа. Нужен `uuid` **или** `order_id`.
+</ParamField>
+
+<ParamField body="order_id" type="string">
+  Ваш идентификатор платежа.
+</ParamField>
+
+<ParamField body="action" type="string" required>
+  `accept` — принять частичную оплату · `refund` — вернуть плательщику.
+</ParamField>
+
+<ParamField body="address" type="string">
+  Только для `refund`: адрес возврата. По умолчанию — записанный `payer_address` платежа; если он
+  пуст (Bitcoin/UTXO), адрес обязателен, иначе `refund.no_address`.
+</ParamField>
+
+<ParamField body="network" type="string">
+  Только для `refund`: сеть возврата, по умолчанию — сеть платежа.
+</ParamField>
+
+<ParamField body="reference" type="string">
+  Только для `refund`: ваш ключ дедупликации возврата.
+</ParamField>
+
+## Пример запроса
+
+<CodeGroup>
+
+```python Python
+# принять недоплату (оставить частичную оплату себе)
+call("/v1/payment/resolve", {"order_id": "ord-1001", "action": "accept"})
+
+# либо вернуть плательщику
+call("/v1/payment/resolve", {"order_id": "ord-1001", "action": "refund"})
+```
+
+```js Node.js
+// принять недоплату (оставить частичную оплату себе)
+await call("/v1/payment/resolve", { order_id: "ord-1001", action: "accept" });
+
+// либо вернуть плательщику
+await call("/v1/payment/resolve", { order_id: "ord-1001", action: "refund" });
+```
+
+</CodeGroup>
+
+## Пример ответа
+
+<CodeGroup>
+
+```json accept
+{
+  "state": 0,
+  "result": {
+    "payment_uuid": "e0a1…",
+    "order_id": "ord-1001",
+    "resolution": "accepted",
+    "amount_kept": "48.5",
+    "currency": "USDT"
+  }
+}
+```
+
+```json refund
+{
+  "state": 0,
+  "result": {
+    "payment_uuid": "e0a1…",
+    "order_id": "ord-1001",
+    "resolution": "refunded",
+    "uuid": "f2b3…",
+    "amount": "48.5",
+    "currency": "USDT",
+    "address": "0xPayer…",
+    "status": "check",
+    "is_final": false
+  }
+}
+```
+
+</CodeGroup>
+
+При `refund` ответ содержит обычный объект возврата-выплаты (`uuid`, `status` из словаря выплат) —
+отслеживайте его как [выплату](/reference/payout-info).
+
+## Коды ошибок
+
+<ResponseField name="resolution.bad_action" type="400">
+  `action` не `accept` и не `refund`. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="resolution.not_underpaid" type="409">
+  Платёж не в статусе `wrong_amount` (например, поздняя доплата перевела его в `paid`). **Повтор:** Нет — сверьтесь с `/v1/payment/info`.
+</ResponseField>
+<ResponseField name="resolution.already_resolved" type="409">
+  Решение по счёту уже принято (противоположное действие). **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="resolution.already_refunded" type="409">
+  По счёту уже был возврат — принять недоплату нельзя. **Повтор:** Нет.
+</ResponseField>
+<ResponseField name="refund.no_address" type="400">
+  Не указан адрес возврата, а `payer_address` у платежа пуст (UTXO-сети). **Повтор:** Нет — передайте `address`.
+</ResponseField>
+<ResponseField name="payment.not_found" type="404">
+  Платёж не найден. **Повтор:** Нет — сверьте `uuid`/`order_id`.
+</ResponseField>
+<ResponseField name="resolution.disabled" type="503">
+  Функция выключена на шлюзе. **Повтор:** Нет — обратитесь в поддержку.
+</ResponseField>
+
+Возврат также может вернуть обычные ошибки возвратов: `refund.nothing_to_refund`, `refund.dust`,
+`refund.destination_internal`, `compliance.blocked` и др. — см. [Возврат платежа](/reference/payment-refund).
+
+## Нюансы
+
+- **`accept` останавливает автовозврат** для этого счёта: решение и поллер автовозврата
+  сериализованы на локе счёта — гонки «приняли и одновременно вернули» нет.
+- Повторный `accept` — no-op (идемпотентно); `refund` после `accept` (и наоборот) →
+  `resolution.already_resolved`.
+- `accept` не эмитит вебхуков; `refund` порождает выплату с обычными
+  [`payout.*`](/reference/webhook-object) событиями.
+
+## Связанные страницы
+
+<CardGroup cols={2}>
+  <Card title="Недоплата, переплата и автовозврат" href="/guides/under-overpayment" icon="arrow-right" horizontal />
+  <Card title="Автовозврат: настройки" href="/reference/payment-autorefund" icon="arrow-right" horizontal />
+  <Card title="Возврат платежа" href="/reference/payment-refund" icon="arrow-right" horizontal />
+  <Card title="Объект Payment" href="/reference/payment-object" icon="arrow-right" horizontal />
+</CardGroup>

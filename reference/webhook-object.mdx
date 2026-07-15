@@ -63,6 +63,13 @@ X-Webhook-Signature = hex( HMAC_SHA256( secret, signing_string ) )
 
 ---
 
+<Note>
+  У [выплатных ссылок (чеков)](/reference/payout-link) собственных событий нет: когда получатель
+  забирает средства, порождённая выплата шлёт обычные `payout.*` события, а её `order_id` равен
+  `payoutlink:<link_id>` — по нему сопоставляйте событие со ссылкой. Возврат из
+  [`/v1/payment/resolve`](/reference/payment-resolve) тоже приходит событиями `payout.*`.
+</Note>
+
 ## Пример тела платёжного вебхука
 
 ```json
