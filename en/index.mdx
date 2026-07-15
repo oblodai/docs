@@ -1,0 +1,40 @@
+---
+title: "Oblodai — crypto payment gateway"
+sidebarTitle: "English"
+description: "Accept crypto payments, send payouts, static wallets and webhooks. One API key for everything."
+icon: "house"
+---
+
+<Info>
+  **The English version of the docs is on its way.** For now the complete documentation is available
+  in Russian — switch the language back in the picker above, or jump straight to a section below.
+</Info>
+
+Oblodai is a crypto payment gateway: accept payments, send payouts, issue static deposit wallets and
+receive signed webhooks — all with a single API key.
+
+## Documentation (Russian)
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    From API keys to your first webhook in five steps.
+  </Card>
+  <Card title="API Reference" icon="code" href="/reference/overview">
+    Every endpoint and object: parameters, examples in cURL / Python / Node.js, error codes.
+  </Card>
+  <Card title="SDKs" icon="cubes" href="/sdk/overview">
+    Official libraries for PHP, TypeScript/Node.js, Python, Go and Rust.
+  </Card>
+  <Card title="CMS modules" icon="cart-shopping" href="/modules/overview">
+    Ready-made plugins for WooCommerce, OpenCart, PrestaShop, WHMCS, IPS and XenForo.
+  </Card>
+</CardGroup>
+
+## Quick facts
+
+- **Base URL:** `https://api.oblodai.com` · API version `v1`
+- Every request is signed with HMAC-SHA256 (`X-Public-Id`, `X-Timestamp`, `X-Signature`)
+- Amounts are strings; responses use a `state`/`result` envelope
+- Payment confirmation is delivered by signed webhooks
+
+Need help? Open a ticket in the [dashboard](https://my.oblodai.com).
