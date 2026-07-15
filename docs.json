@@ -20,6 +20,10 @@
       },
       {
         "href": "https://my.oblodai.com",
+        "label": "Поддержка"
+      },
+      {
+        "href": "https://my.oblodai.com",
         "label": "Кабинет"
       }
     ],
@@ -35,7 +39,72 @@
       "linkedin": "https://linkedin.com/company/oblodai",
       "website": "https://oblodai.com",
       "x": "https://x.com/oblodai"
-    }
+    },
+    "links": [
+      {
+        "header": "Документация",
+        "items": [
+          {
+            "label": "Быстрый старт",
+            "href": "/quickstart"
+          },
+          {
+            "label": "Справочник API",
+            "href": "/reference/overview"
+          },
+          {
+            "label": "SDK",
+            "href": "/sdk/overview"
+          },
+          {
+            "label": "Модули для CMS",
+            "href": "/modules/overview"
+          }
+        ]
+      },
+      {
+        "header": "Помощь",
+        "items": [
+          {
+            "label": "Диагностика проблем",
+            "href": "/guides/troubleshooting"
+          },
+          {
+            "label": "FAQ",
+            "href": "/guides/faq-troubleshooting"
+          },
+          {
+            "label": "Каталог ошибок",
+            "href": "/reference/errors-catalog"
+          },
+          {
+            "label": "Поддержка",
+            "href": "https://my.oblodai.com"
+          }
+        ]
+      },
+      {
+        "header": "Oblodai",
+        "items": [
+          {
+            "label": "Сайт",
+            "href": "https://oblodai.com"
+          },
+          {
+            "label": "Кабинет мерчанта",
+            "href": "https://my.oblodai.com"
+          },
+          {
+            "label": "Страница оплаты",
+            "href": "https://pay.oblodai.com"
+          },
+          {
+            "label": "GitHub",
+            "href": "https://github.com/oblodai"
+          }
+        ]
+      }
+    ]
   },
   "contextual": {
     "options": [
@@ -178,13 +247,23 @@
               "reference/payment-services",
               "reference/payment-qr",
               "reference/wallet-qr",
-              "reference/payment-accepted",
-              "reference/payment-discount",
-              "reference/payment-accuracy",
-              "reference/payment-autorefund",
-              "reference/vrcs",
-              "reference/pay-get",
-              "reference/pay-select"
+              {
+                "group": "Настройки приёма",
+                "pages": [
+                  "reference/payment-accepted",
+                  "reference/payment-discount",
+                  "reference/payment-accuracy",
+                  "reference/payment-autorefund",
+                  "reference/vrcs"
+                ]
+              },
+              {
+                "group": "Hosted-страница",
+                "pages": [
+                  "reference/pay-get",
+                  "reference/pay-select"
+                ]
+              }
             ]
           },
           {
@@ -232,9 +311,14 @@
               "reference/payout-calculate",
               "reference/payout-approve",
               "reference/payment-refund",
-              "reference/payout-fee-config",
-              "reference/payout-refund-fee-config",
-              "reference/transfer-to-personal"
+              "reference/transfer-to-personal",
+              {
+                "group": "Комиссии",
+                "pages": [
+                  "reference/payout-fee-config",
+                  "reference/payout-refund-fee-config"
+                ]
+              }
             ]
           },
           {
@@ -312,5 +396,8 @@
   },
   "search": {
     "prompt": "Поиск по документации…"
+  },
+  "feedback": {
+    "thumbsRating": true
   }
 }
