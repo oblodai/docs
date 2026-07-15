@@ -107,7 +107,7 @@ await call("/v1/api-allowlist/enable", { enabled: true });
 
 ## Дополнительно
 
-- **Rate limit.** При превышении — ошибка класса `unavailable`; повторяйте с backoff.
+- **Rate limit.** При превышении — `429` с телом `{"state":1,"message":"rate limit exceeded"}` и заголовком `Retry-After`; подождите и повторяйте с backoff. → [Ограничение частоты](/reference/basics-ratelimit)
 - **Часы сервера.** Держите время синхронизированным (NTP): подпись живёт в окне ±5 минут, при
   расхождении сверка подписи не пройдёт и придёт `merchant.bad_signature` (окно проверяется внутри
   проверки подписи). Код `auth.bad_timestamp` — это только про отсутствующий или нечисловой

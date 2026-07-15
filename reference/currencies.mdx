@@ -126,7 +126,8 @@ console.log(await r.json());
 ### `pricing_currencies` — в чём можно назначать цену
 
 Валюты **цены**: допустимые значения поля `currency` в [`POST /v1/payment`](/reference/payment-create). Это
-все **15 монет** из `currencies` **плюс 23 фиата** — всего 38 записей.
+**15 монет плюс 23 фиата** — всего 38 записей. Набор монет здесь шире списка `currencies`: цену
+можно назначить и в монете, которой нет среди валют расчёта.
 
 <ResponseField name="pricing_currencies" type="array">
   Список валют ценообразования (38 записей).

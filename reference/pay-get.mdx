@@ -8,7 +8,7 @@ sidebarTitle: "Hosted: данные счёта"
 
 <Note>
   **Публичный метод.** Аутентификация не требуется — отдаёт только клиентские поля (без
-  `additional_data` и `payer_email`). Страница может опрашивать его для отслеживания статуса **без
+  `additional_data`, `payer_email` и `payer_address`). Страница может опрашивать его для отслеживания статуса **без
   секрета мерчанта в браузере**.
 </Note>
 
@@ -74,13 +74,13 @@ console.log(await res.json());
     "payment_status": "check",
     "is_multi": false,
     "url": "https://pay.oblodai.com/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
-    "expired_at": 1752192000,
+    "expired_at": 1783728000,
     "is_final": false,
     "created_at": "2026-07-10T12:00:00Z",
     "updated_at": "2026-07-10T12:00:00Z",
     "url_return": "",
     "url_success": "",
-    "rate_expires_at": 1752188700,
+    "rate_expires_at": 1783724700,
     "confirmations": 0,
     "required_confirmations": 20,
     "txid": ""
@@ -107,13 +107,13 @@ console.log(await res.json());
     "payment_status": "select",
     "is_multi": true,
     "url": "https://pay.oblodai.com/pay/8b1d7d2e-2b0a-4a1f-9c3e-1f2a3b4c5d6e",
-    "expired_at": 1752192000,
+    "expired_at": 1783728000,
     "is_final": false,
     "created_at": "2026-07-10T12:00:00Z",
     "updated_at": "2026-07-10T12:00:00Z",
     "url_return": "",
     "url_success": "",
-    "rate_expires_at": 1752188700,
+    "rate_expires_at": 1783724700,
     "confirmations": 0,
     "required_confirmations": 20,
     "txid": "",

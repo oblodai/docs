@@ -77,7 +77,7 @@ await call("/v1/payment/history", { limit: 25, offset: 0, status: "paid" });
 ```
 
 <ResponseField name="items" type="array">
-  Список **полных** объектов платежа — те же поля, что возвращает [`/info`](/reference/payment-info) (в примере показаны не все).
+  Список объектов платежа — те же поля, что в [объекте платежа](/reference/payment-object), но без `refunds[]` и `refund_status` — они приходят только в [`/info`](/reference/payment-info) (в примере показаны не все).
 </ResponseField>
 
 <ResponseField name="paginate.count" type="int64">
@@ -99,7 +99,8 @@ await call("/v1/payment/history", { limit: 25, offset: 0, status: "paid" });
 
 - `count` — общее число записей по фильтру. Для постраничного обхода увеличивайте `offset` на `limit`,
   пока не переберёте `count`.
-- Каждый элемент — **полный** объект платежа (то же, что отдаёт [`POST /v1/payment/info`](/reference/payment-info));
+- Каждый элемент — объект платежа с теми же полями, что в [объекте платежа](/reference/payment-object), но без
+  `refunds[]` и `refund_status` — они приходят только в [`POST /v1/payment/info`](/reference/payment-info);
   в примере выше поля сокращены для краткости.
 
 ---

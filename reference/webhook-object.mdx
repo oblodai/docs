@@ -154,6 +154,7 @@ import crypto from "node:crypto";
 function verify(secret, tsHeader, rawBody, sigHeader) {
   const msg = `${tsHeader}.` + rawBody;                    // rawBody — строка сырого тела
   const expected = crypto.createHmac("sha256", secret).update(msg).digest("hex");
+  if (expected.length !== sigHeader.length) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sigHeader));
 }
 ```

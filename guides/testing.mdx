@@ -19,7 +19,7 @@ icon: "flask"
 | Что проверяем | Чем | Двигает деньги? |
 |---|---|---|
 | Подпись запроса работает | любой чтение‑эндпоинт, напр. [`/v1/balance`](/reference/balance) | нет |
-| Приёмник вебхуков и проверка подписи | [тестовые вебхуки](/reference/webhooks-test) | нет |
+| Приёмник вебхуков: доставка, парсинг, ответ 2xx (подпись — только на боевом платеже) | [тестовые вебхуки](/reference/webhooks-test) | нет |
 | Доступность методов приёма/выплат | [`/v1/payment/services`](/reference/payment-services), [`/v1/payout/services`](/reference/payout-services) | нет |
 | Расчёт комиссии выплаты | [`/v1/payout/calculate`](/reference/payout-calculate) | нет |
 | Курсы валют | [`/v1/exchange-rate/list`](/reference/exchange-rate-list) | нет |

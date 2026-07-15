@@ -126,7 +126,7 @@ let link = client.links().create(LinkParams::new("open", "USD"))?;
 let rule = client.splits().split_to_address("T...", "tron", 10.0, Some("партнёр А"))?;
 
 // Счёт на e-mail (письмо с кнопкой «Оплатить»).
-client.payments().send_email(Some(&uuid), None, Some("buyer@example.com"))?;
+client.payments().send_email(Some(&payment.uuid), None, Some("buyer@example.com"))?;
 ```
 
 Подробности — [Массовые операции](/guides/batch-operations),
@@ -178,10 +178,14 @@ let headers = WebhookHeaders {
     timestamp: req_header("X-Webhook-Timestamp"),
     signature: req_header("X-Webhook-Signature"),
 };
+// распарсьте тело: при is_test == true ответьте 200 и выходите — пробные тела не подписаны
 match verify_webhook(&webhook_secret, raw_body_bytes, &headers, &VerifyOptions::default()) {
     Ok(_) => { /* подпись верна */ }
     Err(_) => { /* 403 */ }
 }
+
+let event: serde_json::Value = serde_json::from_slice(raw_body_bytes)?;
+let uuid = event["uuid"].as_str().unwrap_or_default();
 
 let info = client.payments().info(Some(&uuid), None)?;
 if info.payment_status == "paid" || info.payment_status == "paid_over" {
@@ -189,7 +193,8 @@ if info.payment_status == "paid" || info.payment_status == "paid_over" {
 }
 ```
 
-Тестовые вебхуки (`is_test`) не подписаны — их можно подтверждать без проверки.
+Тестовые вебхуки (`is_test`) не подписаны — распарсьте тело и при `is_test == true` отвечайте 200
+**до** вызова `verify_webhook`.
 
 ---
 

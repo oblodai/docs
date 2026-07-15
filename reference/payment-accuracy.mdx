@@ -45,8 +45,8 @@ sidebarTitle: "Допуск недоплаты"
   Включить/выключить допуск.
 </ParamField>
 
-<ParamField body="accuracy_percent" type="int64" required>
-  Допуск в процентах, 1–5. Кэп 5 %.
+<ParamField body="accuracy_percent" type="int64">
+  Допуск в процентах, 1–5. Обязателен при `enabled: true`; при `enabled: false` игнорируется (значение сбрасывается в 0). Кэп 5 %.
 </ParamField>
 
 

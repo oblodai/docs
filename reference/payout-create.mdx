@@ -51,7 +51,7 @@ sidebarTitle: "Создание выплаты"
 </ParamField>
 
 <ParamField body="is_subtract" type="bool">
-  **Принимается, но на саму выплату сейчас не влияет.** Кто платит сетевую комиссию, задаётся не в запросе, а настройкой проекта — см. [fee-config](/reference/payout-fee-config). (Поле учитывает только предрасчёт `/v1/payout/calculate`, см. примечание ниже.)
+  **Принимается, но на саму выплату сейчас не влияет.** Кто платит сетевую комиссию, задаётся не в запросе, а настройкой проекта — см. [fee-config](/reference/payout-fee-config). (Поле учитывается только предрасчётом `/v1/payout/calculate`, см. примечание ниже.)
 </ParamField>
 
 <ParamField body="memo" type="string">
@@ -91,7 +91,7 @@ sidebarTitle: "Создание выплаты"
 <CodeGroup>
 
 ```bash cURL wrap
-BODY='{"amount":"25","currency":"USDT","network":"tron","address":"TXY...","order_id":"payout-1","memo":"invoice-42"}'
+BODY='{"amount":"25","currency":"USDT","network":"tron","address":"TXY...","order_id":"payout-1"}'
 TS=$(date +%s)
 SIG=$(printf '%s\n%s\n%s\n%s' "$TS" 'POST' '/v1/payout' "$BODY" \
   | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
@@ -104,14 +104,14 @@ curl -s https://api.oblodai.com/v1/payout \
 ```python Python
 call("/v1/payout", {
     "amount": "25", "currency": "USDT", "network": "tron",
-    "address": "TXY...", "order_id": "payout-1", "memo": "invoice-42",
+    "address": "TXY...", "order_id": "payout-1",
 })
 ```
 
 ```js Node.js
 await call("/v1/payout", {
   amount: "25", currency: "USDT", network: "tron",
-  address: "TXY...", order_id: "payout-1", memo: "invoice-42",
+  address: "TXY...", order_id: "payout-1",
 });
 ```
 

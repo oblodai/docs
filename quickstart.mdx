@@ -55,8 +55,8 @@ icon: "rocket"
     ```python Python highlight={9-12}
     import hmac, hashlib, time, json, os, requests
 
-    # В реальном коде читайте ключи из ОКРУЖЕНИЯ, не хардкодьте (см. правило ниже).
-    SECRET = os.environ["OBLODAI_SECRET"].encode()   # для наглядности здесь — как выглядят ключи
+    # Ключи читаем из окружения — не хардкодьте их в код.
+    SECRET = os.environ["OBLODAI_SECRET"].encode()   # секрет API-ключа
     PUBLIC_ID = os.environ["OBLODAI_PUBLIC_ID"]       # oblodai_… / oblodai_live_…
     BASE = "https://api.oblodai.com"
 
@@ -80,8 +80,8 @@ icon: "rocket"
     ```js Node.js highlight={9-12}
     import crypto from "node:crypto";
 
-    // В реальном коде читайте ключи из ОКРУЖЕНИЯ, не хардкодьте (см. правило ниже).
-    const SECRET = process.env.OBLODAI_SECRET;        // для наглядности здесь — как выглядят ключи
+    // Ключи читаем из окружения — не хардкодьте их в код.
+    const SECRET = process.env.OBLODAI_SECRET;        // секрет API-ключа
     const PUBLIC_ID = process.env.OBLODAI_PUBLIC_ID;  // oblodai_… / oblodai_live_…
     const BASE = "https://api.oblodai.com";
 

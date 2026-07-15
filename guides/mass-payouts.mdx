@@ -6,6 +6,12 @@ icon: "people-group"
 Когда нужно выплатить многим получателям сразу, есть два пути. Выбор между ними — не вопрос вкуса:
 неправильный упирается в лимит частоты запросов.
 
+<Info>
+  **Ещё не в проде.** `/v1/payout/batch` станет доступен после деплоя обновлённого шлюза
+  (одновременно с выходом SDK v1.1.0). До этого используйте текущий `/v1/payout/mass`.
+  Статус — в [обзоре SDK](/sdk/overview#что-нового-в-v1-1-0).
+</Info>
+
 | | [`POST /v1/payout/batch`](/reference/payout-batch) | [`POST /v1/payout/mass`](/reference/payout-mass) |
 |---|---|---|
 | Максимум за раз | **5000** | 100 |
@@ -164,7 +170,7 @@ for (const item of resp.result.items) {
 
 <CardGroup cols={2}>
   <Card title="Массовые операции" href="/guides/batch-operations" icon="arrow-right" horizontal>
-    ** — батчи платежей, возвратов и выплат (до 5000).
+    батчи платежей, возвратов и выплат (до 5000).
   </Card>
   <Card title="POST /v1/payout/batch" href="/reference/payout-batch" icon="arrow-right" horizontal />
   <Card title="POST /v1/batch/info" href="/reference/batch-info" icon="arrow-right" horizontal />

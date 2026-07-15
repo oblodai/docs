@@ -67,7 +67,7 @@ await call("/v1/payment", { amount: "10", currency: "USD", order_id: "order-1",
 <CodeGroup>
 
 ```python Python
-call("/v1/payment", {"amount": "100", "currency": "EUR", "order_id": "order-1",
+call("/v1/payment", {"amount": "100", "currency": "EUR", "order_id": "order-8",
                      "to_currency": "USDT", "network": "tron"})
 # → 100.00 EUR ≈ 108.695653 USDT
 
@@ -80,7 +80,7 @@ call("/v1/payment", {"amount": "2000", "currency": "UAH", "order_id": "order-3"}
 ```
 
 ```js Node.js
-await call("/v1/payment", { amount: "100", currency: "EUR", order_id: "order-1",
+await call("/v1/payment", { amount: "100", currency: "EUR", order_id: "order-8",
                             to_currency: "USDT", network: "tron" });
 // → 100.00 EUR ≈ 108.695653 USDT
 
@@ -128,7 +128,7 @@ await call("/v1/payment", { amount: "10000", currency: "JPY", order_id: "order-4
 <CodeGroup>
 
 ```python Python
-call("/v1/payment", {"amount": "5000", "currency": "KZT", ...})
+call("/v1/payment", {"amount": "5000", "currency": "KZT"})  # … остальные поля
 # → 400 payment.unknown_currency
 ```
 
@@ -157,14 +157,14 @@ await call("/v1/payment", { amount: "5000", currency: "KZT", /* … */ });
 
 ```python Python
 call("/v1/payment", {
-    "amount": "10", "currency": "USD", "order_id": "order-1",
+    "amount": "10", "currency": "USD", "order_id": "order-5",
     "to_currency": "USDT", "network": "tron",
 })
 ```
 
 ```js Node.js
 await call("/v1/payment", {
-  amount: "10", currency: "USD", order_id: "order-1",
+  amount: "10", currency: "USD", order_id: "order-5",
   to_currency: "USDT", network: "tron",
 });
 ```
@@ -186,14 +186,14 @@ await call("/v1/payment", {
 
 ```python Python
 call("/v1/payment", {
-    "amount": "10", "currency": "USD", "order_id": "order-1",
+    "amount": "10", "currency": "USD", "order_id": "order-6",
     "to_currency": "BTC",   # network не указан
 })
 ```
 
 ```js Node.js
 await call("/v1/payment", {
-  amount: "10", currency: "USD", order_id: "order-1",
+  amount: "10", currency: "USD", order_id: "order-6",
   to_currency: "BTC",   // network не указан
 });
 ```
@@ -222,7 +222,7 @@ hosted‑странице (страница оплаты на стороне Obl
 
 ```python Python
 inv = call("/v1/payment", {
-    "amount": "10", "currency": "USD", "order_id": "order-1",
+    "amount": "10", "currency": "USD", "order_id": "order-7",
     # to_currency и network НЕ переданы
 })["result"]
 
@@ -235,7 +235,7 @@ assert inv["payment_status"] == "select"   # статус «монета ещё 
 
 ```js Node.js
 const inv = (await call("/v1/payment", {
-  amount: "10", currency: "USD", order_id: "order-1",
+  amount: "10", currency: "USD", order_id: "order-7",
   // to_currency и network НЕ переданы
 })).result;
 

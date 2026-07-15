@@ -88,6 +88,8 @@ await call("/v1/transfer/to-personal", { amount: "50", currency: "USDT", order_i
 | `400 transfer.no_personal_wallet` | У мерчанта нет привязанного владельца. |
 | `400 transfer.unknown_currency` | Неизвестная валюта. |
 | `400 transfer.bad_amount` | Некорректная сумма. |
+| `400 personal.amount_invalid` | Сумма перевода некорректна (≤0 или неверный формат). |
+| `400 personal.insufficient` | Недостаточно средств на балансе для перевода. |
 | `400 request.bad_json` | Тело не парсится. |
 
 ---

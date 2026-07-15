@@ -44,6 +44,9 @@ Oblodai видит транзакцию и ждёт подтверждений �
 ```mermaid
 stateDiagram-v2
     [*] --> check: счёт создан
+    [*] --> select: валюто-агностичный счёт создан
+    select --> check: покупатель выбрал монету и сеть
+    select --> cancel: истёк до выбора
     check --> confirm_check: транзакция замечена
     check --> cancel: истёк / отменён
     confirm_check --> paid: оплачено в допуске
@@ -59,8 +62,9 @@ stateDiagram-v2
 
 **Текстом:** `check` (ждём оплату) → `confirm_check` (ждём подтверждений) → далее `paid`,
 `paid_over` или `wrong_amount_waiting`. Недоплата в срок может дойти до `paid`, иначе — `wrong_amount`.
-Неоплаченный счёт истекает в `cancel`. Терминальные (`is_final`): `paid`, `paid_over`, `wrong_amount`,
-`cancel`.
+Неоплаченный счёт истекает в `cancel`. Валюто-агностичный счёт (`is_multi: true`) начинается в `select`
+и после выбора монеты и сети покупателем переходит в `check`; истёкший без выбора уходит в `cancel`.
+Терминальные (`is_final`): `paid`, `paid_over`, `wrong_amount`, `cancel`.
 
 ---
 
@@ -71,7 +75,7 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
     [*] --> pending: создана (status: check)
-    pending --> awaiting_cosign: нужен второй подписант*
+    pending --> awaiting_cosign: нужен второй подписант
     awaiting_cosign --> approved: второй co-sign получен
     pending --> approved: одобрена
     approved --> broadcasting: отправляется

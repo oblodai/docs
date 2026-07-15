@@ -17,7 +17,7 @@ npm install @oblodai-npm/sdk
 # или: pnpm add @oblodai-npm/sdk / yarn add @oblodai-npm/sdk
 ```
 
-<Note>
+<Warning>
   Пакет выходит в npm под scope **`@oblodai-npm`** — ставьте именно `@oblodai-npm/sdk`.
 
   **В npm сейчас v1.0.x. Версия v1.1.0 ещё НЕ опубликована** (ждёт деплоя обновлённого шлюза).
@@ -26,7 +26,7 @@ npm install @oblodai-npm/sdk
   Эта страница описывает **v1.1.0**. В v1.0.x — другая семантика идемпотентности (см. «Ошибки и
   повторы») и **нет** групп `batches` / `links` / `splits` и методов `createBatch` / `refundBatch` /
   `sendEmail`.
-</Note>
+</Warning>
 
 ---
 
@@ -123,7 +123,7 @@ const link = await client.links.create({ amountMode: 'open', currency: 'USD' });
 await client.splits.splitToAddress('T...', 'tron', 10, 'партнёр А');
 
 // Счёт на e-mail (письмо с кнопкой «Оплатить»).
-await client.payments.sendEmail({ uuid, email: 'buyer@example.com' });
+await client.payments.sendEmail({ uuid: payment.uuid, email: 'buyer@example.com' });
 ```
 
 Подробности — [Массовые операции](/guides/batch-operations),

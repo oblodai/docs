@@ -32,8 +32,6 @@ icon: "circle-dollar-to-slot"
     <CodeGroup>
 
     ```python Python
-    import uuid
-
     payment = call("/v1/payment", {
         "amount": "10",
         "currency": "USD",         # валюта ЦЕНЫ: USD, EUR, RUB… или монета
@@ -42,7 +40,7 @@ icon: "circle-dollar-to-slot"
         "network": "tron",
         "lifetime": 3600,
         "payer_email": "buyer@example.com",   # необязательно: включает АВТОЧЕК после оплаты
-    }, idempotency_key=str(uuid.uuid4()))["result"]   # заголовок Idempotency-Key — один на действие
+    }, idempotency_key="pay-order-1")["result"]   # Idempotency-Key стабилен при ретраях — не генерируйте новый на каждую попытку
     ```
 
     ```js Node.js
@@ -54,8 +52,8 @@ icon: "circle-dollar-to-slot"
       network: "tron",
       lifetime: 3600,
       payer_email: "buyer@example.com",  // необязательно: включает АВТОЧЕК после оплаты
-      // заголовок Idempotency-Key — один на действие, передаём третьим аргументом
-    }, crypto.randomUUID())).result;
+      // Idempotency-Key стабилен при ретраях — не генерируйте новый на каждую попытку; передаём третьим аргументом
+    }, "pay-order-1")).result;
     ```
 
     </CodeGroup>

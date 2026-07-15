@@ -245,7 +245,7 @@ await call("/v1/payment/link/list", { limit: 50, offset: 0 });
 </ResponseField>
 
 <ResponseField name="amount_fixed" type="string">
-  Границы суммы. Присутствуют только те, что заданы.
+  Сумма при `fixed`. Присутствует, только если задана.
 </ResponseField>
 
 <ResponseField name="amount_min" type="string">
@@ -398,7 +398,7 @@ await call("/v1/payment/link/toggle", { link_id: "5d3f2a71-…", active: false }
 
 ## Нюансы
 
-- **Один счёт на плательщика.** Ссылка — не счёт, а «фабрика счетов»: каждый checkout создаёт новый
+- **Каждый checkout — новый счёт.** Ссылка — не счёт, а «фабрика счетов»: каждый checkout создаёт новый
   инвойс со своим адресом и своим сроком жизни.
 - **Комиссия, скидки, минимумы, допуски — как у обычного счёта.** Платёж по ссылке проходит ровно
   тот же путь, что [`POST /v1/payment`](/reference/payment-create), и точно так же присылает
@@ -406,8 +406,8 @@ await call("/v1/payment/link/toggle", { link_id: "5d3f2a71-…", active: false }
 - **Цена в фиате работает.** `currency` может быть любым из 23 поддерживаемых фиатов, а не только
   `USD` — см. [Форматы сумм и денег](/reference/basics-money).
 - **`order_id` у платежей по ссылке нет** — вы его не задаёте (покупатель приходит без вашего
-  контекста). Сопоставляйте платежи со ссылкой через `/link/info` или по полю ссылки в
-  [вебхуке](/reference/webhook-object).
+  контекста). Сопоставляйте платежи со ссылкой через `/link/info` — по `uuid` счёта из
+  [вебхука](/reference/webhook-object).
 
 ---
 

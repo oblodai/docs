@@ -173,6 +173,8 @@ webhook_secret = endpoint.secret  # сохраните — им проверяю
 from flask import Flask, request
 from oblodai import verify_webhook, OblodaiSignatureError
 
+app = Flask(__name__)
+
 @app.post("/oblodai/webhook")
 def webhook():
     raw = request.get_data()  # сырые байты, не request.json!
@@ -181,7 +183,7 @@ def webhook():
     try:
         # третий аргумент — сами заголовки (mapping); функция сама достанет
         # X-Webhook-Timestamp / X-Webhook-Signature и проверит окно свежести.
-        verify_webhook(WEBHOOK_SECRET, raw, request.headers)
+        verify_webhook(webhook_secret, raw, request.headers)
     except OblodaiSignatureError:
         return "", 403
 

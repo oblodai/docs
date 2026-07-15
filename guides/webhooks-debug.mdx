@@ -91,7 +91,9 @@ app.post("/oblodai/callback", express.raw({ type: "*/*" }), (req, res) => {
   const ts  = req.get("X-Webhook-Timestamp") || "";
   const sig = req.get("X-Webhook-Signature") || "";
   const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(`${ts}.${raw}`).digest("hex");
-  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) {
+  const ok = sig.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+  if (!ok) {
     return res.status(403).send("bad signature");
   }
 

@@ -124,11 +124,19 @@ call("/v1/split/rule", {
 ```
 
 ```js Node.js
+// 10 % на внешний адрес — необратимо.
 await call("/v1/split/rule", {
   address: "TXY...",
   network: "tron",
   percent: 10,
   note: "партнёр Алиса",
+});
+
+// 20 % мерчанту внутри платформы — при возврате доля отзовётся обратно.
+await call("/v1/split/rule", {
+  merchant_id: "b4c1f0e2-5a77-4d31-9f08-2c6e7a1b3d94",
+  percent: 20,
+  note: "площадка",
 });
 ```
 

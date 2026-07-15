@@ -108,7 +108,7 @@ sidebarTitle: "Объект Payout"
 
 ## Статусы выплаты
 
-Внутренний жизненный цикл — `pending → approved → (broadcasting) → sent → confirmed` (либо `failed` /
+Внутренний жизненный цикл — `pending → approved → (awaiting_cosign) → (broadcasting) → sent → confirmed` (либо `failed` /
 `cancelled`). Но **в поле `status` ответов приходит укрупнённый (Heleket‑совместимый) статус**:
 
 | Внутренний статус | `status` в ответе | Значение |

@@ -44,7 +44,7 @@ Oblodai подписывает **каждый** запрос HMAC‑SHA256 по 
 
 ## Формат ответа
 
-Все ответы (кроме [`/v1/webhooks`](/reference/webhooks-register)) — конверт
+Все ответы (кроме [`/v1/webhooks`](/reference/webhooks-register) и `429` — он отдаёт особое тело `{ "state": 1, "message": … }` без объекта `error`) — конверт
 `{ "state": 0, "result": … }` при успехе или `{ "error": { "code", "message" } }` при ошибке.
 Ветвитесь по `error.code` вида `<домен>.<причина>`. →
 [Формат ответа и коды ошибок](/reference/basics-errors)
@@ -84,8 +84,8 @@ Oblodai подписывает **каждый** запрос HMAC‑SHA256 по 
 
 Проверьте, что вы не шлёте в Oblodai сети, которых здесь нет:
 
-- **Bitcoin‑семейство — только `BTC`.** `litecoin`, `dogecoin`, `bitcoincash`, `dash`, `monero`
-  намеренно **не поддерживаются** — инвойс/кошелёк на такую сеть будет отклонён.
+- **Bitcoin‑семейство — только `BTC`.** `litecoin`, `dogecoin`, `bitcoincash`, `dash` намеренно
+  **не поддерживаются** (как и `monero`) — инвойс/кошелёк на такую сеть будет отклонён.
 - **Нативный ETH — только на `ethereum`.** На L2 (`base`, `arbitrum`) — только токены USDT/USDC.
 - **AVAX / `avalanche` поддерживается** (нативный на C‑Chain).
 

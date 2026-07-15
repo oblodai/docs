@@ -67,8 +67,8 @@ for (let attempt = 0; attempt < 5; attempt++) {
 
 </CodeGroup>
 
-Чтобы передать заголовок, добавьте его в свою обёртку `call()` (базовая версия — в
-[Быстром старте](/guides/signing-requests)):
+Чтобы передать заголовок, добавьте его в свою обёртку `call()` (базовая версия — в инструкции
+[Как подписать запрос](/guides/signing-requests)):
 
 <CodeGroup>
 
@@ -286,7 +286,12 @@ def call_resilient(path, payload, max_attempts=6):
 
         return body   # окончательная ошибка запроса — повтор не поможет
 
-    return last.json() if last is not None else None
+    if last is None:
+        return None
+    try:
+        return last.json()
+    except ValueError:            # не-JSON тело (напр., HTML от прокси на 502)
+        return None
 ```
 
 ```js Node.js

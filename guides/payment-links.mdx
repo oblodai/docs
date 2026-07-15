@@ -399,7 +399,7 @@ await call("/v1/payment/link/toggle", { link_id: "lnk_…", active: true });
 
 | Код | Значение |
 |---|---|
-| `paylink.not_found` / `paylink.bad_id` | Ссылки нет или она выключена. |
+| `paylink.not_found` / `paylink.bad_id` | Ссылки нет, она выключена или истёк её срок (`expires_in`). |
 | `paylink.amount_required` | Режим `open`/`range`, а сумма не введена. |
 | `paylink.below_min` | Сумма меньше `amount_min`. |
 | `paylink.above_max` | Сумма больше `amount_max`. |

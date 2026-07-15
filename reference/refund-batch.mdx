@@ -7,6 +7,12 @@ sidebarTitle: "Батч: возвраты"
 приходит `batch_id`, результат по каждому элементу забирается через
 [`POST /v1/batch/info`](/reference/batch-info).
 
+<Info>
+  **Ещё не в проде.** Эта функциональность станет доступна после деплоя обновлённого шлюза
+  (одновременно с выходом SDK v1.1.0). До этого соответствующие эндпоинты недоступны.
+  Статус — в [обзоре SDK](/sdk/overview#что-нового-в-v1-1-0).
+</Info>
+
 <Tip>
   **Это штатный способ не упираться в rate limit.** Один подписанный запрос вместо 5000 —
   [лимит частоты](/reference/basics-ratelimit) считается по запросам, а не по элементам внутри них.
@@ -160,7 +166,7 @@ await call("/v1/refund/batch", {
   <Card title="POST /v1/payment/refund" href="/reference/payment-refund" icon="arrow-right" horizontal>
     поля элемента.
   </Card>
-  <Card title="POST /v1/payment/batch" href="/reference/payout-batch" icon="arrow-right" horizontal />
+  <Card title="POST /v1/payment/batch" href="/reference/payment-batch" icon="arrow-right" horizontal />
   <Card title="POST /v1/payout/batch" href="/reference/payout-batch" icon="arrow-right" horizontal />
   <Card title="Возвраты платежей" href="/guides/refunds" icon="arrow-right" horizontal />
 </CardGroup>

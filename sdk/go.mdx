@@ -54,24 +54,6 @@ client, err := oblodai.New(oblodai.Config{
 })
 ```
 
-**Повторы настраивать не нужно — они включены по умолчанию** (до 4 попыток, с учётом `Retry-After`).
-Пустое поле `Retry` (`nil`) означает «дефолтные повторы», как и в остальных четырёх SDK. Если повторы
-нужно **отключить**, сделайте это явно:
-
-```go
-client, err := oblodai.New(oblodai.Config{
-    PublicID: "...", Secret: "...",
-    Retry: oblodai.NoRetry(), // отключить повторы
-    // oblodai.DefaultRetry() — то же, что и nil; передавать не обязательно
-})
-```
-
-<Warning>
-  **Это изменилось.** В прежних версиях `Retry: nil` означало «повторов НЕТ» — то есть клиент,
-  созданный самым очевидным способом, молча оставался без повторов и без учёта `Retry-After` на 429.
-  Теперь поведение такое же, как у остальных SDK.
-</Warning>
-
 ---
 
 ## Быстрый старт: принять платёж
@@ -137,7 +119,7 @@ link, err := client.Links.Create(ctx, oblodai.LinkParams{AmountMode: "open", Cur
 rule, err := client.Splits.SplitToAddress(ctx, "T...", "tron", 10.0, "партнёр А")
 
 // Счёт на e-mail (письмо с кнопкой «Оплатить»).
-_, err = client.Payments.SendEmail(ctx, uuid, "" /* orderID */, "buyer@example.com")
+_, err = client.Payments.SendEmail(ctx, payment.UUID, "" /* orderID */, "buyer@example.com")
 ```
 
 Подробности — [Массовые операции](/guides/batch-operations),
@@ -186,6 +168,10 @@ ep, err := client.Webhooks.Register(ctx, "https://ваш-сайт.ру/oblodai/w
 func webhook(w http.ResponseWriter, r *http.Request) {
     raw, _ := io.ReadAll(r.Body)
 
+    var ev map[string]any
+    json.Unmarshal(raw, &ev)
+    if ev["is_test"] == true { w.WriteHeader(http.StatusOK); return } // пробные тела не подписаны
+
     headers := oblodai.WebhookHeaders{
         Timestamp: r.Header.Get("X-Webhook-Timestamp"),
         Signature: r.Header.Get("X-Webhook-Signature"),
@@ -194,8 +180,6 @@ func webhook(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusForbidden); return
     }
 
-    var ev map[string]any
-    json.Unmarshal(raw, &ev)
     info, _ := client.Payments.Info(r.Context(), ev["uuid"].(string), "")
     if info.PaymentStatus == "paid" || info.PaymentStatus == "paid_over" {
         // пометить заказ info.OrderID оплаченным (идемпотентно)
@@ -220,8 +204,23 @@ if errors.As(err, &apiErr) {
 }
 ```
 
-Клиент **сам** повторяет 5xx/429/сетевые сбои с backoff и учётом `Retry-After` — **повторы включены по
-умолчанию**, настраивать ничего не нужно. Отключить: `Retry: oblodai.NoRetry()`.
+Клиент **сам** повторяет 5xx/429/сетевые сбои с backoff и учётом `Retry-After` (до 4 попыток) —
+**повторы включены по умолчанию**, настраивать ничего не нужно. Пустое поле `Retry` (`nil`) означает
+«дефолтные повторы», как и в остальных четырёх SDK. Если повторы нужно **отключить**, сделайте это явно:
+
+```go
+client, err := oblodai.New(oblodai.Config{
+    PublicID: "...", Secret: "...",
+    Retry: oblodai.NoRetry(), // отключить повторы
+    // oblodai.DefaultRetry() — то же, что и nil; передавать не обязательно
+})
+```
+
+<Warning>
+  **Это изменилось.** В прежних версиях `Retry: nil` означало «повторов НЕТ» — то есть клиент,
+  созданный самым очевидным способом, молча оставался без повторов и без учёта `Retry-After` на 429.
+  Теперь поведение такое же, как у остальных SDK.
+</Warning>
 
 **Повтор безопасен, но механизм зависит от версии:**
 
