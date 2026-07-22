@@ -51,7 +51,7 @@ sidebarTitle: "Создание выплаты"
 </ParamField>
 
 <ParamField body="is_subtract" type="bool">
-  **Принимается, но на саму выплату сейчас не влияет.** Кто платит сетевую комиссию, задаётся не в запросе, а настройкой проекта — см. [fee-config](/reference/payout-fee-config). (Поле учитывается только предрасчётом `/v1/payout/calculate`, см. примечание ниже.)
+  Кто платит сетевую комиссию. `true` — комиссия **сверх** суммы: с баланса списывается `amount + fee`, получатель получает ровно `amount`. `false` — комиссия **из** суммы: списывается `amount`, получатель получает `amount − fee`. Не передано — действует [fee-config](/reference/payout-fee-config) проекта (иначе дефолт шлюза). Семантика совпадает с предрасчётом `/v1/payout/calculate`.
 </ParamField>
 
 <ParamField body="memo" type="string">
@@ -76,13 +76,13 @@ sidebarTitle: "Создание выплаты"
 проекта [fee-config](/reference/payout-fee-config) (общий дефолт — комиссию несёт получатель), а **не** полем
 запроса.
 
-<Warning>
-  **`is_subtract` не влияет на саму выплату.** Поле в теле `/v1/payout` принимается, но
-  плательщик комиссии всегда берётся из fee‑config проекта. При этом предрасчёт
-  [`/v1/payout/calculate`](/reference/payout-calculate) поле `is_subtract` **учитывает**. Чтобы превью
-  совпадало с реальной выплатой, вызывайте `calculate` с `is_subtract`, согласованным с текущей
-  настройкой fee‑config, либо управляйте комиссией только через fee‑config.
-</Warning>
+<Note>
+  **`is_subtract` учитывается и выплатой, и предрасчётом.** Переданный в `/v1/payout` `is_subtract`
+  применяется ровно так же, как его моделирует
+  [`/v1/payout/calculate`](/reference/payout-calculate), поэтому превью совпадает с реальной
+  выплатой при одинаковом значении поля. Если поле не передавать, плательщик комиссии берётся из
+  [fee‑config](/reference/payout-fee-config) проекта.
+</Note>
 
 ---
 

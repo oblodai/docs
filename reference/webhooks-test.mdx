@@ -15,24 +15,40 @@ sidebarTitle: "Тестовые вебхуки"
 </Note>
 
 <Warning>
-  **Пробные тела содержат `"is_test": true` и НЕ подписываются** (нет заголовка `X-Webhook-Signature`)
-  — это синтетический payload. Настоящую [проверку подписи](/reference/webhook-object) отрабатывайте на боевых
-  вебхуках.
+  **Пробные тела содержат `"is_test": true`.** Отправка на явный `url`/`url_callback` НЕ
+  подписывается (к произвольному URL не привязан секрет). Исключение —
+  `/v1/payment/testing-webhook` **без `url`**: пробное тело уходит на зарегистрированный endpoint
+  проекта и подписано его настоящим секретом (стандартные заголовки `X-Webhook-*`), так что можно
+  проверить и свою [проверку подписи](/reference/webhook-object).
 </Warning>
 
 ---
 
-## POST /v1/payment/testing-webhook (легаси)
+## POST /v1/payment/testing-webhook
 
-Синхронно шлёт пробное тело на `url` и возвращает HTTP‑код вашего эндпоинта.
+Синхронно шлёт пробное тело и возвращает HTTP‑код и время ответа вашего эндпоинта.
 
-<ParamField body="url" type="string" required>
-  Куда отправить пробное тело.
+<ParamField body="url" type="string">
+  Куда отправить пробное тело. **Не передан** — доставка уходит на зарегистрированный
+  [endpoint проекта](/reference/webhooks-register), подписанная его секретом; если endpoint не
+  зарегистрирован, вернётся ошибка `webhook.no_endpoint`.
 </ParamField>
 
 <ParamField body="status" type="string">
   Статус в теле. По умолчанию `paid`.
 </ParamField>
+
+Ответ:
+
+```json
+{ "state": 0, "result": { "result": true, "url": "https://shop.example/hook", "signed": true, "duration_ms": 42, "status_code": 200 } }
+```
+
+Если ваш эндпоинт не ответил, метод возвращает не ошибку, а результат пробы:
+
+```json
+{ "state": 0, "result": { "result": false, "url": "https://shop.example/hook", "signed": true, "duration_ms": 10004, "error": "..." } }
+```
 
 
 ---

@@ -51,7 +51,11 @@ await call("/v1/referral/info", {});
     "link": "https://oblodai.com/?ref=K7QF2M9A",
     "tier_bps": [3000, 2000, 1000],
     "referred_count": 4,
-    "earnings_by_asset": { "USDT": "18450000", "ETH": "3200000000000000" }
+    "earnings_by_asset": { "USDT": "18450000", "ETH": "3200000000000000" },
+    "week": {
+      "referred_count": 1,
+      "earnings_by_asset": { "USDT": "250000" }
+    }
   }
 }
 ```
@@ -74,6 +78,11 @@ await call("/v1/referral/info", {});
 
 <ResponseField name="earnings_by_asset" type="object">
   Валюта → сумма в **минимальных единицах** (minor units), строкой.
+</ResponseField>
+
+<ResponseField name="week" type="object">
+  То же за скользящие **7 дней**: `referred_count` и `earnings_by_asset` (minor units). Реорг,
+  отозвавший начисление, автоматически уменьшает и недельную сумму.
 </ResponseField>
 
 
