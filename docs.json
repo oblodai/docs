@@ -356,6 +356,10 @@
             ]
           },
           {
+            "tab": "Плейграунд API",
+            "openapi": "api-reference/openapi.json"
+          },
+          {
             "tab": "SDK",
             "icon": "cubes",
             "groups": [

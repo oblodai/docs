@@ -1,0 +1,51 @@
+# Держит api-reference/openapi.json свежим БЕЗ кросс-репозиторных секретов: спека генерируется из
+# кода ядром и отдаётся живым продом на /openapi.json, поэтому достаточно забрать её оттуда и,
+# если она изменилась, закоммитить — пуш в main сам передеплоит Mintlify.
+#
+# Fail-soft по построению: любой сбой (прод недоступен, WAF-страница, битый JSON, подозрительно
+# маленькая спека) оставляет закоммиченную копию как есть. Хуже устаревшей спеки только пустая.
+name: openapi-sync
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # ежедневно; спека меняется только с деплоем ядра
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch live spec
+        id: fetch
+        run: |
+          set -euo pipefail
+          if ! curl -sSf --max-time 30 https://api.oblodai.com/openapi.json -o /tmp/openapi.raw.json; then
+            echo "прод недоступен — оставляем закоммиченную спеку"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Санитарная проверка: это OpenAPI с внятным числом путей, а не страница ошибки.
+          if ! jq -e '.openapi and (.paths | length >= 40)' /tmp/openapi.raw.json > /dev/null; then
+            echo "ответ не похож на спеку — оставляем закоммиченную"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          jq -S . /tmp/openapi.raw.json > /tmp/openapi.new.json
+          jq -S . api-reference/openapi.json > /tmp/openapi.old.json 2>/dev/null || echo '{}' > /tmp/openapi.old.json
+          if cmp -s /tmp/openapi.new.json /tmp/openapi.old.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            # Коммитим НЕотсортированный оригинал (как его отдаёт ядро), сравнение — по каноничной форме.
+            jq . /tmp/openapi.raw.json > api-reference/openapi.json
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit refreshed spec
+        if: steps.fetch.outputs.changed == 'true'
+        run: |
+          git config user.name "openapi-sync"
+          git config user.email "openapi-sync@users.noreply.github.com"
+          git add api-reference/openapi.json
+          git commit -m "openapi: sync from live core"
+          git push
