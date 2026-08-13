@@ -1,9 +1,9 @@
 {
-  "theme": "maple",
+  "theme": "aspen",
   "name": "Oblodai",
   "colors": {
     "primary": "#FF0F0F",
-    "light": "#FF6B6B",
+    "light": "#FF0F0F",
     "dark": "#D90D0D"
   },
   "logo": {
@@ -115,7 +115,8 @@
   },
   "description": "Документация Oblodai API — приём криптоплатежей, выплаты, статические кошельки и вебхуки. Один API-ключ, все возможности.",
   "appearance": {
-    "default": "system"
+    "default": "dark",
+    "strict": false
   },
   "fonts": {
     "heading": {
@@ -406,5 +407,11 @@
   },
   "feedback": {
     "thumbsRating": true
+  },
+  "background": {
+    "color": {
+      "light": "#FFFFFF",
+      "dark": "#000000"
+    }
   }
 }
