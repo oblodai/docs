@@ -573,5 +573,23 @@
       "light": "#FFFFFF",
       "dark": "#000000"
     }
+  },
+  "api": {
+    "playground": {
+      "display": "simple"
+    },
+    "examples": {
+      "languages": [
+        "curl",
+        "php",
+        "javascript",
+        "python",
+        "go"
+      ],
+      "defaults": "required"
+    },
+    "params": {
+      "expanded": "closed"
+    }
   }
 }
