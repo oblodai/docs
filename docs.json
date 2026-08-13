@@ -108,12 +108,10 @@
       "view",
       "chatgpt",
       "claude",
-      "perplexity",
       "mcp",
       "cursor",
       "vscode"
-    ],
-    "display": "header"
+    ]
   },
   "description": "Документация Oblodai API — приём криптоплатежей, выплаты, статические кошельки и вебхуки. Один API-ключ, все возможности.",
   "appearance": {
@@ -178,7 +176,8 @@
                 "icon": "boxes-stacked",
                 "pages": [
                   "guides/batch-operations",
-                  "guides/split-payments"
+                  "guides/split-payments",
+                  "guides/ai-integration"
                 ]
               },
               {
